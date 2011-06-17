@@ -79,12 +79,12 @@ ALTER SEQUENCE entry_points_id_seq OWNED BY entry_points.id;
 -- Name: files; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE TABLE files (
+CREATE TABLE files (  --contents_instances
     id integer NOT NULL,
     name text,
     full_path text,
     checksum_id integer,
-    size bigint,
+--    size bigint,
     entry_point_id integer,
     modification_time timestamp without time zone
 );
@@ -112,12 +112,12 @@ ALTER SEQUENCE files_id_seq OWNED BY files.id;
 -- Name: filters; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE TABLE filters (
-    id integer NOT NULL,
-    entry_point_id integer,
-    filter_in boolean,
-    regexp text
-);
+-- CREATE TABLE filters (
+--     id integer NOT NULL,
+--     entry_point_id integer,
+--     filter_in boolean,
+--     regexp text
+-- );
 
 
 --
