@@ -3,7 +3,8 @@
 
 class Configuration
   
-  def initialize
+  # initializes configuration from file
+  def initialize(path)
   end
 
 end
