@@ -24,7 +24,7 @@ class ContentsData
   def add_content(content)
   end
 
-  def add_instance(instance)
+  def add_instance(checksum, instance)
   end
 
   # checking that checksum is calculated already
