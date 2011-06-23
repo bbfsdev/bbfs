@@ -1,7 +1,7 @@
 class Content
-  attr_reader :checksum, :size, :first_appearance_time, :instances
+  attr_reader :checksum, :size, :first_appearance_time
 
-  def initialize(checksum, size, first_appearance_time, instances)
+  def initialize(checksum, size, first_appearance_time)
   end
 
   @checksum
@@ -22,19 +22,21 @@ class ContentInstance
   @modification_time
 end
 
-class ContentsData
+class ContentData
 
   def initialize()
+    contents = Hash.new
+    instances = Hash.new
   end
 
-  # store new checksum if needed
   def add_content(content)
+    contents[content.checksum] = content
   end
 
   def add_instance(instance)
   end
 
-  # checking that checksum is calculated already
   def content_exists(checksum)
+    contents.key? checksum
   end
 end
