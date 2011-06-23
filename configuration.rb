@@ -38,6 +38,12 @@ class Configuration
     end
     return server_conf_vec
   end
+
+  def to_s
+    ret = ""
+    server_conf_vec.each { |server| ret << server.to_s("") }
+    return ret
+  end
 end
 
 class ServerConf
@@ -62,7 +68,7 @@ class ServerConf
         @name = lines[i+parsed].strip.split(":")[1].strip
       elsif (lines[i+parsed].lstrip.match(/^username:/) != nil)
         @username = lines[i+parsed].strip.split(":")[1].strip
-      elsif (lines[i+parsed].lstrip.match(/^directories/) != nil)
+      elsif (lines[i+parsed].lstrip.match(/^directories:/) != nil)
         lines_parsed = parse_dirs(lines, i+parsed+1, ident+2, @directories)
         if (lines_parsed < 0)
           print "Error parsing directories\n"
@@ -116,5 +122,23 @@ class ServerConf
 
   def number_of_leading_spaces(str)
     str.match(/^\s*/).to_s.length
+  end
+
+  def to_file(filename)
+    File.open(filename, 'w') {|f| f.write(to_s) }
+  end
+
+  def to_s
+    return to_s("")
+  end
+
+  def to_s(prefix)
+    ret = ""
+    ret << prefix << "name:" << @name << "\n"
+    ret << prefix << "username:" << @username << "\n"
+    ret << prefix << "directories:\n"
+    @directories.each { |dir| ret << "  " << prefix << dir << "\n" }
+    @servers.each { |server| ret << server.to_s(prefix+"  ") }
+    return ret
   end
 end

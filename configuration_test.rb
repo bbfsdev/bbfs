@@ -16,7 +16,7 @@ class TestConfiguration < Test::Unit::TestCase
     assert_equal("hd2:-:/kuku.txt", conf.server_conf_vec[0].directories[5])
     assert_equal(2, conf.server_conf_vec[0].servers.length)
     assert_equal("small_server_2", conf.server_conf_vec[0].servers[0].name)
-    assert_equal("", conf.server_conf_vec[0].servers[0].username)
+    assert_equal("kaka", conf.server_conf_vec[0].servers[0].username)
     assert_equal(1, conf.server_conf_vec[0].servers[0].directories.length)
     assert_equal("tape1:+:/*", conf.server_conf_vec[0].servers[0].directories[0])
     assert_equal([], conf.server_conf_vec[0].servers[0].servers)
@@ -37,6 +37,8 @@ class TestConfiguration < Test::Unit::TestCase
     assert_equal(1, conf.server_conf_vec[2].directories.length)
     assert_equal("hd1:+:/*", conf.server_conf_vec[2].directories[0])
     assert_equal([], conf.server_conf_vec[2].servers)
+
+    assert_equal("name:large_server_1\nusername:kuku_crawl\ndirectories:\n  hd1:+:/usr/home/bin/*.(mp3|mov)\n  hd1:-:/usr/home/bin/kuku/*\n  hd1:-:/usr/home/bin/*dont_index/*\n  hd2:+:/usr/home/kuku2/file.dot\n  hd2:+:/usr/home/lala/k*\n  hd2:-:/kuku.txt\n  name:small_server_2\n  username:kaka\n  directories:\n    tape1:+:/*\n  name:large_server_3\n  username:vasia_crawl_user\n  directories:\n    hd1:+:/*\n    hd12:+:/*\n    hd13:+:/*\nname:large_server_4\nusername:vasia_crawl_user\ndirectories:\n  hd1:+:/*\nname:large_server_5\nusername:vasia_crawl_user\ndirectories:\n  hd1:+:/*\nname:large_server_6\nusername:vasia_crawl_user\ndirectories:\n  hd1:+:/*\n", conf.to_s)
   end
   
   def test_bad_conf
