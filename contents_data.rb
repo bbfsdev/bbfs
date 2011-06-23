@@ -4,7 +4,6 @@ class Content
   @checksum
 	@size
 	@first_appearance_time
-  @instances
 end
 
 class ContentInstance
@@ -14,7 +13,6 @@ class ContentInstance
   @device
 	@full_path
   @modification_time
-  @content
 end
 
 class ContentsData
@@ -23,17 +21,13 @@ class ContentsData
   end
 
   # store new checksum if needed
-  def add_content(checksum, size, first_appearance_time)
+  def add_content(content)
   end
 
-  def add_instance(server_name, device, full_path, modification_time)
+  def add_instance(instance)
   end
 
   # checking that checksum is calculated already
   def content_exists(checksum)
-  end
-
-  # get all file records for given path
-  def get_content_instances_by_pass(full_path)
   end
 end
