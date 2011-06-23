@@ -10,9 +10,9 @@ class Content
 end
 
 class ContentInstance
-  attr_reader :checksum, :device, :full_path, :modification_time
+  attr_reader :checksum, :server_name, :device, :full_path, :modification_time
 
-  def initialize(checksum, device, full_path, modification_time)
+  def initialize(checksum, server_name, device, full_path, modification_time)
   end
 
   @checksum
