@@ -75,6 +75,15 @@ class ContentData
     @contents.key? checksum
   end
   
+  def merge(content_data)
+    content_data.contents.values.each { |content|
+      add_content(content)
+    }
+    content_data.instances.values.each { |instance|
+      add_instance(instance)
+    }
+  end
+  
   def ==(other)
     @contents.keys { |key|
       if (@contents[key] != other.contents[key])
@@ -133,6 +142,6 @@ class ContentData
                                        parameters[3],
                                        parameters[4],
                                        DateTime.parse(parameters[5])))
-    }    
+    }
   end
 end

@@ -52,6 +52,51 @@ class TestContentData < Test::Unit::TestCase
     new_content_data = ContentData.new()
     new_content_data.from_file("content_data_test.data")
     assert_equal(true, new_content_data == content_data)
-    #assert_equal(content_data.to_s, new_content_data.to_s)
+    
+    content_data2 = ContentData.new
+    content_data2.add_content(Content.new("AD12A1C98A3", 765, DateTime.parse("2009-02-01T12:13:59+01:00")))
+    content_data2.add_content(Content.new("AB12A1C98A3", 123123, DateTime.parse("2011-02-01T02:23:59+01:00")))
+    content_data2.add_content(Content.new("AD1234C98A3", 12444, DateTime.parse("2023-02-01T22:23:59+01:00")))
+    content_data2.add_content(Content.new("ADB12A1C233", 2, DateTime.parse("2011-02-01T12:23:59+01:00")))
+    content_data2.add_content(Content.new("ADB12A4338A", 12412, DateTime.parse("2011-12-01T12:23:59+03:00")))
+    content_data2.add_content(Content.new("A232A1C98A3", 124424, DateTime.parse("2011-02-01T12:23:59+01:00")))
+    content_data2.add_content(Content.new("AAC12A1C983", 1242, DateTime.parse("2011-02-01T12:12:59-01:00")))
+    
+    content_data2.add_instance(ContentInstance.new("ADB12A1C233", 765, "large_server_11", "dev1",
+      "/home/kuku/dev/lala/k.txt", DateTime.parse("2011-02-01T12:23:59+01:00")))
+    content_data2.add_instance(ContentInstance.new("ADB12A4338A", 765, "large_server_11", "dev2",
+      "/home/kuku/dev/lala/k1.txt", DateTime.parse("2011-02-01T12:23:59+01:00")))
+    content_data2.add_instance(ContentInstance.new("A232A1C98A3", 765, "large_server_11", "dev3",
+      "/home/kuku/dev/k.txt", DateTime.parse("2011-02-01T12:23:59+01:00")))
+    content_data2.add_instance(ContentInstance.new("ADB12A4338A", 765, "large_server_12", "dev2",
+      "/home/lala/k.txt", DateTime.parse("2011-02-01T12:23:59+01:00")))
+    content_data2.add_instance(ContentInstance.new("AD1234C98A3", 765, "large_server_12", "dev1",
+      "/home/kuku/lala/k.txt", DateTime.parse("2011-02-01T12:23:59+01:00")))
+    content_data2.add_instance(ContentInstance.new("AD12A1C98A3", 765, "large_server_12", "dev1",
+      "/home/kuku/dev/lala/k.txt", DateTime.parse("2011-02-01T12:23:59+01:00")))
+    content_data2.add_instance(ContentInstance.new("AAC12A1C983", 765, "large_server_12", "dev2",
+      "/home/kuku/dev/lala/k1.txt", DateTime.parse("2011-02-01T12:23:59+01:00")))
+    content_data2.add_instance(ContentInstance.new("A232A1C98A3", 765, "large_server_12", "dev3",
+      "/home/kuku/dev/k.txt", DateTime.parse("2011-02-01T12:23:59+01:00")))
+    content_data2.add_instance(ContentInstance.new("AD12A1C98A3", 765, "large_server_12", "dev2",
+      "/home/lala/k.txt", DateTime.parse("2011-02-01T12:23:59+01:00")))
+    content_data2.add_instance(ContentInstance.new("AD1234C98A3", 12412, "large_server_12", "dev1",
+      "/home/kuku/lala/k.txt", DateTime.parse("2011-02-01T12:23:59+01:00")))    
+    content_data2.add_instance(ContentInstance.new("ADB12A4338A", 12412, "large_server_12", "dev1",
+      "/home/kuku/dev/lala/k.txt", DateTime.parse("2011-02-01T12:23:59+01:00")))
+    content_data2.add_instance(ContentInstance.new("AAC12A1C983", 12412, "large_server_12", "dev2",
+      "/home/kuku/kuku/dev/lala/k1.txt", DateTime.parse("2011-02-01T12:23:59+01:00")))
+    content_data2.add_instance(ContentInstance.new("A232A1C98A3", 12412, "large_server_12", "dev3",
+      "/home/kuku/kuku/dev/k.txt", DateTime.parse("2011-02-01T12:23:59+01:00")))
+    content_data2.add_instance(ContentInstance.new("ADB12A4338A", 12412, "large_server_11", "dev2",
+      "/home/kuku/lala/k.txt", DateTime.parse("2011-02-01T12:23:59+01:00")))
+    content_data2.add_instance(ContentInstance.new("AD1234C98A3", 12412, "large_server_11", "dev1",
+      "/home/kuku/kuku/lala/k.txt", DateTime.parse("2011-02-01T12:23:59+01:00")))
+
+    content_data.merge(content_data2)
+    content_data.to_file("content_data_test2.data")
+    new_content_data2 = ContentData.new()
+    new_content_data2.from_file("content_data_test2.data")
+    assert_equal(true, new_content_data2 == content_data)
   end
 end
