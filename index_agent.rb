@@ -10,8 +10,13 @@ require 'content_data'
 
 class IndexAgent
 attr_reader :db, :server_name, :device
-  
+
+LOCALTZ = Time.now.zone
+ENV['TZ'] = 'UTC'
+
 	def initialize(server_name, device)
+    @server_name = server_name
+    @device = device
     init_log()
     init_db()
 	end
@@ -42,7 +47,7 @@ attr_reader :db, :server_name, :device
     		#@log.info { digest.hexdigest.downcase + ' ' + filename }
     		digest.hexdigest.downcase
       rescue Errno::EACCES, Errno::ETXTBSY => exp
-    		@log.warn { "#{exp.message}" }
+        @log.warn { "#{exp.message}" }
     		false
       end
   end
@@ -50,7 +55,7 @@ attr_reader :db, :server_name, :device
   # get all files
   # satisfying the pattern
   def collect(pattern)
-    Dir.glob(pattern)
+    Dir.glob(pattern.to_s)
   end
     
   # index device according to the pattern
@@ -62,7 +67,7 @@ attr_reader :db, :server_name, :device
     # pattern processing
     # pattern format: device:[+-]:path_pattern
     patterns.each_index do |i|
-      unless (m = /([^:]*):([+-])(.*)/.match(patterns[i]))
+      unless (m = /([^:]*):([+-]):(.*)/.match(patterns[i]))
         @log.warn { "pattern in incorrect format: #{patterns[i]}" }
       end
       if (m[2].eql?('+'))
@@ -74,7 +79,7 @@ attr_reader :db, :server_name, :device
     
     # transfer path inside the pattern to the standart view
     permit_patterns.each do |p|
-      p = p.gsub(/\\/,'/')
+      p.gsub!(/\\/,'/')
     end
     forbid_patterns.each do |p|
       p = p.gsub(/\\/,'/')
@@ -93,19 +98,22 @@ attr_reader :db, :server_name, :device
         files.delete(f)
       end
     end
-    
+       
     files.each do |file|
       file_stats = File.lstat(file)
+      
+      # index only files
+      next if (file_stats.directory?)
       # calculate a checksum
       unless (checksum = get_checksum(file))
         @log.warn { "Cheksum failure: " + file }
         next
       end
       
-      @db.add_content(Content.new(checksum, file_stats.size, 'now()')) unless (@db.content_exists(checksum))
+      @db.add_content(Content.new(checksum, file_stats.size, Time.now().utc().to_s)) unless (@db.content_exists(checksum))
       
-      instance = ContentInstance.new(checksum, file_stats.size, :server_name, :device, File.dirname(file), file_stats.mtime.utc)
-      @db.add_instance
+      instance = ContentInstance.new(checksum, file_stats.size, server_name, device, File.expand_path(file), file_stats.mtime.utc)
+      @db.add_instance(instance)
     end
   end  
 end
