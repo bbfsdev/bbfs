@@ -1,35 +1,43 @@
+require 'rubygems'
 require 'configuration.rb'
 require 'content_data.rb'
+require 'net/ssh'
+require 'net/sftp'
+
 # Crawles the server topology and physical devices
 # and indexes the relevant files
 
 class Crawler
   
   def initialize(server_conf)
-    threads = Array.new
+    if (server_conf.name == 'localhost')
+      threads = Array.new
     
-    # Handle different devices
-    devices = Hash.new
-    server_conf.directories.each { |pattern|
-      key = pattern.split(':')[0]
-      if not devices.has_key?(key)
-        devices[key] = Array.new
-      end
-      devices[key].push(key)
-    }
+      # Handle different devices
+      devices = Hash.new
+      server_conf.directories.each { |pattern|
+        key = pattern.split(':')[0]
+        if not devices.has_key?(key)
+          devices[key] = Array.new
+        end
+        devices[key].push(key)
+      }
     
-    devices.each_key { |key|
-      threads.push(Thread.new { handle_device(server_conf.name, key, devices[key]) })
-    }
+      devices.each_key { |key|
+        threads.push(Thread.new { handle_device(server_conf.name, key, devices[key]) })
+      }
     
-    # Handle different sub-servers
-    server_conf.servers.each { |sub_server| 
-      threads.push(Thread.new { handle_sub_server(server_conf.name, sub_server) })
-    }
+      # Handle different sub-servers
+      server_conf.servers.each { |sub_server| 
+        threads.push(Thread.new { handle_sub_server(sub_server) })
+      }
     
-    threads.each { |a| a.join }
+      threads.each { |a| a.join }
     
-    join_sub_servers_results(server_conf.name, devices.keys, server_conf.servers)
+      join_sub_servers_results(server_conf.name, devices.keys, server_conf.servers)
+    else
+      handle_sub_server(server_conf)
+    end
   end
   
   def handle_device(server_name, device, pattern_arr)
@@ -38,7 +46,7 @@ class Crawler
     printf('Indexer.new(server_name, "%s_%s.data", pattern_arr)' % [server_name, device])
   end
   
-  def handle_sub_server(server_name, sub_server)
+  def handle_sub_server(sub_server)
     # remote ssh copy files . . .
     copy_crawler(sub_server)
     
@@ -50,26 +58,43 @@ class Crawler
   end
 
   def copy_crawler(sub_server)
-    printf "copy_crawler: %s\n", sub_server.name
+    printf "copy_crawler: %s@%s\n", sub_server.username, sub_server.name
     
-    sub_server_conf = '%s.conf' % sub_server.name
+    tmp_name = sub_server.name
+    sub_server.name = 'localhost' # So that the remote server will handle the request locally
+    sub_server_conf = 'server.conf'
     sub_server.to_file(sub_server_conf)
+    sub_server.name = tmp_name
     
     dir_perm = 0755
-    Net::SSH.start(sub_server.name, sub_server.username) do |ssh|
+    Net::SSH.start(sub_server.name, sub_server.username, 
+                  :password => sub_server.password,
+                  :encryption => 'none',
+                  :auth_methods => 'password') do |ssh|
       ssh.sftp.connect do |sftp|
-        sftp.mkdir!('crawler', :permissions => dir_perm)
-        sftp.mkdir!('crawler/config', :permissions => dir_perm)
-        sftp.put_file(sub_server_conf, 'crawler/config/server.conf')
+        begin
+          sftp.mkdir!('crawler', :permissions => dir_perm)
+          sftp.mkdir!('crawler/config', :permissions => dir_perm)
+        rescue Net::SFTP::StatusException => e
+          print "Directories already exist.\n"
+        end
+        sftp.upload!(sub_server_conf, 'crawler/config/server.conf')
       end
     end
   end
 
   def run_crawler(sub_server)
     printf "Running remote: %s\n", sub_server.name
-    Net::SSH.start(sub_server.name, sub_server.username) do |ssh|
-      ssh.exec!('cd crawler')
-      ssh.exec!('ruby crawler("config/server.conf")')
+    Net::SSH.start(sub_server.name, sub_server.username, 
+                   :password => sub_server.password,
+                   :encryption => 'none',
+                   :auth_methods => 'password') do |ssh|
+      output = ssh.exec!('cd crawler')
+      printf "%s\n", output
+      output = ssh.exec!('touch csm.technion.ac.il.data')
+      printf "%s\n", output
+      output = ssh.exec!('ruby crawler config/server.conf')
+      printf "%s\n", output
       #Crawler.new(sub_server)
     end
   end
@@ -77,9 +102,16 @@ class Crawler
   def copy_back(sub_server)
     printf "copy_back: %s\n", sub_server.name
     sub_server_conf = '%s.data' % sub_server.name
-    Net::SSH.start(sub_server.name, sub_server.username) do |ssh|
+    Net::SSH.start(sub_server.name, sub_server.username, 
+                   :password => sub_server.password,
+                   :encryption => 'none',
+                   :auth_methods => 'password') do |ssh|
       ssh.sftp.connect do |sftp|
-        sftp.get_file(sub_server_conf, sub_server_conf)
+        begin
+          sftp.download!(sub_server_conf, sub_server_conf)
+        rescue RuntimeError => e
+          print "Could not copy file back.\n"
+        end
       end
     end
   end
@@ -125,7 +157,7 @@ def main
 
   threads.each { |a| a.join }
 
-  join_servers_results(server_conf_vec)
+  join_servers_results(conf.server_conf_vec)
 end
 
 main
