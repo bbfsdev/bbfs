@@ -47,7 +47,8 @@ class Configuration
 end
 
 class ServerConf
-  attr_reader :name, :username, :directories, :servers
+  attr_reader :username, :password, :directories, :servers
+  attr_accessor :name
 
   def initialize()
     @name = ""
@@ -128,7 +129,7 @@ class ServerConf
   end
 
   def to_file(filename)
-    File.open(filename, 'w') {|f| f.write(to_s) }
+    File.open(filename, 'w') {|f| f.write(to_s("")) }
   end
 
   def to_s
