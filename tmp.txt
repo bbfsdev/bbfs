@@ -1,0 +1,10 @@
+    pattern = pattern.gsub(/\\/,'/')
+    puts "new pattern: " + pattern
+    entry_point = pattern
+    # looking for the longest path in the pattern that doesn't consist regex
+    # it will be an entry point
+    until (File.exists?(entry_point)) do
+      entry_point = File.dirname(entry_point)
+    end
+    puts entry_point 
+    #collect(entry_point, pattern).each do |file|
