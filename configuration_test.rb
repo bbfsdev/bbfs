@@ -2,6 +2,11 @@ require 'configuration.rb'
 require 'test/unit'
 
 class TestConfiguration < Test::Unit::TestCase
+  def test_conf_1
+    conf = Configuration.new('configuration_test.1.conf')
+    assert_equal(1, conf.server_conf_vec.length)
+  end
+
   def test_conf
     conf = Configuration.new('configuration_test.conf')
     assert_equal(4, conf.server_conf_vec.length)
