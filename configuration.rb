@@ -47,13 +47,14 @@ class Configuration
 end
 
 class ServerConf
-  attr_reader :username, :password, :directories, :servers
+  attr_reader :username, :password, :port, :directories, :servers
   attr_accessor :name
 
   def initialize()
     @name = ""
     @username = ""
     @password = ""
+    @port = ""
     @directories = Array.new
     @servers = Array.new
   end
@@ -72,6 +73,8 @@ class ServerConf
         @username = lines[i+parsed].strip.split(":")[1].strip
       elsif (lines[i+parsed].lstrip.match(/^password:/) != nil)
         @password = lines[i+parsed].strip.split(":")[1].strip
+      elsif (lines[i+parsed].lstrip.match(/^port:/) != nil)
+        @port = lines[i+parsed].strip.split(":")[1].strip.to_i
       elsif (lines[i+parsed].lstrip.match(/^directories:/) != nil)
         lines_parsed = parse_dirs(lines, i+parsed+1, ident+2, @directories)
         if (lines_parsed < 0)
@@ -141,6 +144,7 @@ class ServerConf
     ret << prefix << "name:" << @name << "\n"
     ret << prefix << "username:" << @username << "\n"
     ret << prefix << "password:" << @password << "\n"
+    ret << prefix << "port:" << @port.to_s << "\n"    
     ret << prefix << "directories:\n"
     @directories.each { |dir| ret << "  " << prefix << dir << "\n" }
     @servers.each { |server| ret << server.to_s(prefix+"  ") }

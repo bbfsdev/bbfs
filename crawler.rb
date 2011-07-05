@@ -1,6 +1,7 @@
 require 'rubygems'
 require 'configuration.rb'
 require 'content_data.rb'
+require 'index_agent.rb'
 require 'net/ssh'
 require 'net/sftp'
 
@@ -42,8 +43,9 @@ class Crawler
   
   def handle_device(server_name, device, pattern_arr)
     # Run indexer here!
-    #Indexer.new(server_name, "%s_%s.data" % [server_name, device], pattern_arr)
-    printf('Indexer.new(server_name, "%s_%s.data", pattern_arr)' % [server_name, device])
+    agent = IndexAgent.new(server_name, device)
+    agent.index(pattern_arr)
+    agent.db.to_file("%s_%s.data" % [server_name, device])
   end
   
   def handle_sub_server(sub_server)
@@ -67,7 +69,7 @@ class Crawler
     sub_server.name = tmp_name
     
     dir_perm = 0755
-    Net::SSH.start(sub_server.name, sub_server.username, 
+    Net::SSH.start(sub_server.name, sub_server.port, sub_server.username, 
                   :password => sub_server.password,
                   :encryption => 'none',
                   :auth_methods => 'password') do |ssh|
@@ -78,6 +80,11 @@ class Crawler
         rescue Net::SFTP::StatusException => e
           print "Directories already exist.\n"
         end
+        Dir.foreach('.') do |file|
+          if file.end_with?('.rb')
+            sftp.upload!(file, 'crawler/%s' % [file])
+          end
+        end
         sftp.upload!(sub_server_conf, 'crawler/config/server.conf')
       end
     end
@@ -85,15 +92,16 @@ class Crawler
 
   def run_crawler(sub_server)
     printf "Running remote: %s\n", sub_server.name
-    Net::SSH.start(sub_server.name, sub_server.username, 
+    Net::SSH.start(sub_server.name, sub_server.port, sub_server.username, 
                    :password => sub_server.password,
                    :encryption => 'none',
                    :auth_methods => 'password') do |ssh|
-      output = ssh.exec!('cd crawler')
-      printf "%s\n", output
-      output = ssh.exec!('touch csm.technion.ac.il.data')
-      printf "%s\n", output
-      output = ssh.exec!('ruby crawler config/server.conf')
+      #ssh.shell.sync.cd('crawler') 
+      #output = ssh.exec!('cd crawler')
+      #printf "first:%s\n", output
+      #output = ssh.exec!('touch crawler/csm.technion.ac.il.data')
+      #printf "second:%s\n", output
+      output = ssh.exec!('ruby crawler/crawler.rb crawler/config/server.conf')
       printf "%s\n", output
       #Crawler.new(sub_server)
     end
@@ -102,7 +110,7 @@ class Crawler
   def copy_back(sub_server)
     printf "copy_back: %s\n", sub_server.name
     sub_server_conf = '%s.data' % sub_server.name
-    Net::SSH.start(sub_server.name, sub_server.username, 
+    Net::SSH.start(sub_server.name, sub_server.port, sub_server.username, 
                    :password => sub_server.password,
                    :encryption => 'none',
                    :auth_methods => 'password') do |ssh|
