@@ -91,7 +91,7 @@ class ServerConf
         # debug printf "line parsed ser: %d\n", lines_parsed
         parsed += lines_parsed-1
       else
-        print "Error parsing, no leagal directive found\n"
+        print "Error parsing, no legal directive found\n"
         return -parsed
       end
       parsed += 1

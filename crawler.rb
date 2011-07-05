@@ -149,6 +149,7 @@ end
 def main
   conf = Configuration.new(ARGV[0])
   
+  return unless(conf.server_conf_vec != nil)
   threads = Array.new
 
   conf.server_conf_vec.each { |server|
