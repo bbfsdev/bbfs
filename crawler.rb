@@ -69,10 +69,11 @@ class Crawler
     sub_server.name = tmp_name
     
     dir_perm = 0755
-    Net::SSH.start(sub_server.name, sub_server.port, sub_server.username, 
+    Net::SSH.start(sub_server.name, sub_server.username, 
                   :password => sub_server.password,
                   :encryption => 'none',
-                  :auth_methods => 'password') do |ssh|
+                  :auth_methods => 'password',
+                  :port => sub_server.port) do |ssh|
       ssh.sftp.connect do |sftp|
         begin
           sftp.mkdir!('crawler', :permissions => dir_perm)
@@ -92,10 +93,11 @@ class Crawler
 
   def run_crawler(sub_server)
     printf "Running remote: %s\n", sub_server.name
-    Net::SSH.start(sub_server.name, sub_server.port, sub_server.username, 
+    Net::SSH.start(sub_server.name, sub_server.username, 
                    :password => sub_server.password,
                    :encryption => 'none',
-                   :auth_methods => 'password') do |ssh|
+                   :auth_methods => 'password',
+                   :port => sub_server.port) do |ssh|
       #ssh.shell.sync.cd('crawler') 
       #output = ssh.exec!('cd crawler')
       #printf "first:%s\n", output
@@ -110,10 +112,11 @@ class Crawler
   def copy_back(sub_server)
     printf "copy_back: %s\n", sub_server.name
     sub_server_conf = '%s.data' % sub_server.name
-    Net::SSH.start(sub_server.name, sub_server.port, sub_server.username, 
+    Net::SSH.start(sub_server.name, sub_server.username, 
                    :password => sub_server.password,
                    :encryption => 'none',
-                   :auth_methods => 'password') do |ssh|
+                   :auth_methods => 'password',
+                   :port => sub_server.port) do |ssh|
       ssh.sftp.connect do |sftp|
         begin
           sftp.download!(sub_server_conf, sub_server_conf)
