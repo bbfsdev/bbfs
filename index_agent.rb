@@ -61,6 +61,7 @@ ENV['TZ'] = 'UTC'
   # index device according to the pattern
   # store the result
   def index(patterns)
+    abort "#{self.class}: DB not empty. Current implementation permits only one running of index" unless db.contents.empty?
     permit_patterns = Array.new
     forbid_patterns = Array.new
     
@@ -68,7 +69,8 @@ ENV['TZ'] = 'UTC'
     # pattern format: device:[+-]:path_pattern
     patterns.each_index do |i|
       unless (m = /([^:]*):([+-]):(.*)/.match(patterns[i]))
-        @log.warn { "pattern in incorrect format: #{patterns[i]}" }
+        #@log.warn { "pattern in incorrect format: #{patterns[i]}" }
+        abort ("pattern in incorrect format: #{patterns[i]}")
       end
       if (m[2].eql?('+'))
         permit_patterns.push(m[3])
@@ -78,24 +80,27 @@ ENV['TZ'] = 'UTC'
     end
     
     # transfer path inside the pattern to the standart view
+    # need for Dir.glob function
     permit_patterns.each do |p|
       p.gsub!(/\\/,'/')
     end
     forbid_patterns.each do |p|
-      p = p.gsub(/\\/,'/')
+      p.gsub!(/\\/,'/')
     end 
     
     # add files found by positive patterns
     files = Array.new  
-    permit_patterns.each_index do |i| 
+    permit_patterns.each_index do |i|          
       files = files | (collect(permit_patterns[i]));
     end
 
+    files.map! {|f| File.expand_path(f)}    
+        
     # remove files found by negative patterns
-    forbid_patterns.each_index do |i|
+    forbid_patterns.each_index do |i| 
       forbid_files = Array.new(collect(forbid_patterns[i]));
-      forbid_files.each do |f|
-        files.delete(f)
+      forbid_files.each do |f|         
+        files.delete(File.expand_path(f))
       end
     end
        
