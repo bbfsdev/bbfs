@@ -141,12 +141,13 @@ class ServerConf
 
   def to_s(prefix)
     ret = ""
-    ret << prefix << "name:" << @name << "\n"
-    ret << prefix << "username:" << @username << "\n"
-    ret << prefix << "password:" << @password << "\n"
-    ret << prefix << "port:" << @port.to_s << "\n"    
-    ret << prefix << "directories:\n"
-    @directories.each { |dir| ret << "  " << prefix << dir << "\n" }
+    ret << prefix << "server\n"
+    ret << prefix << "  name:" << @name << "\n"
+    ret << prefix << "  username:" << @username << "\n"
+    ret << prefix << "  password:" << @password << "\n"
+    ret << prefix << "  port:" << @port.to_s << "\n"    
+    ret << prefix << "  directories:\n"
+    @directories.each { |dir| ret << "    " << prefix << dir << "\n" }
     @servers.each { |server| ret << server.to_s(prefix+"  ") }
     return ret
   end
