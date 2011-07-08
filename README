@@ -1,0 +1,28 @@
+How to use distributed file crawler
+-----------------------------------
+
+Prerequisites:
+Each server you have files on have to have the following:
+1) Ruby 1.8 and above.
+2) NET-SSH and NET-SFTP gems installed.
+
+Preparing configuration file:
+Example:
+server
+  name: localhost
+  directories:
+    hd1:+:/usr/home/bin/*.(mp3|mov)
+    hd1:-:/usr/home/bin/kuku/*
+    hd1:-:/usr/home/bin/*dont_index/*
+server
+  name: large_server_1
+  username: kuku_crawl
+  password: kaka
+  port: 2222
+  directories:
+    hd1:+:/usr/home/bin/*.(mp3|mov)
+    hd1:-:/usr/home/bin/kuku/*
+    hd1:-:/usr/home/bin/*dont_index/*
+
+Running the crawler:
+ruby crawler.rb <config file>
