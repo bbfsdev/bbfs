@@ -14,15 +14,15 @@ server
     hd1:+:/usr/home/bin/*.(mp3|mov)
     hd1:-:/usr/home/bin/kuku/*
     hd1:-:/usr/home/bin/*dont_index/*
-server
-  name: large_server_1
-  username: kuku_crawl
-  password: kaka
-  port: 2222
-  directories:
-    hd1:+:/usr/home/bin/*.(mp3|mov)
-    hd1:-:/usr/home/bin/kuku/*
-    hd1:-:/usr/home/bin/*dont_index/*
+  server
+    name: large_server_1
+    username: kuku_crawl
+    password: kaka
+    port: 2222
+    directories:
+      hd1:+:/usr/home/bin/*.(mp3|mov)
+      hd1:-:/usr/home/bin/kuku/*
+      hd1:-:/usr/home/bin/*dont_index/*
 
 Running the crawler:
 ruby crawler.rb <config file>

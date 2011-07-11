@@ -66,7 +66,6 @@ class ContentData
     key = "%s:%s:%s" % [instance.server_name, 
                         instance.device, 
                         instance.full_path]
-
     #override file if needed
     @instances[key] = instance
   end
@@ -142,6 +141,7 @@ class ContentData
                                        parameters[3],
                                        parameters[4],
                                        DateTime.parse(parameters[5])))
+      i += 1
     }
   end
 end
