@@ -129,7 +129,7 @@ class Crawler
             devices.push(pattern.split(':')[0])
           end
           devices.uniq!.each do |device|
-            sub_server_conf = '%s_%s.data' % [sub_server.name, device]
+            sub_server_conf = '%s.data' % [sub_server.name, device]
             sftp.download!("crawler/#{sub_server_conf}", sub_server_conf)              
           end
         rescue RuntimeError => e
