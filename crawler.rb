@@ -8,20 +8,22 @@ require 'net/sftp'
 # Crawles the server topology and physical devices
 # and indexes the relevant files
 
-class Crawler
+class Crawler  
   
-  def initialize(server_conf)
-    if (server_conf.name == 'localhost')
+  
+  def initialize(server_conf, is_localhost=true)    
+    #    if (server_conf.name == 'localhost')
+    if (is_localhost == true)
       threads = Array.new
     
       # Handle different devices
       devices = Hash.new
-      server_conf.directories.each { |pattern|
+      server_conf.directories.each { |pattern|        
         key = pattern.split(':')[0]
         if not devices.has_key?(key)
           devices[key] = Array.new
         end
-        devices[key].push(key)
+        devices[key].push(pattern)
       }
     
       devices.each_key { |key|
@@ -36,15 +38,16 @@ class Crawler
       threads.each { |a| a.join }
     
       join_sub_servers_results(server_conf.name, devices.keys, server_conf.servers)
-    else
+    else       
       handle_sub_server(server_conf)
     end
   end
   
   def handle_device(server_name, device, pattern_arr)
     # Run indexer here!
-    agent = IndexAgent.new(server_name, device)
-    agent.index(pattern_arr)
+    
+    agent = IndexAgent.new(server_name, device)   
+    agent.index(pattern_arr)     
     agent.db.to_file("%s_%s.data" % [server_name, device])
   end
   
@@ -63,11 +66,11 @@ class Crawler
     printf "copy_crawler: %s@%s\n", sub_server.username, sub_server.name
     
     tmp_name = sub_server.name
-    sub_server.name = 'localhost' # So that the remote server will handle the request locally
+#    sub_server.name = 'localhost' # So that the remote server will handle the request locally
     sub_server_conf = 'server.conf'
     sub_server.to_file(sub_server_conf)
     sub_server.name = tmp_name
-    
+
     dir_perm = 0755
     Net::SSH.start(sub_server.name, sub_server.username, 
                   :password => sub_server.password,
@@ -102,8 +105,8 @@ class Crawler
       #output = ssh.exec!('cd crawler')
       #printf "first:%s\n", output
       #output = ssh.exec!('touch crawler/csm.technion.ac.il.data')
-      #printf "second:%s\n", output
-      output = ssh.exec!('ruby crawler/crawler.rb crawler/config/server.conf')
+      #printf "second:%s\n", output    
+      output = ssh.exec!('cd crawler && ruby crawler.rb config/server.conf')
       printf "%s\n", output
       #Crawler.new(sub_server)
     end
@@ -111,15 +114,24 @@ class Crawler
 
   def copy_back(sub_server)
     printf "copy_back: %s\n", sub_server.name
-    sub_server_conf = '%s.data' % sub_server.name
+    #sub_server_conf = '%s.data' % sub_server.name
+    
     Net::SSH.start(sub_server.name, sub_server.username, 
                    :password => sub_server.password,
                    :encryption => 'none',
                    :auth_methods => 'password',
                    :port => sub_server.port) do |ssh|
       ssh.sftp.connect do |sftp|
+        #sftp.download!(sub_server_conf, sub_server_conf)
         begin
-          sftp.download!(sub_server_conf, sub_server_conf)
+          devices = Array.new
+          sub_server.directories.each do |pattern|
+            devices.push(pattern.split(':')[0])
+          end
+          devices.uniq!.each do |device|
+            sub_server_conf = '%s_%s.data' % [sub_server.name, device]
+            sftp.download!("crawler/#{sub_server_conf}", sub_server_conf)              
+          end
         rescue RuntimeError => e
           print "Could not copy file back.\n"
         end
@@ -131,7 +143,7 @@ class Crawler
     content_data = ContentData.new
     devices.each { |device|
       device_content_data = ContentData.new
-      device_content_data.from_file("%s_%s.data" % [server_name, device])
+      device_content_data.from_file("%s_%s.data" % [server_name, device])      
       content_data.merge(device_content_data)
     }
 
@@ -157,14 +169,13 @@ def join_servers_results(server_conf_vec)
     end
 end
 
-def main
+def main  
   conf = Configuration.new(ARGV[0])
-  
   return unless(conf.server_conf_vec != nil)
   threads = Array.new
 
   conf.server_conf_vec.each { |server|
-    threads.push(Thread.new { Crawler.new(server) })
+    threads.push(Thread.new { Crawler.new(server, ARGV[1] == nil ? true : false) })
   }
 
   threads.each { |a| a.join }
