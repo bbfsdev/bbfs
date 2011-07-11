@@ -135,11 +135,7 @@ class ServerConf
     File.open(filename, 'w') {|f| f.write(to_s("")) }
   end
 
-  def to_s
-    return to_s("")
-  end
-
-  def to_s(prefix)
+  def to_s(prefix="")
     ret = ""
     ret << prefix << "server\n"
     ret << prefix << "  name:" << @name << "\n"
