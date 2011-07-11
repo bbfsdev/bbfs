@@ -2,6 +2,7 @@ require 'rubygems'
 require 'digest/sha1'
 require 'logger'
 require 'pp'
+require 'date' # for DateTime
 require 'content_data'
 
 ####################
@@ -115,7 +116,8 @@ ENV['TZ'] = 'UTC'
         next
       end
       
-      @db.add_content(Content.new(checksum, file_stats.size, Time.now().utc().to_s)) unless (@db.content_exists(checksum))
+      # time converted to the UTC standart
+      @db.add_content(Content.new(checksum, file_stats.size, DateTime.now.new_offset.to_s)) unless (@db.content_exists(checksum))
       
       instance = ContentInstance.new(checksum, file_stats.size, server_name, device, File.expand_path(file), file_stats.mtime.utc)
       @db.add_instance(instance)
