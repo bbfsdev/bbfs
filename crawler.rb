@@ -65,11 +65,11 @@ class Crawler
   def copy_crawler(sub_server)
     printf "copy_crawler: %s@%s\n", sub_server.username, sub_server.name
     
-    tmp_name = sub_server.name
+#    tmp_name = sub_server.name
 #    sub_server.name = 'localhost' # So that the remote server will handle the request locally
     sub_server_conf = 'server.conf'
     sub_server.to_file(sub_server_conf)
-    sub_server.name = tmp_name
+#    sub_server.name = tmp_name
 
     dir_perm = 0755
     Net::SSH.start(sub_server.name, sub_server.username, 
