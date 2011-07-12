@@ -161,6 +161,7 @@ def join_servers_results(server_conf_vec, out_name)
     content_data.to_file(out_name+'.data')
   elsif (!server_conf_vec.nil? && server_conf_vec.length == 1)
     if (server_conf_vec[0].name != "localhost")
+      # TODO(kolman): Should simply rename file.
       content_data = ContentData.new
       sub_server_content_data = ContentData.new
       sub_server_content_data.from_file("%s.data" % [server_conf_vec[0].name])
