@@ -7,6 +7,9 @@ Each server you have files on have to have the following:
 2) NET-SSH and NET-SFTP gems installed.
 
 Preparing configuration file:
+Note: The pattern is not a regular expression; instead it follows rules similar 
+      to shell filename globbing
+      Link: http://www.ruby-doc.org/core/classes/File.html#M000001
 Example:
 server
   name: localhost
@@ -26,3 +29,10 @@ server
 
 Running the crawler:
 ruby crawler.rb <config file>
+
+
+For developers
+--------------
+To be corresponded with Ruby 1.9.2 all required files  with paths relative to current 
+directory need to have a "./" before it. e.g.:
+requred 'crawler' have to be requred './crawler'
