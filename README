@@ -10,7 +10,7 @@ Preparing configuration file:
 Note1: The pattern is not a regular expression; instead it follows rules similar 
        to shell filename globbing
        Link: http://www.ruby-doc.org/core/classes/File.html#M000001
-Note2: If private/public keys are used then passward field can be omitted.
+Note2: If private/public keys are used then password field can be omitted.
        If in addition usernames are the same on the source and target machines
        then username field may also be omitted
 Example:
