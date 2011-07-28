@@ -3,7 +3,7 @@ require 'digest/sha1'
 require 'logger'
 require 'pp'
 require 'date' # for DateTime
-require 'content_data'
+require './content_data'
 
 ####################
 # Index Agent 
