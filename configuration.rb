@@ -70,9 +70,19 @@ class ServerConf
       elsif (lines[i+parsed].lstrip.match(/^name:/) != nil)
         @name = lines[i+parsed].strip.split(":")[1].strip
       elsif (lines[i+parsed].lstrip.match(/^username:/) != nil)
-        @username = lines[i+parsed].strip.split(":")[1].strip
+        @username = lines[i+parsed].strip.split(":")[1]
+        if @username
+          @username.strip! 
+        else
+          @username = ""
+        end
       elsif (lines[i+parsed].lstrip.match(/^password:/) != nil)
-        @password = lines[i+parsed].strip.split(":")[1].strip
+        @password = lines[i+parsed].strip.split(":")[1]
+        if @password
+          @password.strip! 
+        else
+          @password = ""
+        end
       elsif (lines[i+parsed].lstrip.match(/^port:/) != nil)
         @port = lines[i+parsed].strip.split(":")[1].strip.to_i
       elsif (lines[i+parsed].lstrip.match(/^directories:/) != nil)
