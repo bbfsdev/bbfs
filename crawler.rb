@@ -1,7 +1,7 @@
 require 'rubygems'
-require 'configuration.rb'
-require 'content_data.rb'
-require 'index_agent.rb'
+require './configuration.rb'
+require './content_data.rb'
+require './index_agent.rb'
 require 'net/ssh'
 require 'net/sftp'
 
@@ -70,62 +70,46 @@ class Crawler
     sub_server.name = tmp_name
 
     dir_perm = 0755
-    Net::SSH.start(sub_server.name, sub_server.username, 
-                  :password => sub_server.password,
-                  :encryption => 'none',
-                  :auth_methods => 'password',
-                  :port => sub_server.port) do |ssh|
-      ssh.sftp.connect do |sftp|
-        begin
-          sftp.mkdir!('crawler', :permissions => dir_perm)
-          sftp.mkdir!('crawler/config', :permissions => dir_perm)
-        rescue Net::SFTP::StatusException => e
-          print "Directories already exist.\n"
-        end
-        Dir.foreach('.') do |file|
-          if file.end_with?('.rb')
-            sftp.upload!(file, 'crawler/%s' % [file])
-          end
-        end
-        sftp.upload!(sub_server_conf, 'crawler/config/server.conf')
+    ssh = connect(sub_server)      
+    ssh.sftp.connect do |sftp|
+      begin
+        sftp.mkdir!('crawler', :permissions => dir_perm)
+        sftp.mkdir!('crawler/config', :permissions => dir_perm)
+      rescue Net::SFTP::StatusException => e
+        print "Directories already exist.\n"
       end
-    end
+      Dir.foreach('.') do |file|
+        if file.end_with?('.rb')
+          sftp.upload!(file, 'crawler/%s' % [file])
+        end
+      end
+      sftp.upload!(sub_server_conf, 'crawler/config/server.conf')
+      end      
   end
 
   def run_crawler(sub_server)
-    printf "Running remote: %s\n", sub_server.name
-    Net::SSH.start(sub_server.name, sub_server.username, 
-                   :password => sub_server.password,
-                   :encryption => 'none',
-                   :auth_methods => 'password',
-                   :port => sub_server.port) do |ssh|
-      print "running: cd crawler && ruby crawler.rb config/server.conf %s\n" % sub_server.name
-      output = ssh.exec!('cd crawler && ruby crawler.rb config/server.conf %s' % sub_server.name)
-      printf "%s\n", output
-    end
+    printf "Running remote: %s\n", sub_server.name    
+    ssh = connect(sub_server)     
+    print "running: cd crawler && ruby crawler.rb config/server.conf %s\n" % sub_server.name
+    output = ssh.exec!('cd crawler && ruby crawler.rb config/server.conf %s' % sub_server.name)
+    printf "%s\n", output
   end
 
   def copy_back(sub_server)
     printf "copy_back: %s.data\n", sub_server.name
-    
-    Net::SSH.start(sub_server.name, sub_server.username, 
-                   :password => sub_server.password,
-                   :encryption => 'none',
-                   :auth_methods => 'password',
-                   :port => sub_server.port) do |ssh|
-      ssh.sftp.connect do |sftp|
-        begin
-          local_path = "%s.data" % [sub_server.name]
-          sub_server_conf = "crawler/%s.data" % [sub_server.name]
-          printf "copying %s . . .\n", sub_server_conf
-          sftp.download!(sub_server_conf, local_path)              
-        rescue RuntimeError => e
-          print "Could not copy file back.\n"
-          print e
-          print "\n"
-        end
+    ssh = connect(sub_server)    
+    ssh.sftp.connect do |sftp|
+      begin
+        local_path = "%s.data" % [sub_server.name]
+        sub_server_conf = "crawler/%s.data" % [sub_server.name]
+        printf "copying %s . . .\n", sub_server_conf
+        sftp.download!(sub_server_conf, local_path)              
+      rescue RuntimeError => e
+        print "Could not copy file back.\n"
+        print e
+        print "\n"
       end
-    end
+    end      
   end
   
   def join_sub_servers_results(server_name, devices, sub_servers)
@@ -171,6 +155,22 @@ def join_servers_results(server_conf_vec, out_name)
   elsif (server_conf_vec.nil? || server_conf_vec.length == 0)
     content_data = ContentData.new
     content_data.to_file(out_name+'.data')
+  end
+end
+
+def connect(server)
+  username = (server.username and server.username.length > 0) ? server.username : ENV['USER']
+  password = (server.password and server.password.length > 0) ? server.password : nil
+  port = (server.port) ? server.port : 22 # 22 is a standart SSH port   
+  if (username and password)
+    Net::SSH.start(server.name, username, 
+                  :password => password,
+                  :port => port)
+  elsif (username)   
+    Net::SSH.start(server.name, username, 
+                  :port => port)   
+  else
+    raise "Undefined username"
   end
 end
 
