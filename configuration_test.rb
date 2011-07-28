@@ -1,4 +1,4 @@
-require 'configuration.rb'
+require './configuration.rb'
 require 'test/unit'
 
 class TestConfiguration < Test::Unit::TestCase
