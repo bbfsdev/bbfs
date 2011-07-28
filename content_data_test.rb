@@ -1,4 +1,4 @@
-require 'content_data.rb'
+require './content_data.rb'
 require 'date.rb'
 require 'test/unit'
 
