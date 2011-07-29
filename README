@@ -3,11 +3,11 @@ How to use distributed file crawler
 
 Prerequisites:
 Each server you have files on have to have the following:
-1) Ruby 1.8 and above.
+1) Ruby 1.9.2
 2) NET-SSH and NET-SFTP gems installed.
 
 Preparing configuration file:
-Note1: The pattern is not a regular expression; instead it follows rules similar 
+Note1: The pattern is not a regular expression; instead it follows rules similar
        to shell filename globbing
        Link: http://www.ruby-doc.org/core/classes/File.html#M000001
 Note2: If private/public keys are used then password field can be omitted.
@@ -36,6 +36,6 @@ ruby crawler.rb <config file>
 
 For developers
 --------------
-To be corresponded with Ruby 1.9.2 all required files  with paths relative to current 
+To be corresponded with Ruby 1.9.2 all required files  with paths relative to current
 directory need to have a "./" before it. e.g.:
-requred 'crawler' have to be requred './crawler'
+require 'crawler' have to be require './crawler'

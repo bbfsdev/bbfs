@@ -2,11 +2,11 @@ require 'rubygems'
 require 'digest/sha1'
 require 'logger'
 require 'pp'
-require 'date' # for DateTime
+require 'time'
 require './content_data'
 
 ####################
-# Index Agent 
+# Index Agent
 ####################
 
 class IndexAgent
@@ -25,7 +25,7 @@ ENV['TZ'] = 'UTC'
   def init_db()
     @db = ContentData.new
   end
-  
+
 	def init_log()
 		@log = Logger.new(STDERR)
 		@log.level = Logger::WARN
@@ -36,7 +36,7 @@ ENV['TZ'] = 'UTC'
 		@log = Logger.new(log_path) if log_path
 		@log.level = log_level
 	end
-  
+
   # Calculate file checksum (SHA1)
 	def get_checksum(filename)
 		digest = Digest::SHA1.new
@@ -52,20 +52,20 @@ ENV['TZ'] = 'UTC'
     		false
       end
   end
-  
+
   # get all files
   # satisfying the pattern
   def collect(pattern)
     Dir.glob(pattern.to_s)
   end
-    
+
   # index device according to the pattern
   # store the result
   def index(patterns)
     abort "#{self.class}: DB not empty. Current implementation permits only one running of index" unless db.contents.empty?
     permit_patterns = Array.new
     forbid_patterns = Array.new
-    
+
     # pattern processing
     # pattern format: device:[+-]:path_pattern
     patterns.each_index do |i|
@@ -75,11 +75,11 @@ ENV['TZ'] = 'UTC'
       end
       if (m[2].eql?('+'))
         permit_patterns.push(m[3])
-      elsif (m[2].eql?('-')) 
+      elsif (m[2].eql?('-'))
         forbid_patterns.push(m[3])
       end
     end
-    
+
     # transfer path inside the pattern to the standart view
     # need for Dir.glob function
     permit_patterns.each do |p|
@@ -87,27 +87,27 @@ ENV['TZ'] = 'UTC'
     end
     forbid_patterns.each do |p|
       p.gsub!(/\\/,'/')
-    end 
-    
+    end
+
     # add files found by positive patterns
-    files = Array.new  
-    permit_patterns.each_index do |i|          
+    files = Array.new
+    permit_patterns.each_index do |i|
       files = files | (collect(permit_patterns[i]));
     end
 
-    files.map! {|f| File.expand_path(f)}    
-        
+    files.map! {|f| File.expand_path(f)}
+
     # remove files found by negative patterns
-    forbid_patterns.each_index do |i| 
+    forbid_patterns.each_index do |i|
       forbid_files = Array.new(collect(forbid_patterns[i]));
-      forbid_files.each do |f|         
+      forbid_files.each do |f|
         files.delete(File.expand_path(f))
       end
     end
-       
+
     files.each do |file|
       file_stats = File.lstat(file)
-      
+
       # index only files
       next if (file_stats.directory?)
       # calculate a checksum
@@ -115,12 +115,12 @@ ENV['TZ'] = 'UTC'
         @log.warn { "Cheksum failure: " + file }
         next
       end
-      
+
       # time converted to the UTC standart
-      @db.add_content(Content.new(checksum, file_stats.size, DateTime.now.new_offset.to_s)) unless (@db.content_exists(checksum))
-      
+      @db.add_content(Content.new(checksum, file_stats.size, Time.now.utc)) unless (@db.content_exists(checksum))
+
       instance = ContentInstance.new(checksum, file_stats.size, server_name, device, File.expand_path(file), file_stats.mtime.utc)
       @db.add_instance(instance)
     end
-  end  
+  end
 end

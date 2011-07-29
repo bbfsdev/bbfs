@@ -1,3 +1,5 @@
+require 'time'
+
 class Content
   attr_reader :checksum, :size, :first_appearance_time
 
@@ -10,9 +12,9 @@ class Content
   @checksum
 	@size
 	@first_appearance_time
-  
+
   def to_s
-    "%s,%d,%s" % [@checksum, @size, @first_appearance_time.to_s]
+    "%s,%d,%s" % [@checksum, @size, ContentData.format_time(@first_appearance_time)]
   end
 end
 
@@ -29,8 +31,8 @@ class ContentInstance
   end
 
   def to_s
-    "%s,%d,%s,%s,%s,%s" % [@checksum, @size, @server_name, 
-                           @device, @full_path, @modification_time.to_s]
+    "%s,%d,%s,%s,%s,%s" % [@checksum, @size, @server_name,
+                           @device, @full_path, ContentData.format_time(@modification_time)]
   end
 
   @checksum
@@ -63,8 +65,8 @@ class ContentData
       return false
     end
 
-    key = "%s:%s:%s" % [instance.server_name, 
-                        instance.device, 
+    key = "%s:%s:%s" % [instance.server_name,
+                        instance.device,
                         instance.full_path]
     #override file if needed
     @instances[key] = instance
@@ -73,7 +75,7 @@ class ContentData
   def content_exists(checksum)
     @contents.key? checksum
   end
-  
+
   def merge(content_data)
     content_data.contents.values.each { |content|
       add_content(content)
@@ -82,7 +84,7 @@ class ContentData
       add_instance(instance)
     }
   end
-  
+
   def ==(other)
     @contents.keys { |key|
       if (@contents[key] != other.contents[key])
@@ -125,12 +127,12 @@ class ContentData
     i += 1
     number_of_contents.times {
       parameters = lines[i].split(",")
-      add_content(Content.new(parameters[0], 
-                              parameters[1].to_i, 
-                              DateTime.parse(parameters[2])))
+      add_content(Content.new(parameters[0],
+                              parameters[1].to_i,
+                              ContentData.parse_time(parameters[2])))
       i += 1
     }
-    
+
     number_of_instances = lines[i].to_i
     i += 1
     number_of_instances.times {
@@ -140,8 +142,22 @@ class ContentData
                                        parameters[2],
                                        parameters[3],
                                        parameters[4],
-                                       DateTime.parse(parameters[5])))
+                                       ContentData.parse_time(parameters[5])))
       i += 1
     }
+  end
+
+  def self.parse_time(time_str)
+    #puts time_str.class
+    time = Time.strptime( time_str, '%Y/%m/%d %H:%M:%S.%L' )
+    #puts time.class
+    return time
+  end
+
+  def self.format_time(time)
+    #puts time.class
+    str = time.strftime( '%Y/%m/%d %H:%M:%S.%L' )
+    #puts str
+    return str
   end
 end
