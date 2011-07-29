@@ -96,7 +96,12 @@ ENV['TZ'] = 'UTC'
     end
 
     files.map! {|f| File.expand_path(f)}
-
+    files.keep_if do |f| 
+      is_utf8 = f.force_encoding("UTF-8").valid_encoding?
+      @log.warn { "Non-UTF8 file name \"#{f}\"" } unless is_utf8
+      is_utf8
+    end      
+        
     # remove files found by negative patterns
     forbid_patterns.each_index do |i|
       forbid_files = Array.new(collect(forbid_patterns[i]));
