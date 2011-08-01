@@ -16,6 +16,12 @@ class Content
   def to_s
     "%s,%d,%s" % [@checksum, @size, ContentData.format_time(@first_appearance_time)]
   end
+
+  def ==(other)
+    return (self.checksum.eql? other.checksum and
+            self.size.eql? other.size and
+            self.first_appearance_time.eql? other.first_appearance_time)
+  end
 end
 
 class ContentInstance
@@ -33,6 +39,15 @@ class ContentInstance
   def to_s
     "%s,%d,%s,%s,%s,%s" % [@checksum, @size, @server_name,
                            @device, @full_path, ContentData.format_time(@modification_time)]
+  end
+
+  def ==(other)
+    return (self.checksum.eql? other.checksum and
+            self.size.eql? other.size and
+            self.server_name.eql? other.server_name and
+            self.device.eql? other.device and
+            self.full_path.eql? other.full_path and
+            self.modification_time.eql? other.modification_time)
   end
 
   @checksum
@@ -86,20 +101,30 @@ class ContentData
   end
 
   def ==(other)
-    @contents.keys { |key|
+
+    #print "size:%s\n" % @contents.size
+    #print "other size:%s\n" % other.contents.size
+
+    return false unless @contents.size == other.contents.size
+    return false unless @instances.size == other.instances.size
+
+    @contents.keys.each { |key|
       if (@contents[key] != other.contents[key])
-        print @contents[key].to_s
-        print other.contents[key].to_s
+        #print "%s-" % @contents[key].to_s
+        #print other.contents[key].to_s
+        #puts " compare - false"
         return false
       end
     }
-    @instances.keys { |key|
+    @instances.keys.each { |key|
       if (@instances[key] != other.instances[key])
-        print @instances[key].to_s
-        print other.instances[key].to_s
+        #print "%s-" % @instances[key].to_s
+        #print other.instances[key].to_s
+        #puts " compare - false"
         return false
       end
     }
+    #puts "compare - true"
     return true
   end
 
@@ -148,6 +173,7 @@ class ContentData
   end
 
   def self.parse_time(time_str)
+    return Nil unless time_str.instance_of?String
     #puts time_str.class
     time = Time.strptime( time_str, '%Y/%m/%d %H:%M:%S.%L' )
     #puts time.class
@@ -155,9 +181,56 @@ class ContentData
   end
 
   def self.format_time(time)
+    return Nil unless time.instance_of?Time
     #puts time.class
     str = time.strftime( '%Y/%m/%d %H:%M:%S.%L' )
     #puts str
     return str
+  end
+
+  # merges content data a and content data b to a new content data and returns it.
+  def self.merge(a, b)
+    return b unless not a.nil?
+    return a unless not b.nil?
+
+    return Nil unless a.instance_of?ContentData
+    return Nil unless b.instance_of?ContentData
+
+    ret = ContentData.new
+    ret.merge(a)
+    ret.merge(b)
+
+    return ret
+  end
+
+  # removed content data a from content data b and returns the new content data.
+  def self.remove(a, b)
+    return Nil unless a.instance_of?ContentData
+    return Nil unless b.instance_of?ContentData
+
+    ret = ContentData.new
+
+    b.contents.values.each { |content|
+      #print "%s - %s\n" % [content.checksum, a.content_exists(content.checksum).to_s]
+      ret.add_content(content) unless a.content_exists(content.checksum)
+    }
+
+    #puts "kaka"
+
+    b.instances.values.each { |instance|
+      #print "%s - %s\n" % [instance.checksum, a.content_exists(instance.checksum).to_s]
+      ret.add_instance(instance) unless a.content_exists(instance.checksum)
+    }
+
+    #print "kuku %s" % ret.contents.size.to_s
+    #print "kuku %s" % ret.instances.size.to_s
+
+    return ret
+  end
+
+  # returns the common content in both a and b
+  def self.intersect(a, b)
+    a_minus_b = ContentData.remove(a, b)
+    ContentData.remove(a_minus_b, a)
   end
 end
