@@ -36,6 +36,10 @@ class ContentInstance
     @modification_time = modification_time
   end
 
+  def global_path
+    "%s:%s:%s" % [@server_name, @device, @full_path]
+  end
+
   def to_s
     "%s,%d,%s,%s,%s,%s" % [@checksum, @size, @server_name,
                            @device, @full_path, ContentData.format_time(@modification_time)]
@@ -80,9 +84,8 @@ class ContentData
       return false
     end
 
-    key = "%s:%s:%s" % [instance.server_name,
-                        instance.device,
-                        instance.full_path]
+    key = instance.global_path
+
     #override file if needed
     @instances[key] = instance
   end
@@ -224,7 +227,6 @@ class ContentData
 
     #print "kuku %s" % ret.contents.size.to_s
     #print "kuku %s" % ret.instances.size.to_s
-
     return ret
   end
 
