@@ -112,10 +112,10 @@ class TestContentData < Test::Unit::TestCase
     assert_equal(cd4.to_s, "7\nAAC12A1C983,1242,2011/02/01 02:23:59.000\nAD12A1C98A3,765,2011/02/01 02:23:59.000\nAB12A1C98A3,123123,2011/02/01 02:23:59.000\nAD1234C98A3,12444,2011/02/01 02:23:59.000\nADB12A1C233,2,2011/02/01 02:23:59.000\nADB12A4338A,12412,2011/02/01 02:23:59.000\nA232A1C98A3,124424,2011/02/01 02:23:59.000\n3\nADB12A4338A,12412,large_server_12,dev1,/home/kuku/dev/lala/k.txt,2011/02/01 02:23:59.000\nAD12A1C98A3,765,large_server_12,dev2,/home/lala/k.txt,2011/02/01 02:23:59.000\nADB12A4338A,12412,large_server_11,dev2,/home/kuku/lala/k.txt,2011/02/01 02:23:59.000\n")
     cd5 = ContentData.merge(cd3, cd4)
     assert_equal(cd5, content_data)
-    
+
     intersect = ContentData.intersect(cd3, cd4)
-    assert_equal(true, intersect == ContentData.new)
+    assert_equal(intersect, ContentData.new)
     intersect = ContentData.intersect(cd5, cd4)
-    assert_equal(true, cd4 == intersect)
+    assert_equal(cd4, intersect)
   end
 end
