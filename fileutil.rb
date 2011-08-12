@@ -4,6 +4,7 @@
 # All the basic commands should reside here.
 
 require './content_data.rb'
+require './argument_parser.rb'
 
 class FileUtil
   def initialize(arguments)
@@ -52,8 +53,43 @@ class FileUtil
       if warnings.length == 0
         puts "None."
       end
+    elsif (arguments["command"] == "merge" or
+      arguments["command"] == "intersect" or
+      arguments["command"] == "minus")
 
+      begin
+        puts "--cd_a is not set"
+        return
+      end unless not arguments["cd_a"].nil?
+      cd_a = ContentData.new()
+      cd_a.from_file(arguments["cd_a"])
+      begin
+        puts "Error loading content data cd_a=%s" % arguments["cd_a"]
+        return
+      end unless not cd_a.nil?
+
+      begin
+        puts "--cd_b is not set"
+        return
+      end unless not arguments["cd_b"].nil?
+      cd_b = ContentData.new()
+      cd_b.from_file(arguments["cd_b"])
+      begin
+        puts "Error loading content data cd_a=%s" % arguments["cd_b"]
+        return
+      end unless not cd_b.nil?
+
+      begin
+        puts "--dest is not set"
+        return
+      end unless not arguments["dest"].nil?
+
+      output = FileUtil.contet_data_command(arguments["command"], cd_a, cd_b, arguments["dest"])
     end
+  end
+
+  def self.contet_data_command(command, cd_a, cd_b, dest_path)
+
   end
 
   def self.mksymlink(ref_cd, base_cd, dest)
@@ -87,6 +123,9 @@ end
 
 COMMANDS = Hash.new
 COMMANDS["mksymlink"] = "  mksymlink --ref_cd=<path> --base_cd=<path> --dest=<path>"
+COMMANDS["merge"] = "  merge --cd_a=<path> --cd_b=<path> --dest=<path>"
+COMMANDS["intersect"] = "  intersect --cd_a=<path> --cd_b=<path> --dest=<path>"
+COMMANDS["minus"] = "  minus --cd_a=<path> --cd_b=<path> --dest=<path>"
 
 def print_usage
     puts "Usage: fileutil <command> parameters..."
@@ -96,35 +135,12 @@ def print_usage
     }
 end
 
-def read_arguments(argv, parsed_arguments)
-  argv.each { |arg|
-    if arg.start_with?("--")
-      words = arg[2,arg.length-2].split('=')
-      parsed_arguments[words[0]]=words[1]
-    elsif not COMMANDS.key?(arg)
-      puts "Unknown command '%s'." % arg
-      return false
-    else
-      if parsed_arguments.key? arg
-        puts "Parse error, two commands found %s and %s" % parsed_arguments["command"], arg
-        return false
-      end
-      parsed_arguments["command"] = arg
-    end
-  }
-
-  return false unless parsed_arguments["command"] != nil
-  return false unless parsed_arguments["command"] != ""
-
-  return true
-end
-
 def main
   parsed_arguments = Hash.new
   begin
     print_usage
     return
-  end unless read_arguments(ARGV, parsed_arguments)
+  end unless ReadArgs.read_arguments(ARGV, parsed_arguments, COMMANDS)
   fileutil = FileUtil.new(parsed_arguments)
 end
 
