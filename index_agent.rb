@@ -61,11 +61,23 @@ ENV['TZ'] = 'UTC'
 
   # index device according to the pattern
   # store the result
-  def index(patterns)
+  def index(patterns, otherDB = nil)
     abort "#{self.class}: DB not empty. Current implementation permits only one running of index" unless db.contents.empty?
     permit_patterns = Array.new
     forbid_patterns = Array.new
-
+    otherDB_table = Hash.new   # contains instances from given DB while full path name is a key and instance is a value
+    otherDB_contents = Hash.new  # given DB contents
+    
+    # if there is a given DB then populate table with files 
+    # that was already indexed on this server/device 
+    if (otherDB != nil)
+      otherDB_contents.update(otherDB.contents)
+      otherDB.instances.each_value do |i|
+        next unless i.server_name == @server_name and i.device == @device
+        otherDB_table[i.full_path] = i
+      end
+    end
+    
     # pattern processing
     # pattern format: device:[+-]:path_pattern
     patterns.each_index do |i|
@@ -95,12 +107,8 @@ ENV['TZ'] = 'UTC'
       files = files | (collect(permit_patterns[i]));
     end
 
+    # expand to absolute pathes
     files.map! {|f| File.expand_path(f)}
-    files.keep_if do |f| 
-      is_utf8 = f.force_encoding("UTF-8").valid_encoding?
-      @log.warn { "Non-UTF8 file name \"#{f}\"" } unless is_utf8
-      is_utf8
-    end      
         
     # remove files found by negative patterns
     forbid_patterns.each_index do |i|
@@ -109,19 +117,35 @@ ENV['TZ'] = 'UTC'
         files.delete(File.expand_path(f))
       end
     end
-
+    
+    # create and add contents and instances
     files.each do |file|
       file_stats = File.lstat(file)
-
+      
       # index only files
-      next if (file_stats.directory?)
+      next if (file_stats.directory?)   
+      
+      # keep only files with names in UTF-8      
+      unless file.force_encoding("UTF-8").valid_encoding?
+        @log.warn { "Non-UTF8 file name \"#{file}\"" }
+        next
+      end
+      
+      # add files present in the given DB to the DB and remove these files
+      # from further processing (save checksum calculation)
+      if otherDB_table.has_key?(file)
+        instance = otherDB_table[file]
+        @db.add_content(otherDB_contents[instance.checksum])
+        @db.add_instance(instance)
+        next
+      end
+    
       # calculate a checksum
       unless (checksum = get_checksum(file))
         @log.warn { "Cheksum failure: " + file }
         next
       end
 
-      # time converted to the UTC standart
       @db.add_content(Content.new(checksum, file_stats.size, Time.now.utc)) unless (@db.content_exists(checksum))
 
       instance = ContentInstance.new(checksum, file_stats.size, server_name, device, File.expand_path(file), file_stats.mtime.utc)

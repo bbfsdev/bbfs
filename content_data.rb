@@ -107,7 +107,7 @@ class ContentData
 
     #print "size:%s\n" % @contents.size
     #print "other size:%s\n" % other.contents.size
-
+    return false if other == nil
     return false unless @contents.size == other.contents.size
     return false unless @instances.size == other.instances.size
 
