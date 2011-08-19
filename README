@@ -40,4 +40,4 @@ To be corresponded with Ruby 1.9.2 all required files  with paths relative to cu
 directory need to have a "./" before it. e.g.:
 require 'crawler' have to be require './crawler'
 
-Pull request test.
+Pull request test. Fixing this code.
