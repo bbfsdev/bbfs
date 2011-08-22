@@ -1,4 +1,3 @@
-
 # Crawling configuration. Net Topology and Physical Devices.
 class Configuration
   attr_reader :server_conf_vec
@@ -72,14 +71,14 @@ class ServerConf
       elsif (lines[i+parsed].lstrip.match(/^username:/) != nil)
         @username = lines[i+parsed].strip.split(":")[1]
         if @username
-          @username.strip! 
+          @username.strip!
         else
           @username = ""
         end
       elsif (lines[i+parsed].lstrip.match(/^password:/) != nil)
         @password = lines[i+parsed].strip.split(":")[1]
         if @password
-          @password.strip! 
+          @password.strip!
         else
           @password = ""
         end
@@ -151,7 +150,7 @@ class ServerConf
     ret << prefix << "  name:" << @name << "\n"
     ret << prefix << "  username:" << @username << "\n"
     ret << prefix << "  password:" << @password << "\n"
-    ret << prefix << "  port:" << @port.to_s << "\n"    
+    ret << prefix << "  port:" << @port.to_s << "\n"
     ret << prefix << "  directories:\n"
     @directories.each { |dir| ret << "    " << prefix << dir << "\n" }
     @servers.each { |server| ret << server.to_s(prefix+"  ") }
