@@ -92,7 +92,7 @@ class Crawler
       end
       sftp.upload!(sub_server_conf, 'crawler/config/server.conf')
       if cd_in_name
-        sftp.upload!(cd_in_name, 'crawler/cd_in.data')
+        sftp.upload!(cd_in_name, 'crawler/config/cd_in.data')
       end
     end
   end
