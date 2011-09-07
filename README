@@ -34,10 +34,15 @@ Running the crawler:
 ruby crawler.rb <config file>
 
 
-For developers
---------------
+For developers Section
+----------------------
 To be corresponded with Ruby 1.9.2 all required files  with paths relative to current
 directory need to have a "./" before it. e.g.:
 require 'crawler' have to be require './crawler'
 
-Pull request test. Fixing this code.
+UnitTests
+---------
+Links:
+http://www.ensta-paristech.fr/~diam/ruby/online/ruby-doc-stdlib/libdoc/test/unit/rdoc/classes/Test/Unit.html
+http://en.wikibooks.org/wiki/Ruby_Programming/Unit_testing
+http://spiralofhope.wordpress.com/2009/08/23/ruby-basic-testunit-example/

@@ -83,7 +83,10 @@ class ServerConf
           @password = ""
         end
       elsif (lines[i+parsed].lstrip.match(/^port:/) != nil)
-        @port = lines[i+parsed].strip.split(":")[1].strip.to_i
+        @port = lines[i+parsed].strip.split(":")[1].strip
+        if @port
+          @port.to_i
+        end
       elsif (lines[i+parsed].lstrip.match(/^directories:/) != nil)
         lines_parsed = parse_dirs(lines, i+parsed+1, ident+2, @directories)
         if (lines_parsed < 0)
