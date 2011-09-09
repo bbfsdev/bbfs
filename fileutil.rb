@@ -5,6 +5,7 @@
 
 require './content_data.rb'
 require './argument_parser.rb'
+require './copy.rb'
 
 class FileUtil
   def initialize(arguments)
@@ -85,6 +86,42 @@ class FileUtil
       end unless not arguments["dest"].nil?
 
       output = FileUtil.contet_data_command(arguments["command"], cd_a, cd_b, arguments["dest"])
+    elsif arguments["command"] == "copy"
+      begin
+        puts "--conf is not set"
+        return
+      end unless not arguments["conf"].nil?
+      conf = Configuration.new(arguments["conf"])
+
+      begin
+        puts "Error loading content data conf=%s" % arguments["conf"]
+        return
+      end unless not conf.nil?
+
+      begin
+        puts "--cd is not set"
+        return
+      end unless not arguments["cd"].nil?
+      cd = ContentData.new()
+      cd.from_file(arguments["cd"])
+      begin
+        puts "Error loading content data cd=%s" % arguments["cd"]
+        return
+      end unless not cd.nil?
+
+      begin
+        puts "--dest_server is not set"
+        return
+      end unless not arguments["dest_server"].nil?
+      dest_server = arguments["dest_server"]
+
+      begin
+        puts "--dest_path is not set"
+        return
+      end unless not arguments["dest_path"].nil?
+      dest_path = arguments["dest_path"]
+
+      Copy.new(conf, cd, dest_server, dest_path)
     end
   end
 
@@ -126,6 +163,7 @@ COMMANDS["mksymlink"] = "  mksymlink --ref_cd=<path> --base_cd=<path> --dest=<pa
 COMMANDS["merge"] = "  merge --cd_a=<path> --cd_b=<path> --dest=<path>"
 COMMANDS["intersect"] = "  intersect --cd_a=<path> --cd_b=<path> --dest=<path>"
 COMMANDS["minus"] = "  minus --cd_a=<path> --cd_b=<path> --dest=<path>"
+COMMANDS["copy"] = "  copy --conf=<path> --cd=<path> --dest_server=<server name> --dest_path=<dir>"
 
 def print_usage
     puts "Usage: fileutil <command> parameters..."

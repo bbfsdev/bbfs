@@ -6,6 +6,16 @@ class Configuration
     @server_conf_vec = parse_config(config_file)
   end
 
+  def find_server(server_name)
+    server_conf_vec.each { |server_conf|
+      ret = server_conf.find_server(server_name)
+      if ret
+        return ret
+      end
+    }
+    return nil
+  end
+
   def parse_config(config_file)
     server_conf_vec = Array.new
     lines = IO.readlines(config_file)
@@ -159,4 +169,18 @@ class ServerConf
     @servers.each { |server| ret << server.to_s(prefix+"  ") }
     return ret
   end
+
+  def find_server(server_name)
+    if @name == server_name
+      return self
+    end
+    @servers.each { |server_conf|
+      ret = server_conf.find_server(server_name)
+      if ret
+        return ret
+      end
+    }
+    return nil
+  end
+
 end

@@ -3,6 +3,7 @@ require './configuration.rb'
 require './content_data.rb'
 require './index_agent.rb'
 require './argument_parser.rb'
+require './net_utils.rb'
 require 'net/ssh'
 require 'net/sftp'
 
@@ -44,7 +45,8 @@ class Crawler
 
   def handle_device(server_name, device, pattern_arr, cd_in_name)
     # Run indexer here!
-
+    p "Handling device %s on %s" % [device, server_name]
+    p "Patterns are: %s" % pattern_arr
     cd_in = nil
     if cd_in_name
       cd_in = ContentData.new
@@ -171,22 +173,6 @@ def join_servers_results(server_conf_vec, out_name)
   elsif (server_conf_vec.nil? || server_conf_vec.length == 0)
     content_data = ContentData.new
     content_data.to_file(out_name+'.data')
-  end
-end
-
-def connect(server)
-  username = (server.username and server.username.length > 0) ? server.username : ENV['USER']
-  password = (server.password and server.password.length > 0) ? server.password : nil
-  port = (server.port) ? server.port : 22 # 22 is a standart SSH port
-  if (username and password)
-    Net::SSH.start(server.name, username,
-                  :password => password,
-                  :port => port)
-  elsif (username)
-    Net::SSH.start(server.name, username,
-                  :port => port)
-  else
-    raise "Undefined username"
   end
 end
 
