@@ -1,5 +1,4 @@
 
-require 'test/unit/ui/console/testrunner'
 require 'test/unit'
 
 @@root_dir = File.dirname(File.expand_path(__FILE__))
