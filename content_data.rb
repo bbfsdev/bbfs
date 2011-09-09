@@ -232,8 +232,7 @@ class ContentData
 
   # returns the common content in both a and b
   def self.intersect(a, b)
-    a_minus_b = ContentData.remove(a, b)
-    #print a_minus_b.to_s
-    return ContentData.remove(a_minus_b, b)
+    b_minus_a = ContentData.remove(a, b)
+    return ContentData.remove(b_minus_a, b)
   end
 end

@@ -76,7 +76,7 @@ class FileUtil
       cd_b = ContentData.new()
       cd_b.from_file(arguments["cd_b"])
       begin
-        puts "Error loading content data cd_a=%s" % arguments["cd_b"]
+        puts "Error loading content data cd_b=%s" % arguments["cd_b"]
         return
       end unless not cd_b.nil?
 
@@ -126,7 +126,17 @@ class FileUtil
   end
 
   def self.contet_data_command(command, cd_a, cd_b, dest_path)
-
+    dest = nil
+    if command == "merge"
+      dest = ContentData.merge(cd_a, cd_b)
+    elsif command == "intersect"
+      dest = ContentData.intersect(cd_a, cd_b)
+    elsif command == "minus"
+      dest = ContentData.remove(cd_b, cd_a)
+    end
+    if dest
+      dest.to_file(dest_path)
+    end
   end
 
   def self.mksymlink(ref_cd, base_cd, dest)
