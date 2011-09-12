@@ -14,7 +14,6 @@ class IndexAgentTest < Test::Unit::TestCase
 
     indexer.index(patterns)
     # ./resources/index_agent_test/lib/libexslt.lib
-    puts indexer.db.to_s
     assert(indexer.db.content_exists('c6d9d837659e38d906a4bbdcc6703bc37e9ac7e8'))
     # ./resources/index_agent_test/include/libexslt/exsltexports.h
     assert_equal(false, indexer.db.content_exists('5c87a31b0106b3c4bb1768e43f5b8c41139882c2'))

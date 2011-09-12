@@ -38,7 +38,7 @@ ENV['TZ'] = 'UTC'
 	end
 
   # Calculate file checksum (SHA1)
-	def get_checksum(filename)
+	def self.get_checksum(filename)
 		digest = Digest::SHA1.new
     	begin
         file = File.new(filename)
@@ -50,6 +50,8 @@ ENV['TZ'] = 'UTC'
       rescue Errno::EACCES, Errno::ETXTBSY => exp
         @log.warn { "#{exp.message}" }
     		false
+      ensure
+        file.close if file != nil
       end
   end
 
@@ -109,7 +111,7 @@ ENV['TZ'] = 'UTC'
 
     # expand to absolute pathes
     files.map! {|f| File.expand_path(f)}
-        
+
     # remove files found by negative patterns
     forbid_patterns.each_index do |i|
       forbid_files = Array.new(collect(forbid_patterns[i]));
@@ -141,7 +143,7 @@ ENV['TZ'] = 'UTC'
       end
     
       # calculate a checksum
-      unless (checksum = get_checksum(file))
+      unless (checksum = self.class.get_checksum(file))
         @log.warn { "Cheksum failure: " + file }
         next
       end
