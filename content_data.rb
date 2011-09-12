@@ -78,9 +78,11 @@ class ContentData
     if (not @contents.key?(instance.checksum))
       printf("Warning: Adding instance while it's" +
              " checksum %s does not exists.\n", instance.checksum)
+      printf("%s\n", instance.to_s)
       return false
     elsif (@contents[instance.checksum].size != instance.size)
       print("Warning: File size different from content size while same checksum.\n")
+      printf("%s\n", instance.to_s)
       return false
     end
 
@@ -119,7 +121,8 @@ class ContentData
         return false
       end
     }
-    @instances.keys.each { |key|
+
+    @instances.keys.each { |key|      
       if (@instances[key] != other.instances[key])
         #print "%s-" % @instances[key].to_s
         #print other.instances[key].to_s
@@ -235,5 +238,63 @@ class ContentData
     a_minus_b = ContentData.remove(a, b)
     #print a_minus_b.to_s
     return ContentData.remove(a_minus_b, b)
+  end
+  
+  # unify time for all entries with same content to minimal time
+  def self.unify_time(db) 
+    mod_db = ContentData.new # resulting ContentData that will consists objects with unified time 
+    checksum2time = Hash.new # key=checksum value=min_time_for_this_checksum
+    checksum2instances = Hash.new # key=checksum value=array_of_instances_with_this_checksum (Will be replaced with ContentData method)
+    
+    # populate tables with given ContentData entries
+    db.instances.each_value do |instance|
+      checksum = instance.checksum
+      time = instance.modification_time
+
+      unless (checksum2instances.has_key?checksum)
+        checksum2instances[checksum] = []
+      end
+      checksum2instances[checksum] << instance
+      
+      if (not checksum2time.has_key?checksum)
+        checksum2time[checksum] = time
+      elsif ((checksum2time[checksum] <=> time) > 0)
+        checksum2time[checksum] = time       
+      end
+    end
+    
+    # update min time table with time information from contents
+    db.contents.each do |checksum, content|      
+      time = content.first_appearance_time
+      if (not checksum2time.has_key?checksum)
+        checksum2time[checksum] = time
+      elsif ((checksum2time[checksum] <=> time) > 0)
+        checksum2time[checksum] = time      
+      end
+    end
+
+    # add content entries to the output table. in need of case update time field with found min time
+    db.contents.each do |checksum, content|
+      time = checksum2time[checksum]
+      if ((content.first_appearance_time <=> time) == 0)
+        mod_db.add_content(content)
+      else
+        mod_db.add_content(Content.new(checksum, content.size, time))
+      end
+    end
+    
+    # add instance entries to the output table. in need of case update time field with found min time
+    checksum2instances.each do |checksum, instances|
+      time = checksum2time[checksum]
+      instances.each do |instance|
+        if ((instance.modification_time <=> time) == 0) 
+          mod_db.add_instance(instance)
+        else # must be bigger then found min time
+          mod_instance = ContentInstance.new(instance.checksum, instance.size, instance.server_name, instance.device, instance.full_path, time)
+          mod_db.add_instance(mod_instance)
+        end
+      end 
+    end
+    mod_db
   end
 end
