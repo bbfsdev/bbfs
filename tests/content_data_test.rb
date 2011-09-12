@@ -45,7 +45,7 @@ class TestContentData < Test::Unit::TestCase
     content_data.add_instance(ContentInstance.new("D1234C98A3", 12412, "large_server_1", "dev1",
       "/home/kuku/kuku/lala/k.txt", ContentData.parse_time("2011/02/01 02:23:59.000")))
 
-    print content_data.to_s
+    #print content_data.to_s
 
     assert_equal("8\nD12A1C98A3,765,2011/02/01 02:23:59.000\nB12A1C98A3,123123,2011/02/01 02:23:59.000\nD1234C98A3,12444,2011/02/01 02:23:59.000\nDB12A1C233,2,2011/02/01 02:23:59.000\nDB12A4338A,12412,2011/02/01 02:23:59.000\n232A1C98A3,124424,2011/02/01 02:23:59.000\nAC12A1C983,1242,2011/02/01 02:23:59.000\nAAC12A1C983,1242,2011/02/01 02:23:59.000\n3\nDB12A4338A,12412,large_server_2,dev1,/home/kuku/dev/lala/k.txt,2011/02/01 02:23:59.000\nD12A1C98A3,765,large_server_2,dev2,/home/lala/k.txt,2011/02/01 02:23:59.000\nDB12A4338A,12412,large_server_1,dev2,/home/kuku/lala/k.txt,2011/02/01 02:23:59.000\n",
       content_data.to_s)
