@@ -153,11 +153,12 @@ class FileUtil
       inverted_index[instance.checksum] = instance
     }
 
+    commands = Array.new
     warnings = Array.new
 
     ref_cd.instances.values.each { |instance|
       if inverted_index.key? instance.checksum
-        
+        commands << "%s => %s%s" % [instance.global_path, dest, inverted_index[instance.checksum].global_path]
       else
         warnings << "Warning: base content does not contains:'%s'" % instance.checksum
       end
