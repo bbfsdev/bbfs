@@ -122,7 +122,7 @@ class FileUtil
       dest_path = arguments["dest_path"]
 
       Copy.new(conf, cd, dest_server, dest_path)
-    elsif arguments["command"] == "unify"
+    elsif arguments["command"] == "unify_time"
       begin
         puts "--cd is not set"
         return
@@ -211,7 +211,7 @@ COMMANDS["merge"] = "  merge --cd_a=<path> --cd_b=<path> --dest=<path>"
 COMMANDS["intersect"] = "  intersect --cd_a=<path> --cd_b=<path> --dest=<path>"
 COMMANDS["minus"] = "  minus --cd_a=<path> --cd_b=<path> --dest=<path>"
 COMMANDS["copy"] = "  copy --conf=<path> --cd=<path> --dest_server=<server name> --dest_path=<dir>"
-COMMANDS["unify"] = "  unify --cd=<path>"
+COMMANDS["unify_time"] = "  unify --cd=<path>"
 
 
   
