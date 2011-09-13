@@ -122,6 +122,18 @@ class FileUtil
       dest_path = arguments["dest_path"]
 
       Copy.new(conf, cd, dest_server, dest_path)
+    elsif arguments["command"] == "unify_time"
+      begin
+        puts "--cd is not set"
+        return
+      end unless not arguments["cd"].nil?
+      cd = ContentData.new()
+      cd.from_file(arguments["cd"])
+      begin
+        puts "Error loading content data cd=%s" % arguments["cd"]
+        return
+      end unless not cd.nil?
+      output = unify_time(cd)
     end
   end
 
@@ -139,6 +151,31 @@ class FileUtil
     end
   end
 
+  # Unify modification/first_appearance time according to input DB
+  # Input: ContentData
+  # Output: ContentData with unified times
+  #         Files modification time attribute physically updated
+  # Assumption: Files in the input db are from this device. 
+  #             There is no check what device they are belong - only the check of server name.
+  #             It is a user responsibility (meanwhile) to provide a correct input
+  #             If file has a modification time attribute that doesn't present in the input db,
+  #             then the assumption is that this file wasnt indexized and it will not be treated
+  #             (e.i. we do nothing with it)  
+  def self.unify_time(db)
+    mod_db = ContentData.unify_time (db)
+    mod_db.instances.each_value do |instance| 
+      next unless db.instances.has_key?instance.global_path
+      if (File.exists?(instance.full_path) \
+        and File.mtime(instance.full_path) == db.instances[instance.global_path].modification_time \
+        and File.size(instance.full_path) == instance.size \
+        and `hostname`.chomp == instance.server_name \
+        and (File.mtime(instance.full_path) <=> instance.modification_time) > 0) 
+          File.utime(File.atime(instance.full_path), instance.modification_time, instance.full_path)                        
+      end
+    end
+    mod_db
+  end
+  
   def self.mksymlink(ref_cd, base_cd, dest)
     #begin
     #  Dir.mkdir dest unless Dir.exists? dest
@@ -174,7 +211,10 @@ COMMANDS["merge"] = "  merge --cd_a=<path> --cd_b=<path> --dest=<path>"
 COMMANDS["intersect"] = "  intersect --cd_a=<path> --cd_b=<path> --dest=<path>"
 COMMANDS["minus"] = "  minus --cd_a=<path> --cd_b=<path> --dest=<path>"
 COMMANDS["copy"] = "  copy --conf=<path> --cd=<path> --dest_server=<server name> --dest_path=<dir>"
+COMMANDS["unify_time"] = "  unify --cd=<path>"
 
+
+  
 def print_usage
     puts "Usage: fileutil <command> parameters..."
     puts "Commands:"
