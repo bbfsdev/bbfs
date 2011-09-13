@@ -76,7 +76,7 @@ class FileUtil
       cd_b = ContentData.new()
       cd_b.from_file(arguments["cd_b"])
       begin
-        puts "Error loading content data cd_a=%s" % arguments["cd_b"]
+        puts "Error loading content data cd_b=%s" % arguments["cd_b"]
         return
       end unless not cd_b.nil?
 
@@ -126,7 +126,17 @@ class FileUtil
   end
 
   def self.contet_data_command(command, cd_a, cd_b, dest_path)
-
+    dest = nil
+    if command == "merge"
+      dest = ContentData.merge(cd_a, cd_b)
+    elsif command == "intersect"
+      dest = ContentData.intersect(cd_a, cd_b)
+    elsif command == "minus"
+      dest = ContentData.remove(cd_b, cd_a)
+    end
+    if dest
+      dest.to_file(dest_path)
+    end
   end
 
   def self.mksymlink(ref_cd, base_cd, dest)
@@ -143,11 +153,12 @@ class FileUtil
       inverted_index[instance.checksum] = instance
     }
 
+    commands = Array.new
     warnings = Array.new
 
     ref_cd.instances.values.each { |instance|
       if inverted_index.key? instance.checksum
-        
+        commands << "%s => %s%s" % [instance.global_path, dest, inverted_index[instance.checksum].global_path]
       else
         warnings << "Warning: base content does not contains:'%s'" % instance.checksum
       end
