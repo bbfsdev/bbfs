@@ -7,9 +7,11 @@ require 'fileutils'
 
 
 class TestTimeModification < Test::Unit::TestCase  
-  RESOURCES_DIR = "#{File.dirname(File.expand_path(__FILE__))}/../resources/time_modification_test" # directory where tested files will be placed: <application_root_dir>/tests/../resources/time_modification_test
+  # directory where tested files will be placed: <application_root_dir>/tests/../resources/time_modification_test
+  RESOURCES_DIR = File.expand_path(File.dirname(__FILE__) + "/../resources/time_modification_test")
   MOD_TIME_CONTENTS = ContentData.parse_time("2001/02/01 02:23:59.000")  # minimal time that will be inserted in content
   MOD_TIME_INSTANCES = ContentData.parse_time("2002/02/01 02:23:59.000")  # minimal time that will be inserted in instance  
+  DEVICE_NAME = "hd1"
   
   @input_db
   @mod_content_checksum = nil  # checksum of the content that was manually modified 
@@ -24,8 +26,8 @@ class TestTimeModification < Test::Unit::TestCase
     raise "Can't create writable working directory: #{RESOURCES_DIR}" unless (File.exists?(RESOURCES_DIR) and File.writable?(RESOURCES_DIR))
     # prepare files for testing
     sizes.each do |size|
-      file_name = "#{RESOURCES_DIR}/#{test_file_name}.#{size}"
-      File.open(file_name, "w", 0777) do |file|
+      file_path = "#{RESOURCES_DIR}/#{test_file_name}.#{size}"
+      File.open(file_path, "w", 0777) do |file|
         content = Array.new
         size.times do |i|
           content.push(sprintf("%5d ", i))
@@ -34,13 +36,13 @@ class TestTimeModification < Test::Unit::TestCase
       end
       #file.close # looks like it redundant
       numb_of_copies.times do |i|
-        FileUtils.cp(file_name, "#{file_name}.#{i}")
+        FileUtils.cp(file_path, "#{file_path}.#{i}")
       end
     end
 
-    indexer = IndexAgent.new(`hostname`.chomp, 'hd1')
+    indexer = IndexAgent.new(`hostname`.chomp, DEVICE_NAME)
     patterns = Array.new
-    patterns.push('hd1:+:' + RESOURCES_DIR + '\*')
+    patterns.push(DEVICE_NAME + ':+:' + RESOURCES_DIR + '\*')
     indexer.index(patterns)
     
     
