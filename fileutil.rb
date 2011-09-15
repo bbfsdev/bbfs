@@ -37,22 +37,11 @@ class FileUtil
         return
       end unless not arguments["dest"].nil?
 
-      output = FileUtil.mksymlink(ref_cd, base_cd, arguments["dest"])
-      commands = output[0]
-      commands.sort!
-      puts "Commands to create symlink:"
-      commands.each{ |command|
-        puts command
-      }
-
-      warnings = output[1]
-      warnings.sort!
-      puts "Warnings:"
-      warnings.each{ |warning|
-        puts warning
-      }
-      if warnings.length == 0
-        puts "None."
+      begin
+        FileUtil.mksymlink(ref_cd, base_cd, arguments["dest"]) 
+      rescue NotImplementedError
+        puts "symlinks are unimplemented on this machine"
+        return false
       end
     elsif (arguments["command"] == "merge" or
       arguments["command"] == "intersect" or
@@ -162,7 +151,7 @@ class FileUtil
   #             then the assumption is that this file wasnt indexized and it will not be treated
   #             (e.i. we do nothing with it)  
   def self.unify_time(db)
-    mod_db = ContentData.unify_time (db)
+    mod_db = ContentData.unify_time(db)
     mod_db.instances.each_value do |instance| 
       next unless db.instances.has_key?instance.global_path
       if (File.exists?(instance.full_path) \
@@ -177,31 +166,29 @@ class FileUtil
   end
   
   def self.mksymlink(ref_cd, base_cd, dest)
-    #begin
-    #  Dir.mkdir dest unless Dir.exists? dest
-    #rescue SystemCallError => e
-    #  puts e
-    #  return false
-    #end
-
+    # symlinks are not implemented in Windows
+    raise NotImplementedError.new if (RUBY_PLATFORM =~ /mingw/ or RUBY_PLATFORM =~ /ms/ or RUBY_PLATFORM =~ /win/)
+    
     inverted_index = Hash.new
-
     base_cd.instances.values.each{ |instance|
       inverted_index[instance.checksum] = instance
     }
 
-    commands = Array.new
     warnings = Array.new
-
+    
+    dest.chop! if (dest.end_with?("/") or dest.end_with?("\\"))
+    
     ref_cd.instances.values.each { |instance|
       if inverted_index.key? instance.checksum
-        commands << "%s => %s%s" % [instance.global_path, dest, inverted_index[instance.checksum].global_path]
+        symlink_path = dest + instance.full_path
+        FileUtils.mkdir_p(File.dirname(symlink_path)) unless (Dir.exists?(File.dirname(symlink_path))) 
+             
+        File.symlink(inverted_index[instance.checksum].full_path, symlink_path)          
       else
         warnings << "Warning: base content does not contains:'%s'" % instance.checksum
       end
     }
-
-    return [commands, warnings]
+    puts warnings
   end
 end
 
