@@ -10,7 +10,7 @@ class TestFileUtilMkDirSymLink < Test::Unit::TestCase
   REF_DIR = RESOURCES_DIR + "/ref"
   DEST_DIR = RESOURCES_DIR + "/dest"
   DEVICE_NAME = "hd1"
-
+  NOT_FOUND_CHECKSUM = "absent_instance"
   @ref_db
   @base_db 
   
@@ -18,7 +18,7 @@ class TestFileUtilMkDirSymLink < Test::Unit::TestCase
     
     sizes = [500, 1000, 1500]
     numb_of_copies = 2
-    test_file_name = "test_file"
+    test_file_name = "test_file"   # file name format: <test_file_name_prefix>.<size>[.serial_number_if_more_then_1]
    
     FileUtils.rm_rf(RESOURCES_DIR) if (File.exists?(RESOURCES_DIR))
         
@@ -80,28 +80,48 @@ class TestFileUtilMkDirSymLink < Test::Unit::TestCase
       end
       
     end
+    
+    not_found_instance = ContentInstance.new(NOT_FOUND_CHECKSUM, 500, `hostname`.chomp, DEVICE_NAME, "/not/exist/path/file", Time.now.utc)
+    not_found_content = Content.new(NOT_FOUND_CHECKSUM, not_found_instance.size, not_found_instance.modification_time)
+    @ref_db.add_content(not_found_content)
+    @ref_db.add_instance(not_found_instance)
+    
   end
   
-  def test_create_symlink_structure        
+  def test_create_symlink_structure     
+    not_found_db = nil
     begin
-      FileUtil.mksymlink(@ref_db, @base_db, DEST_DIR)
+      not_found_db = FileUtil.mksymlink(@ref_db, @base_db, DEST_DIR)
     rescue NotImplementedError
         puts "symlinks are unimplemented on this machine"
-        return false
+        return nil
     end
     
     base_path2checksum = Hash.new
     @base_db.instances.each_value do |instance|
       base_path2checksum[instance.full_path] = instance.checksum
     end
-    
+    not_found_path2checksum = Hash.new
+    not_found_db.instances.each_value do |instance|
+      not_found_path2checksum[instance.full_path] = instance.checksum
+    end
+
     @ref_db.instances.each_value do |instance|
       ref_path = DEST_DIR + instance.full_path
+      next if not_found_path2checksum.has_key?(instance.full_path)
       assert(File.exists?(ref_path))
       assert(File.symlink?(ref_path))
       base_file = File.expand_path(File.readlink(ref_path))
-      base_cheksum = base_path2checksum[base_file]
-      assert_equal(instance.checksum, base_cheksum)
-    end    
+      base_checksum = base_path2checksum[base_file]
+      assert_equal(instance.checksum, base_checksum)
+    end  
+    
+    if (not_found_db == nil)
+      assert_not_nil(not_found_db) 
+    else
+      assert_equal(not_found_db.contents.size, 1)
+      assert_equal(not_found_db.instances.size, 1)
+      assert(not_found_db.contents.has_key?NOT_FOUND_CHECKSUM)
+    end
   end
 end

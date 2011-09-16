@@ -37,12 +37,14 @@ class FileUtil
         return
       end unless not arguments["dest"].nil?
 
+      not_found = nil
       begin
-        FileUtil.mksymlink(ref_cd, base_cd, arguments["dest"]) 
+        not_found = FileUtil.mksymlink(ref_cd, base_cd, arguments["dest"]) 
       rescue NotImplementedError
         puts "symlinks are unimplemented on this machine"
-        return false
+        return nil
       end
+      return not_found
     elsif (arguments["command"] == "merge" or
       arguments["command"] == "intersect" or
       arguments["command"] == "minus")
@@ -165,10 +167,16 @@ class FileUtil
     mod_db
   end
   
+  # Creates directory structure and symlinks with ref_cd structure to the base_cd files and dest as a root dir
+  # Parameters: ref_cd [ContentData]
+  #             base_cd [ContentData]
+  #             dest [String]
+  # Output: ContentData object consists of contents/instances from ref_cd that have no target in base_cd
   def self.mksymlink(ref_cd, base_cd, dest)
     # symlinks are not implemented in Windows
     raise NotImplementedError.new if (RUBY_PLATFORM =~ /mingw/ or RUBY_PLATFORM =~ /ms/ or RUBY_PLATFORM =~ /win/)
     
+    not_found = ContentData.new
     inverted_index = Hash.new
     base_cd.instances.values.each{ |instance|
       inverted_index[instance.checksum] = instance
@@ -181,14 +189,16 @@ class FileUtil
     ref_cd.instances.values.each { |instance|
       if inverted_index.key? instance.checksum
         symlink_path = dest + instance.full_path
-        FileUtils.mkdir_p(File.dirname(symlink_path)) unless (Dir.exists?(File.dirname(symlink_path))) 
-             
+        FileUtils.mkdir_p(File.dirname(symlink_path)) unless (Dir.exists?(File.dirname(symlink_path)))             
         File.symlink(inverted_index[instance.checksum].full_path, symlink_path)          
       else
+        not_found.add_content(ref_cd.contents[instance.checksum])
+        not_found.add_instance(instance)
         warnings << "Warning: base content does not contains:'%s'" % instance.checksum
       end
     }
     puts warnings
+    return not_found
   end
 end
 
