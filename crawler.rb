@@ -176,6 +176,7 @@ def join_servers_results(server_conf_vec, out_name)
   end
 end
 
+=begin
 def main
   parsed_arguments = Hash.new
   begin
@@ -206,7 +207,8 @@ def main
 end
 
 def print_usage
-    puts "Usage: ruby crawler.rb --conf_file=<conf file> --cd_out=<outpt content data name> --cd_in=<existing content data - optional>"
+    puts "Usage: ruby crawler.rb --conf_file=<conf file> --cd_out=<outpt content data name> [--cd_in=<existing content data>]"
 end
 
 main
+=end

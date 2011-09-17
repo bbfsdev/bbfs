@@ -6,6 +6,9 @@
 require './content_data.rb'
 require './argument_parser.rb'
 require './copy.rb'
+require './index_agent.rb'
+require './crawler.rb'
+require 'fileutils'
 
 class FileUtil
   def initialize(arguments)
@@ -124,7 +127,77 @@ class FileUtil
         puts "Error loading content data cd=%s" % arguments["cd"]
         return
       end unless not cd.nil?
-      output = unify_time(cd)
+      output = unify_time(cd)      
+    # indexer
+    elsif arguments["command"] == "indexer"
+      begin
+        puts "--patterns is not set"
+        return
+      end unless not arguments["patterns"].nil?
+      input_patterns = IO.readlines(arguments["patterns"])
+      begin
+        puts "Error loading patterns=%s" % arguments["patterns"]
+        return
+      end unless not input_patterns.nil?
+      
+      patterns = Array.new
+      input_patterns.each do |pattern|
+        if (m = /([^:]*):([+-]):(.*)/.match(pattern))
+          patterns << pattern.chomp
+        else
+          puts "pattern in incorrect format: #{pattern}"
+          return
+        end
+      end
+      unless (patterns.size > 0)  
+        puts "Error loading patterns=%s (empty file)" % arguments["patterns"]
+        return
+      end
+      
+      exist_cd = nil
+      if (arguments.has_key?"exist_cd")
+        exist_cd = ContentData.new()
+        exist_cd.from_file(arguments["exist_cd"])
+        begin
+          puts "Error loading content data exist_cd=%s" % arguments["exist_cd"]
+          return
+        end unless not exist_cd.nil?
+      end
+      m = /([^:]*):([+-]):(.*)/.match(patterns[0])
+      device_name = m[1]
+      indexer = IndexAgent.new(`hostname`.chomp, device_name)
+      indexer.index(patterns, exist_cd)
+      puts indexer.db.to_s
+    # crawler  
+    elsif arguments["command"] == "crawler"
+      begin
+        puts "--conf_file is not set"
+        return
+      end unless not arguments["conf_file"].nil?
+      begin
+        puts "config file doesn't exist conf_file=%s" % arguments["conf_file"]
+        return
+      end unless not File.exists?(arguments["conf_file"])
+      
+      if arguments["cd_out"].nil?
+        time = Tme.now.utc
+        arguments["cd_out"] = "crawler.out.#{time.strftime('%Y/%m/%d_%H-%M-%S')}" 
+      end
+      unless (arguments["cd_in"].nil?)        
+        begin
+          puts "input data file doesn't exist cd_in=%s" % arguments["cd_in"]
+          return
+        end unless not File.exists?(arguments["conf_file"])     
+      end
+      
+      conf = Configuration.new(arguments["conf_file"])
+      threads = Array.new
+      conf.server_conf_vec.each do |server|
+        threads.push(Thread.new { Crawler.new(server, arguments["cd_out"], arguments["cd_in"]) })
+      end
+
+     threads.each { |a| a.join }
+     join_servers_results(conf.server_conf_vec, arguments["cd_out"])
     end
   end
 
@@ -208,9 +281,9 @@ COMMANDS["merge"] = "  merge --cd_a=<path> --cd_b=<path> --dest=<path>"
 COMMANDS["intersect"] = "  intersect --cd_a=<path> --cd_b=<path> --dest=<path>"
 COMMANDS["minus"] = "  minus --cd_a=<path> --cd_b=<path> --dest=<path>"
 COMMANDS["copy"] = "  copy --conf=<path> --cd=<path> --dest_server=<server name> --dest_path=<dir>"
-COMMANDS["unify_time"] = "  unify --cd=<path>"
-
-
+COMMANDS["unify_time"] = "  unify_time --cd=<path>"
+COMMANDS["indexer"] = "  indexer --patterns=<path> [--exist_cd=<path>]"
+COMMANDS["crawler"] = "  crawler --conf_file=<path> [--cd_out=<path>] [--cd_in=<path>]"
   
 def print_usage
     puts "Usage: fileutil <command> parameters..."
