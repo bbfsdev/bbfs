@@ -168,6 +168,16 @@ class ContentData
     i += 1
     number_of_instances.times {
       parameters = lines[i].split(",")
+      # bugfix: if file name consist a comma then parsing based on comma separating fails
+      if (parameters.size > 6)
+        (5..parameters.size-2).each do |i|
+          parameters[4] = [parameters[4], parameters[i]].join(",")
+        end
+        (5..parameters.size-2).each do |i|
+          parameters.delete_at(5)
+        end
+      end
+      
       add_instance(ContentInstance.new(parameters[0],
                                        parameters[1].to_i,
                                        parameters[2],
