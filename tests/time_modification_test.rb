@@ -1,7 +1,7 @@
 require './fileutil.rb'
 require './index_agent'
 require './content_data.rb'
-require 'time.rb'
+require 'time'
 require 'test/unit'
 require 'fileutils'
 
@@ -10,9 +10,11 @@ class TestTimeModification < Test::Unit::TestCase
   # directory where tested files will be placed: <application_root_dir>/tests/../resources/time_modification_test
   RESOURCES_DIR = File.expand_path(File.dirname(__FILE__) + "/../resources/time_modification_test")
   MOD_TIME_CONTENTS = ContentData.parse_time("2001/02/01 02:23:59.000")  # minimal time that will be inserted in content
-  MOD_TIME_INSTANCES = ContentData.parse_time("2002/02/01 02:23:59.000")  # minimal time that will be inserted in instance  
+  MOD_TIME_INSTANCES = ContentData.parse_time("2002/02/01 02:23:59.000")  # minimal time that will be inserted in instance
+  #time_str =  "2002/02/01 02:23:59.000"
+  #MOD_TIME_INSTANCES = Time.strftime( time_str, '%Y/%m/%d %H:%M:%S.%L' )
   DEVICE_NAME = "hd1"
-  
+
   @input_db
   @mod_content_checksum = nil  # checksum of the content that was manually modified 
   @mod_instance_checksum = nil  # checksum of the instance that was manually modified 
@@ -41,11 +43,11 @@ class TestTimeModification < Test::Unit::TestCase
     end
 
     indexer = IndexAgent.new(`hostname`.chomp, DEVICE_NAME)
-    patterns = Array.new
-    patterns.push(DEVICE_NAME + ':+:' + RESOURCES_DIR + '\*')
+    patterns = IndexerPatterns.new
+    patterns.add_pattern(RESOURCES_DIR + '\*')
     indexer.index(patterns)
-    
-    
+
+
     @input_db = ContentData.new  # ContentData that will contain manually modified entries
     
     # modifying content
@@ -64,7 +66,7 @@ class TestTimeModification < Test::Unit::TestCase
         mod_instance = ContentInstance.new(instance.checksum, instance.size, instance.server_name, instance.device, instance.full_path, MOD_TIME_INSTANCES)
         @input_db.add_instance(mod_instance)
         @mod_instance_checksum = instance.checksum
-        File.utime(File.atime(instance.full_path), MOD_TIME_INSTANCES, instance.full_path) # physically update modification time of the file 
+        File.utime(File.atime(instance.full_path), MOD_TIME_INSTANCES, instance.full_path) # physically update modification time of the file
       else
         @input_db.add_instance(instance)        
       end
@@ -74,7 +76,7 @@ class TestTimeModification < Test::Unit::TestCase
   end
   
   def test_modify
-    mod_db = FileUtil.unify_time(@input_db) # modified ContentData. Test files also were modified.
+    mod_db = FileUtil.unify_time (@input_db) # modified ContentData. Test files also were modified.
 
     # checking that content was modified according to the instance with minimal time
     mod_db.contents.each_value do |content|
@@ -96,8 +98,8 @@ class TestTimeModification < Test::Unit::TestCase
     # checking that files were actually modified
     instance = mod_db.instances.values[0]
     indexer = IndexAgent.new(instance.server_name, instance.device)
-    patterns = Array.new
-    patterns.push(instance.device + ":+:" + File.dirname(instance.full_path) + '/*')
+    patterns = IndexerPatterns.new
+    patterns.add_pattern(File.dirname(instance.full_path) + '/*')     # this pattern index all files
     indexer.index(patterns, mod_db)
     assert_equal(indexer.db, mod_db)
   end

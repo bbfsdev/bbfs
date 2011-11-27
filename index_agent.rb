@@ -4,20 +4,19 @@ require 'logger'
 require 'pp'
 require 'time'
 require './content_data'
+require './indexer_patterns'
 
 ####################
 # Index Agent
 ####################
 
 class IndexAgent
-attr_reader :db, :server_name, :device
+attr_reader :db
 
 LOCALTZ = Time.now.zone
 ENV['TZ'] = 'UTC'
 
 	def initialize(server_name, device)
-    @server_name = server_name
-    @device = device
     init_log()
     init_db()
 	end
@@ -63,8 +62,12 @@ ENV['TZ'] = 'UTC'
 
   # index device according to the pattern
   # store the result
+  # TODO device support
+  # @param is_positive [IndexerPattern]
   def index(patterns, otherDB = nil)
     abort "#{self.class}: DB not empty. Current implementation permits only one running of index" unless db.contents.empty?
+
+    server_name = `hostname`
     permit_patterns = Array.new
     forbid_patterns = Array.new
     otherDB_table = Hash.new   # contains instances from given DB while full path name is a key and instance is a value
@@ -75,33 +78,13 @@ ENV['TZ'] = 'UTC'
     if (otherDB != nil)
       otherDB_contents.update(otherDB.contents)
       otherDB.instances.each_value do |i|
-        next unless i.server_name == @server_name and i.device == @device
+        next unless i.server_name == server_name #and i.device == @device
         otherDB_table[i.full_path] = i
       end
     end
-    
-    # pattern processing
-    # pattern format: device:[+-]:path_pattern
-    patterns.each_index do |i|
-      unless (m = /([^:]*):([+-]):(.*)/.match(patterns[i]))
-        #@log.warn { "pattern in incorrect format: #{patterns[i]}" }
-        abort ("pattern in incorrect format: #{patterns[i]}")
-      end
-      if (m[2].eql?('+'))
-        permit_patterns.push(m[3])
-      elsif (m[2].eql?('-'))
-        forbid_patterns.push(m[3])
-      end
-    end
 
-    # transfer path inside the pattern to the standart view
-    # need for Dir.glob function
-    permit_patterns.each do |p|
-      p.gsub!(/\\/,'/')
-    end
-    forbid_patterns.each do |p|
-      p.gsub!(/\\/,'/')
-    end
+    permit_patterns = patterns.positive_patterns
+    forbid_patterns = patterns.negative_patterns
 
     # add files found by positive patterns
     files = Array.new
@@ -137,9 +120,11 @@ ENV['TZ'] = 'UTC'
       # from further processing (save checksum calculation)
       if otherDB_table.has_key?(file)
         instance = otherDB_table[file]
-        @db.add_content(otherDB_contents[instance.checksum])
-        @db.add_instance(instance)
-        next
+        if instance.size == file_stats.size and instance.modification_time == file_stats.mtime.utc
+          @db.add_content(otherDB_contents[instance.checksum])
+          @db.add_instance(instance)
+          next
+        end
       end
     
       # calculate a checksum
@@ -150,7 +135,7 @@ ENV['TZ'] = 'UTC'
 
       @db.add_content(Content.new(checksum, file_stats.size, Time.now.utc)) unless (@db.content_exists(checksum))
 
-      instance = ContentInstance.new(checksum, file_stats.size, server_name, device, File.expand_path(file), file_stats.mtime.utc)
+      instance = ContentInstance.new(checksum, file_stats.size, server_name, file_stats.dev, File.expand_path(file), file_stats.mtime.utc)
       @db.add_instance(instance)
     end
   end

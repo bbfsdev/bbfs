@@ -42,15 +42,15 @@ class FileUtil
 
       not_found = nil
       begin
-        not_found = FileUtil.mksymlink(ref_cd, base_cd, arguments["dest"]) 
+        not_found = FileUtil.mksymlink(ref_cd, base_cd, arguments["dest"])
       rescue NotImplementedError
         puts "symlinks are unimplemented on this machine"
         return nil
       end
       return not_found
     elsif (arguments["command"] == "merge" or
-      arguments["command"] == "intersect" or
-      arguments["command"] == "minus")
+        arguments["command"] == "intersect" or
+        arguments["command"] == "minus")
 
       begin
         puts "--cd_a is not set"
@@ -127,33 +127,22 @@ class FileUtil
         puts "Error loading content data cd=%s" % arguments["cd"]
         return
       end unless not cd.nil?
-      output = unify_time(cd)      
-    # indexer
+      output = unify_time(cd)
+      # indexer
     elsif arguments["command"] == "indexer"
       begin
         puts "--patterns is not set"
         return
       end unless not arguments["patterns"].nil?
-      input_patterns = IO.readlines(arguments["patterns"])
-      begin
-        puts "Error loading patterns=%s" % arguments["patterns"]
-        return
-      end unless not input_patterns.nil?
-      
-      patterns = Array.new
-      input_patterns.each do |pattern|
-        if (m = /([^:]*):([+-]):(.*)/.match(pattern))
-          patterns << pattern.chomp
-        else
-          puts "pattern in incorrect format: #{pattern}"
-          return
-        end
-      end
-      unless (patterns.size > 0)  
+
+      patterns = IndexerPatterns.new
+      patterns.parse_from_file(arguments["patterns"])
+
+      unless (patterns.size > 0)
         puts "Error loading patterns=%s (empty file)" % arguments["patterns"]
         return
       end
-      
+
       exist_cd = nil
       if (arguments.has_key?"exist_cd")
         exist_cd = ContentData.new()
@@ -168,7 +157,7 @@ class FileUtil
       indexer = IndexAgent.new(`hostname`.chomp, device_name)
       indexer.index(patterns, exist_cd)
       puts indexer.db.to_s
-    # crawler  
+      # crawler
     elsif arguments["command"] == "crawler"
       begin
         puts "--conf_file is not set"
@@ -178,26 +167,26 @@ class FileUtil
         puts "config file doesn't exist conf_file=%s" % arguments["conf_file"]
         return
       end unless not File.exists?(arguments["conf_file"])
-      
+
       if arguments["cd_out"].nil?
         time = Tme.now.utc
-        arguments["cd_out"] = "crawler.out.#{time.strftime('%Y/%m/%d_%H-%M-%S')}" 
+        arguments["cd_out"] = "crawler.out.#{time.strftime('%Y/%m/%d_%H-%M-%S')}"
       end
-      unless (arguments["cd_in"].nil?)        
+      unless (arguments["cd_in"].nil?)
         begin
           puts "input data file doesn't exist cd_in=%s" % arguments["cd_in"]
           return
-        end unless not File.exists?(arguments["conf_file"])     
+        end unless not File.exists?(arguments["conf_file"])
       end
-      
+
       conf = Configuration.new(arguments["conf_file"])
       threads = Array.new
       conf.server_conf_vec.each do |server|
         threads.push(Thread.new { Crawler.new(server, arguments["cd_out"], arguments["cd_in"]) })
       end
 
-     threads.each { |a| a.join }
-     join_servers_results(conf.server_conf_vec, arguments["cd_out"])
+      threads.each { |a| a.join }
+      join_servers_results(conf.server_conf_vec, arguments["cd_out"])
     end
   end
 
@@ -227,19 +216,20 @@ class FileUtil
   #             (e.i. we do nothing with it)  
   def self.unify_time(db)
     mod_db = ContentData.unify_time(db)
-    mod_db.instances.each_value do |instance| 
+    mod_db.instances.each_value do |instance|
       next unless db.instances.has_key?instance.global_path
-      if (File.exists?(instance.full_path) \
-        and File.mtime(instance.full_path) == db.instances[instance.global_path].modification_time \
-        and File.size(instance.full_path) == instance.size \
-        and `hostname`.chomp == instance.server_name \
-        and (File.mtime(instance.full_path) <=> instance.modification_time) > 0) 
-          File.utime(File.atime(instance.full_path), instance.modification_time, instance.full_path)                        
+      if (File.exists?(instance.full_path))
+        file_stats = File.lstat(instance.full_path)
+        if (file_stats.mtime == db.instances[instance.global_path].modification_time \
+			    and file_stats.size == instance.size \
+          and (file_stats.mtime <=> instance.modification_time) > 0)
+          File.utime(File.atime(instance.full_path), instance.modification_time, instance.full_path)
+        end
       end
     end
     mod_db
   end
-  
+
   # Creates directory structure and symlinks with ref_cd structure to the base_cd files and dest as a root dir
   # Parameters: ref_cd [ContentData]
   #             base_cd [ContentData]
@@ -248,7 +238,7 @@ class FileUtil
   def self.mksymlink(ref_cd, base_cd, dest)
     # symlinks are not implemented in Windows
     raise NotImplementedError.new if (RUBY_PLATFORM =~ /mingw/ or RUBY_PLATFORM =~ /ms/ or RUBY_PLATFORM =~ /win/)
-    
+
     not_found = ContentData.new
     inverted_index = Hash.new
     base_cd.instances.values.each{ |instance|
@@ -256,14 +246,14 @@ class FileUtil
     }
 
     warnings = Array.new
-    
+
     dest.chop! if (dest.end_with?("/") or dest.end_with?("\\"))
-    
+
     ref_cd.instances.values.each { |instance|
       if inverted_index.key? instance.checksum
         symlink_path = dest + instance.full_path
-        FileUtils.mkdir_p(File.dirname(symlink_path)) unless (Dir.exists?(File.dirname(symlink_path)))             
-        File.symlink(inverted_index[instance.checksum].full_path, symlink_path)          
+        FileUtils.mkdir_p(File.dirname(symlink_path)) unless (Dir.exists?(File.dirname(symlink_path)))
+        File.symlink(inverted_index[instance.checksum].full_path, symlink_path)
       else
         not_found.add_content(ref_cd.contents[instance.checksum])
         not_found.add_instance(instance)
@@ -284,13 +274,13 @@ COMMANDS["copy"] = "  copy --conf=<path> --cd=<path> --dest_server=<server name>
 COMMANDS["unify_time"] = "  unify_time --cd=<path>"
 COMMANDS["indexer"] = "  indexer --patterns=<path> [--exist_cd=<path>]"
 COMMANDS["crawler"] = "  crawler --conf_file=<path> [--cd_out=<path>] [--cd_in=<path>]"
-  
+
 def print_usage
-    puts "Usage: fileutil <command> parameters..."
-    puts "Commands:"
-    COMMANDS.each { |name, description|
-      puts description
-    }
+  puts "Usage: fileutil <command> parameters..."
+  puts "Commands:"
+  COMMANDS.each { |name, description|
+    puts description
+  }
 end
 
 def main

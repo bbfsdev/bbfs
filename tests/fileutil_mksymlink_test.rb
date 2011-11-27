@@ -53,8 +53,8 @@ class TestFileUtilMkDirSymLink < Test::Unit::TestCase
     end
 
     indexer = IndexAgent.new(`hostname`.chomp, DEVICE_NAME)
-    patterns = Array.new
-    patterns.push(DEVICE_NAME + ':+:' + RESOURCES_DIR + '\**\*')
+    patterns = IndexerPatterns.new
+    patterns.add_pattern(RESOURCES_DIR + '\**\*')
     indexer.index(patterns)
 
     @base_db = indexer.db

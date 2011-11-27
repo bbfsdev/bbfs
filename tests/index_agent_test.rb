@@ -8,9 +8,9 @@ class IndexAgentTest < Test::Unit::TestCase
 
   def test_index
     indexer = IndexAgent.new('large_server_1', 'hd1')
-    patterns = Array.new
-    patterns.push('hd1:+:.\resources\index_agent_test\**\*')
-    patterns.push('hd1:-:.\resources\index_agent_test\**\*.h')
+    patterns = IndexerPatterns.new
+    patterns.add_pattern('.\resources\index_agent_test\**\*')
+    patterns.add_pattern('.\resources\index_agent_test\**\*.h', false)
 
     indexer.index(patterns)
     # ./resources/index_agent_test/lib/libexslt.lib
@@ -20,7 +20,7 @@ class IndexAgentTest < Test::Unit::TestCase
     # ./resources/index_agent_test/bin/xsltproc.exe
     assert(indexer.db.content_exists('d0d57ff4834a517a52004f59ee5cdb63f2f0427b'))
 
-    patterns.push('hd1:-:./resources/index_agent_test/lib/**/*')
+    patterns.add_pattern('./resources/index_agent_test/lib/**/*', false)
     indexer = IndexAgent.new('large_server_1', 'hd1')
     
     indexer.index(patterns)
