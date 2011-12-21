@@ -32,6 +32,8 @@ class FileStat
 
   DEFAULT_STABLE_STATE = 5
 
+  @@log = nil
+
   def initialize(path, size, modification_time, stable_state = DEFAULT_STABLE_STATE)
     @path ||= path
     @size = size
@@ -40,6 +42,10 @@ class FileStat
     @stable_state = stable_state
     @state = FileStatEnum::NEW
     @cycles = 0
+  end
+
+  def set_log (log)
+    @@log = log
   end
 
   def monitor
@@ -70,7 +76,10 @@ class FileStat
 
   def state= (new_state)
     if FileStatEnum.contains?new_state
-      @state = new_state
+      if (@state != new_state)
+        @state = new_state
+        @@log.puts(to_s) if (@@log)
+      end
     else
       raise "Not a permitted state: #{new_state}"
     end
@@ -89,7 +98,8 @@ class FileStat
   end
 
   def to_s (ident = 0)
-    (" " * ident) + path.to_s + " : " + state.to_s
+    #(" " * ident) + path.to_s + " : " + state.to_s
+    Time.now.utc.to_s + " : " + self.state + " : " + self.path
   end
 end
 
@@ -158,6 +168,7 @@ class DirStat < FileStat
     nil
   end
 
+=begin
   def to_s(ident = 0)
     ident_increment = 2
     child_ident = ident + ident_increment
@@ -170,6 +181,7 @@ class DirStat < FileStat
     end
     res
   end
+=end
 
   def monitor ()
     files = Dir.glob(path + "/*")
@@ -251,8 +263,3 @@ class DirStat < FileStat
 
 end
 
-def main
-
-end
-
-main

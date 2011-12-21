@@ -47,8 +47,10 @@ class TestPathMonitor < Test::Unit::TestCase
   end
 
   def test_monitor
+    log = File.open(RESOURCES_DIR + "/log.txt", "w")
     dir_stat = File.lstat(RESOURCES_DIR)
     test_dir = DirStat.new(RESOURCES_DIR, dir_stat.size, dir_stat.mtime.utc)
+    test_dir.set_log(log)
     test_dir.monitor
     puts test_dir.to_s
     test_dir.monitor
@@ -65,5 +67,7 @@ class TestPathMonitor < Test::Unit::TestCase
     puts test_dir.to_s
     test_dir.monitor
     puts test_dir.to_s
+
+    log.close
   end
 end
