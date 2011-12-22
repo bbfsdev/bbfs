@@ -44,11 +44,12 @@ class FileStat
     @cycles = 0
   end
 
-  def set_log (log)
+  def FileStat.set_log (log)
     @@log = log
   end
 
   def monitor
+    puts to_s()
     file_stats = File.lstat(@path)
     if (file_stats == nil or changed?)
       @state = FileStatEnum::CHANGED
@@ -184,6 +185,7 @@ class DirStat < FileStat
 =end
 
   def monitor ()
+    puts to_s()
     files = Dir.glob(path + "/*")
     is_init_monitor= false  # is this monitor run for DirState init ?
     is_init_monitor = true if (@state == FileStatEnum::NEW and @cycles == 0 and @files.size == 0 and @dirs.size == 0)
