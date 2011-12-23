@@ -44,20 +44,20 @@ class FileStat
     @cycles = 0
   end
 
-  def set_log (log)
+  def self.set_log (log)
     @@log = log
   end
 
   def monitor
     file_stats = File.lstat(@path)
     if (file_stats == nil or changed?)
-      @state = FileStatEnum::CHANGED
+      self.state= FileStatEnum::CHANGED
     else
       @cycles += 1
       if @cycles >= @stable_state and (@state == FileStatEnum::UNCHANGED or @state == FileStatEnum::NEW)
-        @state = FileStatEnum::STABLE #if @state != FileStatEnum::STABLE
-      elsif @state != FileStatEnum::UNCHANGED
-        @state = FileStatEnum::UNCHANGED
+        self.state= FileStatEnum::STABLE #if @state != FileStatEnum::STABLE
+      elsif @state == FileStatEnum::NEW or @state == FileStatEnum::CHANGED
+        self.state= FileStatEnum::UNCHANGED
         @cycles = 0
       end
     end
@@ -78,7 +78,10 @@ class FileStat
     if FileStatEnum.contains?new_state
       if (@state != new_state)
         @state = new_state
-        @@log.puts(to_s) if (@@log)
+        if (@@log)
+          @@log.puts(cur_stat)
+          @@log.flush
+        end
       end
     else
       raise "Not a permitted state: #{new_state}"
@@ -98,7 +101,11 @@ class FileStat
   end
 
   def to_s (ident = 0)
-    #(" " * ident) + path.to_s + " : " + state.to_s
+    (" " * ident) + path.to_s + " : " + state.to_s
+  end
+
+  def cur_stat
+    # TODO what output format have to be ?
     Time.now.utc.to_s + " : " + self.state + " : " + self.path
   end
 end
@@ -168,7 +175,6 @@ class DirStat < FileStat
     nil
   end
 
-=begin
   def to_s(ident = 0)
     ident_increment = 2
     child_ident = ident + ident_increment
@@ -181,7 +187,6 @@ class DirStat < FileStat
     end
     res
   end
-=end
 
   def monitor ()
     files = Dir.glob(path + "/*")
@@ -253,9 +258,9 @@ class DirStat < FileStat
     unless is_init_monitor or was_changed
       @cycles += 1
       if @cycles >= @stable_state and (@state == FileStatEnum::UNCHANGED or @state == FileStatEnum::NEW)
-        @state = FileStatEnum::STABLE #if @state != FileStatEnum::STABLE
-      else
-        @state = FileStatEnum::UNCHANGED
+        self.state= FileStatEnum::STABLE #if @state != FileStatEnum::STABLE
+      else @state == FileStatEnum::NEW or @state == FileStatEnum::CHANGED
+        self.state= FileStatEnum::UNCHANGED
         @cycles = 0
       end
     end
