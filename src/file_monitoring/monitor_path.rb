@@ -52,13 +52,13 @@ class FileStat
     puts to_s()
     file_stats = File.lstat(@path)
     if (file_stats == nil or changed?)
-      @state = FileStatEnum::CHANGED
+      self.state= FileStatEnum::CHANGED
     else
       @cycles += 1
       if @cycles >= @stable_state and (@state == FileStatEnum::UNCHANGED or @state == FileStatEnum::NEW)
-        @state = FileStatEnum::STABLE #if @state != FileStatEnum::STABLE
-      elsif @state != FileStatEnum::UNCHANGED
-        @state = FileStatEnum::UNCHANGED
+        self.state= FileStatEnum::STABLE #if @state != FileStatEnum::STABLE
+      elsif @state == FileStatEnum::NEW or @state == FileStatEnum::CHANGED
+        self.state= FileStatEnum::UNCHANGED
         @cycles = 0
       end
     end
@@ -80,7 +80,7 @@ class FileStat
       if (@state != new_state)
         @state = new_state
         if (@@log)
-          @@log.puts(to_s)
+          @@log.puts(cur_stat)
           @@log.flush
         end
       end
@@ -102,7 +102,11 @@ class FileStat
   end
 
   def to_s (ident = 0)
-    #(" " * ident) + path.to_s + " : " + state.to_s
+    (" " * ident) + path.to_s + " : " + state.to_s
+  end
+
+  def cur_stat
+    # TODO what output format have to be ?
     Time.now.utc.to_s + " : " + self.state + " : " + self.path
   end
 end
@@ -172,7 +176,6 @@ class DirStat < FileStat
     nil
   end
 
-=begin
   def to_s(ident = 0)
     ident_increment = 2
     child_ident = ident + ident_increment
@@ -185,7 +188,6 @@ class DirStat < FileStat
     end
     res
   end
-=end
 
   def monitor ()
     puts to_s()
@@ -258,9 +260,9 @@ class DirStat < FileStat
     unless is_init_monitor or was_changed
       @cycles += 1
       if @cycles >= @stable_state and (@state == FileStatEnum::UNCHANGED or @state == FileStatEnum::NEW)
-        @state = FileStatEnum::STABLE #if @state != FileStatEnum::STABLE
-      else
-        @state = FileStatEnum::UNCHANGED
+        self.state= FileStatEnum::STABLE #if @state != FileStatEnum::STABLE
+      else @state == FileStatEnum::NEW or @state == FileStatEnum::CHANGED
+        self.state= FileStatEnum::UNCHANGED
         @cycles = 0
       end
     end
