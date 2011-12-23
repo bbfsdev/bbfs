@@ -44,7 +44,7 @@ class FileStat
     @cycles = 0
   end
 
-  def FileStat.set_log (log)
+  def self.set_log (log)
     @@log = log
   end
 
@@ -79,7 +79,10 @@ class FileStat
     if FileStatEnum.contains?new_state
       if (@state != new_state)
         @state = new_state
-        @@log.puts(to_s) if (@@log)
+        if (@@log)
+          @@log.puts(to_s)
+          @@log.flush
+        end
       end
     else
       raise "Not a permitted state: #{new_state}"

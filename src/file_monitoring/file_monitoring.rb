@@ -13,28 +13,29 @@ def main
     pq.push([priority, elem, DirStat.new(elem["path"], nil, nil, elem["scan_period"])], -priority)
   }
 
-  open(config_yml["log_path"], 'w') { |f|
+  puts config_yml["log_path"]
 
-    FileStat.set_log(f)
+  while true do
+    time, conf, dir_stat = pq.pop
+    puts "time:" + time.to_s()
+    puts "now:" + Time.now.to_i.to_s()
+    puts conf
 
-    while true do
-      time, conf, dir_stat = pq.pop
-      puts "time:" + time.to_s()
-      puts "now:" + Time.now.to_i.to_s()
-      puts conf
-
-      dir_stat.monitor
-
-      time_span = time - Time.now.to_i
-      if (time_span > 0)
-        sleep(time_span)
-      end
-      #puts conf["path"]
-      #puts conf["scan_period"]
-      priority = (Time.now + conf["scan_period"]).to_i
-      pq.push([priority, conf, dir_stat], -priority)
+    time_span = time - Time.now.to_i
+    if (time_span > 0)
+      sleep(time_span)
     end
-  }
+
+    log = File.open(config_yml["log_path"], 'w')
+    FileStat.set_log(log)
+    dir_stat.monitor
+    log.close
+
+    #puts conf["path"]
+    #puts conf["scan_period"]
+    priority = (Time.now + conf["scan_period"]).to_i
+    pq.push([priority, conf, dir_stat], -priority)
+  end
 end
 
 main
