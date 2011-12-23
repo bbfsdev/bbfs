@@ -1,7 +1,3 @@
-
-
-
-
 class FileStatEnum
   attr_reader :value
   NEW = "NEW"
@@ -259,7 +255,7 @@ class DirStat < FileStat
       @cycles += 1
       if @cycles >= @stable_state and (@state == FileStatEnum::UNCHANGED or @state == FileStatEnum::NEW)
         self.state= FileStatEnum::STABLE #if @state != FileStatEnum::STABLE
-      else @state == FileStatEnum::NEW or @state == FileStatEnum::CHANGED
+      elsif @state == FileStatEnum::NEW or @state == FileStatEnum::CHANGED
         self.state= FileStatEnum::UNCHANGED
         @cycles = 0
       end
