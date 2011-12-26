@@ -38,6 +38,10 @@ class FileStat
     @stable_state = stable_state
     @state = FileStatEnum::NEW
     @cycles = 0
+    if (@@log)
+      @@log.puts(cur_stat)
+      @@log.flush
+    end
   end
 
   def self.set_log (log)
@@ -45,7 +49,6 @@ class FileStat
   end
 
   def monitor
-    puts to_s()
     file_stats = File.lstat(@path)
     if (file_stats == nil or changed?)
       self.state= FileStatEnum::CHANGED
@@ -185,11 +188,8 @@ class DirStat < FileStat
     res
   end
 
-  def monitor ()
-    puts to_s()
+  def monitor (is_init_monitor = false)
     files = Dir.glob(path + "/*")
-    is_init_monitor= false  # is this monitor run for DirState init ?
-    is_init_monitor = true if (@state == FileStatEnum::NEW and @cycles == 0 and @files.size == 0 and @dirs.size == 0)
     was_changed = false
 
     # monitor existing and absent files
@@ -234,7 +234,7 @@ class DirStat < FileStat
             if (new_file_stat.directory?)
               new_dir = DirStat.new(new_file, new_file_stat.size, new_file_stat.mtime.utc, self.stable_state)
               dir.add_dir(new_dir)
-              new_dir.monitor
+              new_dir.monitor(is_init_monitor)
             else
               dir.add_file(FileStat.new(new_file, new_file_stat.size, new_file_stat.mtime.utc, self.stable_state))
             end
@@ -264,5 +264,6 @@ class DirStat < FileStat
     end
   end
 
+  protected :add_dir, :add_file, :rm_dir, :rm_file
 end
 
