@@ -1,11 +1,5 @@
 log_path: /Users/kolman/Dev/git/bbfs/resources/file_monitoring/log
 paths:
 - path: /Users/kolman/Dev/git/bbfs/resources
-  scan_period: 5
+  scan_period: 1
   stable_state: 5
-- path: /Users/kolman/Dev/git/bbfs/resources
-  scan_period: 10
-  stable_state: 50
-- path: /Users/kolman/Dev/git/bbfs/resources
-  scan_period: 3
-  stable_state: 50

@@ -1,47 +1,27 @@
 class FileStatEnum
-  attr_reader :value
+  NON_EXISTING = "NON_EXISTING"
   NEW = "NEW"
   CHANGED = "CHANGED"
   UNCHANGED = "UNCHANGED"
   STABLE = "STABLE"
-
-  def self.contains? (value)
-    self.const_defined?(value, false)
-  end
-
-  def value= (new_value)
-    if FileStatEnum.contains?new_value
-      @value = new_value
-    else
-      raise ("Not an enum permitted value: #{new_value}")
-    end
-  end
-
-  def to_s
-    value
-  end
 end
 
 class FileStat
-  attr_accessor :scan_period, :stable_state, :state, :size, :modification_time
+  attr_accessor :stable_state, :state, :size, :modification_time
   attr_reader :cycles, :path
 
   DEFAULT_STABLE_STATE = 5
 
   @@log = nil
 
-  def initialize(path, size, modification_time, stable_state = DEFAULT_STABLE_STATE)
+  def initialize(path, stable_state)
     @path ||= path
-    @size = size
-    @modification_time = modification_time
-    @scan_period = scan_period
-    @stable_state = stable_state
-    @state = FileStatEnum::NEW
+    @size = nil
+    @modification_time = nil
     @cycles = 0
-    if (@@log)
-      @@log.puts(cur_stat)
-      @@log.flush
-    end
+    @state = FileStatEnum::NON_EXISTING
+
+    @stable_state = stable_state
   end
 
   def self.set_log (log)
@@ -50,54 +30,50 @@ class FileStat
 
   def monitor
     file_stats = File.lstat(@path)
-    if (file_stats == nil or changed?)
-      self.state= FileStatEnum::CHANGED
+    new_state = nil
+    if file_stats == nil
+      new_state = FileStatEnum::NON_EXISTING
+      @size = nil
+      @modification_time = nil
+      @cycles = 0
+    elsif @size == nil
+      new_state = FileStatEnum::NEW
+      @size = file_stats.size
+      @modification_time = file_stats.mtime.utc
+      @cycles = 0
+    elsif changed?(file_stats)
+      new_state = FileStatEnum::CHANGED
+      @size = file_stats.size
+      @modification_time = file_stats.mtime.utc
+      @cycles = 0
     else
+      new_state = FileStatEnum::UNCHANGED
       @cycles += 1
-      if @cycles >= @stable_state and (@state == FileStatEnum::UNCHANGED or @state == FileStatEnum::NEW)
-        self.state= FileStatEnum::STABLE #if @state != FileStatEnum::STABLE
-      elsif @state == FileStatEnum::NEW or @state == FileStatEnum::CHANGED
-        self.state= FileStatEnum::UNCHANGED
-        @cycles = 0
+      if @cycles >= @stable_state
+        new_state = FileStatEnum::STABLE
       end
     end
+
+    # The assignment
+    self.state= new_state
   end
 
-  def changed?
-    file_stat = File.lstat(@path)
-    if (file_stat == nil)
-      true
-    elsif (file_stat.size == size and file_stat.mtime.utc == modification_time.utc)
-      false
-    else
-      true
-    end
+  def changed?(file_stats)
+    not (file_stats.size == size and file_stats.mtime.utc == modification_time.utc)
   end
 
   def state= (new_state)
-    if FileStatEnum.contains?new_state
-      if (@state != new_state)
-        @state = new_state
-        if (@@log)
-          @@log.puts(cur_stat)
-          @@log.flush
-        end
+    if (@state != new_state or @state == FileStatEnum::CHANGED)
+      @state = new_state
+      if (@@log)
+        @@log.puts(cur_stat)
+        @@log.flush
       end
-    else
-      raise "Not a permitted state: #{new_state}"
-    end
-  end
-
-  def stable_state= (new_stable_state)
-    @stable_state = new_stable_state
-    if new_stable_state < @cycles_stable
-      state=(FileStatEnum::STABLE)
-      @cycles = 0
     end
   end
 
   def == (other)
-    @path == other.path and @scan_period == other.scan_period and @stable_state == other.stable_state
+    @path == other.path and @stable_state == other.stable_state
   end
 
   def to_s (ident = 0)
@@ -111,10 +87,10 @@ class FileStat
 end
 
 class DirStat < FileStat
-  def initialize(path, size = nil, modification_time = nil, stable_state = DEFAULT_STABLE_STATE)
+  def initialize(path, stable_state = DEFAULT_STABLE_STATE)
     super
-    @dirs = Hash.new
-    @files = Hash.new
+    @dirs = nil
+    @files = nil
   end
   def add_dir (dir)
     @dirs[dir.path] = dir
@@ -140,41 +116,6 @@ class DirStat < FileStat
     @files.has_key?(path)
   end
 
-  def get_dir(path)
-    if has_dir?path
-      @dirs[path]
-    else
-      raise "No such a dir: #{path}"
-    end
-  end
-
-  def get_file(path)
-    if has_dir?path
-      @files[path]
-    else
-      raise "No such a file: #{path}"
-    end
-  end
-
-  def get_child(path)
-    if has_file?path
-      return get_file(path)
-    elsif has_dir?path
-      return get_dir(path)
-    else
-      @dirs.each_value do |dir|
-        child = dir.get_child(path)
-        return child if child != nil
-      end
-    end
-    return nil
-  end
-
-  def changed?
-    # TODO
-    nil
-  end
-
   def to_s(ident = 0)
     ident_increment = 2
     child_ident = ident + ident_increment
@@ -188,32 +129,80 @@ class DirStat < FileStat
     res
   end
 
-  def monitor (is_init_monitor = false)
-    files = Dir.glob(path + "/*")
+  def monitor
+    was_changed = false
+    new_state = nil
+    self_stat = File.lstat(@path)
+    if self_stat == nil
+      new_state = FileStatEnum::NON_EXISTING
+      @files = nil
+      @dirs = nil
+      @cycles = 0
+    elsif @files == nil
+      new_state = FileStatEnum::NEW
+      @files = Hash.new
+      @dirs = Hash.new
+      @cycles = 0
+      update_dir
+    elsif update_dir
+      new_state = FileStatEnum::CHANGED
+      @cycles = 0
+    else
+      new_state = FileStatEnum::UNCHANGED
+      @cycles += 1
+      if @cycles >= @stable_state
+        new_state = FileStatEnum::STABLE
+      end
+    end
+
+    # The assignment
+    self.state= new_state
+  end
+
+  # Updates the files and dirs hashes and globs the directory for changes.
+
+  def update_dir
     was_changed = false
 
     # monitor existing and absent files
     @files.each_value do |file|
-      if files.include?(file.path) # existing file
-        file.monitor
-      else   # file was deleted
-             #TODO what we are doing in this case?
-        self.state=(FileStatEnum::CHANGED)
+      old_file_state = file.state
+      file.monitor
+      new_file_state = file.state
+
+      puts was_changed.to_s + " " + old_file_state + " " + new_file_state
+
+      was_changed = was_changed || old_file_state != new_file_state || new_file_state == FileStatEnum::NON_EXISTING || new_file_state == FileStatEnum::CHANGED
+
+      puts was_changed.to_s
+
+      if file.state == FileStatEnum::NON_EXISTING
         rm_file(file)
-        was_changed = true
       end
     end
 
     @dirs.each_value do |dir|
-      if files.include?(dir.path)  # existing file
-        dir.monitor
-      else  #dir was deleted
-            #TODO what we are doing in this case?
-        self.state=(FileStatEnum::CHANGED)
+      old_dir_state = dir.state
+      dir.monitor
+      new_dir_state = dir.state
+
+      was_changed = was_changed || old_dir_state != new_dir_state || new_dir_state == FileStatEnum::NON_EXISTING || new_dir_state == FileStatEnum::CHANGED
+
+      if dir.state == FileStatEnum::NON_EXISTING
         rm_dir(dir)
-        was_changed = true
       end
     end
+
+    was_changed = was_changed || glob_me
+
+    puts was_changed.to_s
+
+    return was_changed
+  end
+
+  def glob_me
+    was_changed = false
+    files = Dir.glob(path + "/*")
 
     # add and monitor new files and directories
     files.each do |file|
@@ -222,46 +211,24 @@ class DirStat < FileStat
         unless (has_dir?(file)) # new directory
                                 # change state only for existing directories
                                 # newly added directories have to remain with NEW state
-          unless is_init_monitor #if @state != FileStatEnum::NEW and @cycles != 0
-            self.state= FileStatEnum::CHANGED
-            was_changed = true
-          end
-          dir = DirStat.new(file, file_stat.size, file_stat.mtime.utc, self.stable_state)
-          add_dir(dir)
-          new_files = Dir.glob(dir.path + "/*")
-          new_files.each do |new_file|
-            new_file_stat = File.lstat(new_file)
-            if (new_file_stat.directory?)
-              new_dir = DirStat.new(new_file, new_file_stat.size, new_file_stat.mtime.utc, self.stable_state)
-              dir.add_dir(new_dir)
-              new_dir.monitor(is_init_monitor)
-            else
-              dir.add_file(FileStat.new(new_file, new_file_stat.size, new_file_stat.mtime.utc, self.stable_state))
-            end
-          end
+          was_changed = true
+          ds = DirStat.new(file, self.stable_state)
+          ds.monitor
+          add_dir(ds)
         end
       else # it is a file
         unless(has_file?(file)) # new file
                                 # change state only for existing directories
                                 # newly added directories have to remain with NEW state
-          unless is_init_monitor #if @state != FileStatEnum::NEW and @cycles != 0
-            self.state= FileStatEnum::CHANGED
-            was_changed = true
-          end
-          add_file(FileStat.new(file, file_stat.size, file_stat.mtime, self.stable_state))
+          was_changed = true
+          fs = FileStat.new(file, self.stable_state)
+          fs.monitor
+          add_file(fs)
         end
       end
     end
 
-    unless is_init_monitor or was_changed
-      @cycles += 1
-      if @cycles >= @stable_state and (@state == FileStatEnum::UNCHANGED or @state == FileStatEnum::NEW)
-        self.state= FileStatEnum::STABLE #if @state != FileStatEnum::STABLE
-      elsif @state == FileStatEnum::NEW or @state == FileStatEnum::CHANGED
-        self.state= FileStatEnum::UNCHANGED
-        @cycles = 0
-      end
-    end
+    return was_changed
   end
 
   protected :add_dir, :add_file, :rm_dir, :rm_file

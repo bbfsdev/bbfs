@@ -10,7 +10,7 @@ def main
   pq = Containers::PriorityQueue.new
   conf_array.each { |elem|
     priority = (Time.now + elem["scan_period"]).to_i
-    pq.push([priority, elem, DirStat.new(elem["path"], nil, nil, elem["stable_state"])], -priority)
+    pq.push([priority, elem, DirStat.new(elem["path"], elem["stable_state"])], -priority)
   }
 
   puts config_yml["log_path"]
