@@ -29,7 +29,7 @@ class FileStat
   end
 
   def monitor
-    file_stats = File.lstat(@path)
+    file_stats = File.lstat(@path) rescue nil
     new_state = nil
     if file_stats == nil
       new_state = FileStatEnum::NON_EXISTING
@@ -132,7 +132,7 @@ class DirStat < FileStat
   def monitor
     was_changed = false
     new_state = nil
-    self_stat = File.lstat(@path)
+    self_stat = File.lstat(@path) rescue nil
     if self_stat == nil
       new_state = FileStatEnum::NON_EXISTING
       @files = nil
@@ -166,36 +166,24 @@ class DirStat < FileStat
 
     # monitor existing and absent files
     @files.each_value do |file|
-      old_file_state = file.state
       file.monitor
-      new_file_state = file.state
-
-      puts was_changed.to_s + " " + old_file_state + " " + new_file_state
-
-      was_changed = was_changed || old_file_state != new_file_state || new_file_state == FileStatEnum::NON_EXISTING || new_file_state == FileStatEnum::CHANGED
-
-      puts was_changed.to_s
 
       if file.state == FileStatEnum::NON_EXISTING
+        was_changed = true
         rm_file(file)
       end
     end
 
     @dirs.each_value do |dir|
-      old_dir_state = dir.state
       dir.monitor
-      new_dir_state = dir.state
-
-      was_changed = was_changed || old_dir_state != new_dir_state || new_dir_state == FileStatEnum::NON_EXISTING || new_dir_state == FileStatEnum::CHANGED
 
       if dir.state == FileStatEnum::NON_EXISTING
+        was_changed = true
         rm_dir(dir)
       end
     end
 
     was_changed = was_changed || glob_me
-
-    puts was_changed.to_s
 
     return was_changed
   end
@@ -206,7 +194,7 @@ class DirStat < FileStat
 
     # add and monitor new files and directories
     files.each do |file|
-      file_stat = File.lstat(file)
+      file_stat = File.lstat(file) rescue nil
       if (file_stat.directory?)
         unless (has_dir?(file)) # new directory
                                 # change state only for existing directories
