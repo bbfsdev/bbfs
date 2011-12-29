@@ -5,23 +5,22 @@ require 'fileutils'
 class TestPathMonitor < Test::Unit::TestCase
   # directory where tested files will be placed: <application_root_dir>/tests/../resources/time_modification_test
   RESOURCES_DIR = File.expand_path(File.dirname(__FILE__) + "/../../resources/path_monitor_test")
-  MOVE_DIR_SRC = RESOURCES_DIR + "/dir1000/dir1500"
-  MOVE_DIR_DEST = RESOURCES_DIR
-  MOVE_FILE_SRC = RESOURCES_DIR + "/dir1000/test_file.1000"
-  MOVE_FILE_DEST = RESOURCES_DIR
+  MOVE_DIR = "/dir1500" # directory that will be moved
+  MOVE_FILE = "/test_file.1000" # file that will be moved
+  MOVE_SRC_DIR = RESOURCES_DIR + "/dir1000" # directory where moved entities where placed
+  MOVE_DEST_DIR = RESOURCES_DIR # directory where moved entities will be placed
   LOG_PATH = RESOURCES_DIR + "/../log.txt"
-  #@numb_entities = 0
-
 
   def setup
-  @sizes = [500, 1000, 1500]
-  @numb_of_copies = 2
-  @numb_entities = @sizes.size * (@numb_of_copies + 1) + @sizes.size
-  @test_file_name = "test_file"   # file name format: <test_file_name_prefix>.<size>[.serial_number_if_more_then_1]
+    @sizes = [500, 1000, 1500]
+    @numb_of_copies = 2
+    @numb_entities = @sizes.size * (@numb_of_copies + 1) + @sizes.size
+    @test_file_name = "test_file"   # file name format: <test_file_name_prefix>.<size>[.serial_number_if_more_then_1]
+    @test_dir_name = "dir"
     FileUtils.rm_rf(RESOURCES_DIR) if (File.exists?(RESOURCES_DIR))
 
     # prepare files for testing
-    cur_dir = nil; # dir where currently files created in this iteration will be placed
+    cur_dir = nil; # directory where currently files created in this iteration will be placed
 
     @sizes.each do |size|
       file_name = @test_file_name + "." + size.to_s
@@ -29,7 +28,7 @@ class TestPathMonitor < Test::Unit::TestCase
       if (cur_dir == nil)
         cur_dir = String.new(RESOURCES_DIR)
       else
-        cur_dir = cur_dir + "/dir" + size.to_s
+        cur_dir = cur_dir + "/#{@test_dir_name}" + size.to_s
       end
       Dir.mkdir(cur_dir) unless (File.exists?(cur_dir))
       raise "Can't create writable working directory: #{cur_dir}" unless (File.exists?(cur_dir) and File.writable?(cur_dir))
@@ -51,45 +50,47 @@ class TestPathMonitor < Test::Unit::TestCase
 
   def test_monitor
     log = File.open(LOG_PATH, "w+")
-    dir_stat = File.lstat(RESOURCES_DIR)
     FileStat.set_log(log)
-    test_dir = DirStat.new(RESOURCES_DIR, dir_stat.size, dir_stat.mtime.utc)
+    test_dir = DirStat.new(RESOURCES_DIR)
 
     # Initial run of monitoring -> initializing DirStat object
     # all found object will be set to NEW state
     # no output to the log
-    test_dir.monitor(true)
+    test_dir.monitor
 
+    # all files will be set to UNCHANGED
     log_prev_pos = log.pos
     log_prev_line = log.lineno
-    # all files will be set to UNCHANGED
     test_dir.monitor
-    sleep(1)
-    log_cur_pos = log.pos
+    sleep(1) # to be sure that data was indeed written
     log.pos= log_prev_pos
     log.each_line do |line|
       assert_equal(true, line.include?(FileStatEnum::UNCHANGED))
     end
-    log.pos= log_cur_pos
     assert_equal(@numb_entities, log.lineno - log_prev_line)  # checking that all entities were monitored
 
     # move (equivalent to delete and create new) directory with including files to new location
-    FileUtils.mv MOVE_DIR_SRC, MOVE_DIR_DEST
+    FileUtils.mv MOVE_SRC_DIR + MOVE_DIR, MOVE_DEST_DIR + MOVE_DIR
     log_prev_pos = log.pos
     log_prev_line = log.lineno
     test_dir.monitor
     sleep(1)
-    log_cur_pos = log.pos
     log.pos= log_prev_pos
     log.each_line do |line|
-      assert_not_equal(true, line.include?(FileStatEnum::UNCHANGED))
-      assert_equal(true, (line.include?(FileStatEnum::CHANGED) or line.include?(FileStatEnum::NEW)))
+      if (line.include?(MOVE_SRC_DIR + MOVE_DIR))
+        assert_equal(true, line.include?(FileStatEnum::NON_EXISTING))
+      elsif (line.include?(MOVE_DEST_DIR + MOVE_DIR))
+        assert_equal(true, line.include?(FileStatEnum::NEW))
+      elsif (line.include?(MOVE_SRC_DIR) or line.include?(MOVE_DEST_DIR))
+        assert_not_equal(true, line.include?(FileStatEnum::UNCHANGED))
+        assert_equal(true, line.include?(FileStatEnum::CHANGED))
+      end
     end
-    log.pos= log_cur_pos
     # old and new containing directories: 2
     # moved directory: 1
+    # deleted directory: 1
     # moved files: @numb_of_copies + 1
-    assert_equal(2 + 1 + @numb_of_copies + 1, log.lineno - log_prev_line)  # checking that only  MOVE_DIR_SRC, MOVE_DIR_DEST states were changed
+    assert_equal(5 + @numb_of_copies, log.lineno - log_prev_line)  # checking that only  MOVE_DIR_SRC, MOVE_DIR_DEST states were changed
 
     # no changes:
     # changed and new files moved to UNCHANGED
@@ -97,27 +98,35 @@ class TestPathMonitor < Test::Unit::TestCase
     log_prev_line = log.lineno
     test_dir.monitor
     sleep(1)
-    log_cur_pos = log.pos
     log.pos= log_prev_pos
     log.each_line do |line|
       assert_equal(true, line.include?(FileStatEnum::UNCHANGED))
     end
-    log.pos= log_cur_pos
-    assert_equal(2 + 1 + @numb_of_copies + 1, log.lineno - log_prev_line)
+    # old and new containing directories: 2
+    # moved directory: 1
+    # moved files: @numb_of_copies + 1
+    assert_equal(4 + @numb_of_copies, log.lineno - log_prev_line)
 
+    # move (equivalent to delete and create new) file
     log_prev_pos = log.pos
     log_prev_line = log.lineno
-    # move (equivalent to delete and create new) file
-    FileUtils.mv MOVE_FILE_SRC, MOVE_FILE_DEST
+    FileUtils.mv MOVE_SRC_DIR + MOVE_FILE, MOVE_DEST_DIR + MOVE_FILE
     test_dir.monitor
     sleep(1)
-    log_cur_pos = log.pos
     log.pos= log_prev_pos
     log.each_line do |line|
-      #
+      if (line.include?MOVE_SRC_DIR + MOVE_FILE)
+        assert_equal(true, line.include?(FileStatEnum::NON_EXISTING))
+      elsif (line.include?MOVE_DEST_DIR + MOVE_FILE)
+        assert_equal(true, line.include?(FileStatEnum::NEW))
+      elsif (line.include?MOVE_SRC_DIR or line.include?MOVE_DEST_DIR)
+        assert_equal(true, line.include?(FileStatEnum::CHANGED))
+      end
     end
-    log.pos= log_cur_pos
-    assert_equal(3, log.lineno - log_prev_line)
+    # old and new containing directories: 2
+    # removed file: 1
+    # new file: 1
+    assert_equal(4, log.lineno - log_prev_line)
 
     # all files were moved to UNCHANGED
     test_dir.monitor
@@ -125,20 +134,16 @@ class TestPathMonitor < Test::Unit::TestCase
     # check that all entities moved to stable
     log_prev_pos = log.pos
     log_prev_line = log.lineno
-    last_changed_dir_stable = test_dir.get_dir(File.dirname(MOVE_FILE_SRC)).stable_state
-    (last_changed_dir_stable + 1).times do
+    (test_dir.stable_state + 1).times do
       test_dir.monitor
-      #puts test_dir.to_s
     end
     sleep(1)
-    log_cur_pos = log.pos
     log.pos= log_prev_pos
     log.each_line do |line|
-      puts line unless (line.include?(FileStatEnum::STABLE))
       assert_equal(true, line.include?(FileStatEnum::STABLE))
     end
-    log.pos= log_cur_pos
     assert_equal(@numb_entities, log.lineno - log_prev_line)
+
     log.close
   end
 end

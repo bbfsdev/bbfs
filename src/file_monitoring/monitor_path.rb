@@ -10,11 +10,11 @@ class FileStat
   attr_accessor :stable_state, :state, :size, :modification_time
   attr_reader :cycles, :path
 
-  DEFAULT_STABLE_STATE = 5
+  DEFAULT_STABLE_STATE = 10
 
   @@log = nil
 
-  def initialize(path, stable_state)
+  def initialize(path, stable_state = DEFAULT_STABLE_STATE)
     @path ||= path
     @size = nil
     @modification_time = nil
@@ -67,7 +67,7 @@ class FileStat
       @state = new_state
       if (@@log)
         @@log.puts(cur_stat)
-        @@log.flush
+        @@log.flush  #Ruby1.9.3: note that this is Ruby internal buffering only; the OS may buffer the data as well
       end
     end
   end
