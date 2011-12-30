@@ -4,6 +4,7 @@ If one of the above changed, the file considered as changed.
 A log file is written with all incremental changes of files.
 
 Install and Run:
+gem build file_monitoring.gemspec
 gem install file_monitoring
 file_monitoring_control conf.yml
 
