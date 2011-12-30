@@ -1,0 +1,11 @@
+#!/usr/bin/env ruby
+
+require 'file_monitoring/file_monitoring.rb'
+require 'rubygems'
+require 'daemons'
+
+pwd = Dir.pwd
+Daemons.run_proc('file_monitoring/file_monitoring.rb') do
+  Dir.chdir(pwd)
+  exec 'ruby file_monitoring/file_monitoring.rb ARGV[0]'
+end

@@ -1,6 +1,6 @@
 require 'yaml'
 require 'algorithms'
-require './src/file_monitoring/monitor_path.rb'
+require './lib/file_monitoring/monitor_path.rb'
 
 def main
   config_path = ARGV[0]
