@@ -1,4 +1,4 @@
-require './src/file_monitoring/monitor_path'
+require './lib/file_monitoring/monitor_path'
 require 'test/unit'
 require 'fileutils'
 
