@@ -2,8 +2,7 @@ require 'yaml'
 require 'algorithms'
 require './lib/file_monitoring/monitor_path.rb'
 
-def main
-  config_path = ARGV[0]
+def monitor_files(config_path)
   config_yml = YAML::load_file(config_path)
   conf_array = config_yml["paths"]
 
@@ -39,5 +38,3 @@ def main
 
   log.close
 end
-
-main
