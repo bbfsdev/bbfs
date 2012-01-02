@@ -1,0 +1,25 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'daemons'
+require 'file_monitoring/file_monitoring.rb'
+
+conf_file_path = File.expand_path('~/.bbfs/etc/file_monitoring.yaml')
+if ARGV.length > 1
+  conf_file_path = File.expand_path(ARGV[1])
+end
+
+puts conf_file_path
+pid_dir = File.expand_path('~/.bbfs/run/')
+FileUtils.mkdir_p(pid_dir)
+
+Daemons.run_proc(
+  'file_monitoring', # name of daemon
+  :dir_mode => :normal,
+  :dir => pid_dir, # directory where pid file will be stored
+#  :backtrace => true,
+#  :monitor => true,
+#  :log_output => true
+) do
+  monitor_files(conf_file_path)
+end

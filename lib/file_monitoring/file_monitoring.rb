@@ -1,6 +1,7 @@
-require 'yaml'
+require 'file_monitoring/monitor_path.rb'
 require 'algorithms'
-require './lib/file_monitoring/monitor_path.rb'
+require 'FileUtils'
+require 'yaml'
 
 def monitor_files(config_path)
   config_yml = YAML::load_file(config_path)
@@ -12,9 +13,14 @@ def monitor_files(config_path)
     pq.push([priority, elem, DirStat.new(elem["path"], elem["stable_state"])], -priority)
   }
 
-  puts config_yml["log_path"]
+  log_path = File.expand_path("~/.bbfs/log/file_monitoring.log")
+  if (!config_yml.key?("log_path"))
+    log_path = File.expand_path(config_yml["log_path"])
+  end
 
-  log = File.open(config_yml["log_path"], 'w')
+  puts log_path
+  FileUtils.mkdir_p(File.dirname(log_path))
+  log = File.open(log_path, 'w')
   FileStat.set_log(log)
 
   while true do

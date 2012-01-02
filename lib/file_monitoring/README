@@ -6,7 +6,7 @@ A log file is written with all incremental changes of files.
 Install and Run:
 gem build file_monitoring.gemspec
 gem install file_monitoring
-file_monitoring_control conf.yml
+file_monitoring conf.yml
 
 Note that scan period is in seconds.
 cong.yml structure:
