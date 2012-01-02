@@ -3,6 +3,7 @@ require 'algorithms'
 require 'FileUtils'
 require 'yaml'
 
+# The main method. Loops on all paths each time span and monitors them.
 def monitor_files(config_path)
   config_yml = YAML::load_file(config_path)
   conf_array = config_yml["paths"]

@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.name        = 'file_monitoring'
-  s.version     = '0.0.0'
-  s.date        = '2012-12-30'
+  s.version     = '0.0.1'
+  s.date        = '2012-1-1'
   s.summary     = "Deamon for monitoring file changes."
   s.description = "Deamon for monitoring file changes."
   s.authors     = ["Gena Petelko, Kolman Vornovitsky"]
@@ -11,5 +11,4 @@ Gem::Specification.new do |s|
   s.executables << 'file_monitoring'
   s.add_dependency("algorithms")
   s.add_dependency("daemons")
-  s.add_dependency("FileUtils")
 end

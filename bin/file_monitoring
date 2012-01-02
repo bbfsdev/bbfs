@@ -1,12 +1,45 @@
 #!/usr/bin/env ruby
 
+# Monitors add/remove/update of files and directories.
+# File monitoring checks file modification date and size.
+# If one of the above changed, the file considered as changed.
+# A log file is written with all incremental changes of files.
+#
+# Install:
+# gem build file_monitoring.gemspec
+# gem install file_monitoring
+#
+# Run: file_monitoring {conf_file} {app suffix}
+# Examples:
+# file_monitoring
+# or
+# file_monitoring conf.yml
+# or
+# file_monitoring conf.yml my_instance
+#
+# Note that scan period is in seconds.
+# cong.yml structure:
+# log_path: ~/my_monitor_log_dir/log
+# paths:
+# - path: /a_path/one
+#   scan_period: 100
+#   stable_state: 5
+# - path: /a_path/two
+#   scan_period: 600
+#   stable_state: 3
+
 require 'rubygems'
 require 'daemons'
 require 'file_monitoring/file_monitoring.rb'
 
-conf_file_path = File.expand_path('~/.bbfs/etc/file_monitoring.yaml')
+conf_file_path = File.expand_path('~/.bbfs/etc/file_monitoring.yml')
 if ARGV.length > 1
   conf_file_path = File.expand_path(ARGV[1])
+end
+
+daemon_suffix = '-default'
+if ARGV.length > 2
+  daemon_suffix = '_' + ARGV[2]
 end
 
 puts conf_file_path
@@ -14,7 +47,7 @@ pid_dir = File.expand_path('~/.bbfs/run/')
 FileUtils.mkdir_p(pid_dir)
 
 Daemons.run_proc(
-  'file_monitoring', # name of daemon
+  'file_monitoring' + daemon_suffix, # name of daemon
   :dir_mode => :normal,
   :dir => pid_dir, # directory where pid file will be stored
 #  :backtrace => true,
