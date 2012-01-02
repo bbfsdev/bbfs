@@ -1,6 +1,6 @@
 require 'file_monitoring/monitor_path.rb'
 require 'algorithms'
-require 'FileUtils'
+require 'fileutils'
 require 'yaml'
 
 # The main method. Loops on all paths each time span and monitors them.
