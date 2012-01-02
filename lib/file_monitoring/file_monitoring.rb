@@ -15,11 +15,11 @@ def monitor_files(config_path)
   }
 
   log_path = File.expand_path("~/.bbfs/log/file_monitoring.log")
-  if (!config_yml.key?("log_path"))
+  if config_yml.key?("log_path")
     log_path = File.expand_path(config_yml["log_path"])
   end
 
-  puts log_path
+  puts "Log path:" + log_path
   FileUtils.mkdir_p(File.dirname(log_path))
   log = File.open(log_path, 'w')
   FileStat.set_log(log)

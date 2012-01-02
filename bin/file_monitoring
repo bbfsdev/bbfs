@@ -37,14 +37,15 @@ if ARGV.length > 1
   conf_file_path = File.expand_path(ARGV[1])
 end
 
-daemon_suffix = '-default'
+daemon_suffix = ''
 if ARGV.length > 2
   daemon_suffix = '_' + ARGV[2]
 end
 
-puts conf_file_path
+puts "Config taken from:" + conf_file_path
 pid_dir = File.expand_path('~/.bbfs/run/')
 FileUtils.mkdir_p(pid_dir)
+puts "pid dir:" + pid_dir
 
 Daemons.run_proc(
   'file_monitoring' + daemon_suffix, # name of daemon
