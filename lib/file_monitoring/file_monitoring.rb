@@ -1,9 +1,10 @@
-require 'yaml'
+require 'file_monitoring/monitor_path.rb'
 require 'algorithms'
-require './src/file_monitoring/monitor_path.rb'
+require 'fileutils'
+require 'yaml'
 
-def main
-  config_path = ARGV[0]
+# The main method. Loops on all paths each time span and monitors them.
+def monitor_files(config_path)
   config_yml = YAML::load_file(config_path)
   conf_array = config_yml["paths"]
 
@@ -13,9 +14,14 @@ def main
     pq.push([priority, elem, DirStat.new(elem["path"], elem["stable_state"])], -priority)
   }
 
-  puts config_yml["log_path"]
+  log_path = File.expand_path("~/.bbfs/log/file_monitoring.log")
+  if config_yml.key?("log_path")
+    log_path = File.expand_path(config_yml["log_path"])
+  end
 
-  log = File.open(config_yml["log_path"], 'w')
+  puts "Log path:" + log_path
+  FileUtils.mkdir_p(File.dirname(log_path))
+  log = File.open(log_path, 'w')
   FileStat.set_log(log)
 
   while true do
@@ -39,5 +45,3 @@ def main
 
   log.close
 end
-
-main

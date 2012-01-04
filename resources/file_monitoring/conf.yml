@@ -1,4 +1,3 @@
-log_path: /Users/kolman/Dev/git/bbfs/resources/file_monitoring/log
 paths:
 - path: /Users/kolman/Dev/git/bbfs/resources
   scan_period: 1

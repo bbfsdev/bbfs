@@ -7,4 +7,7 @@ Dir["#{@@root_dir}/tests/*"].each do |testcase|
   require testcase
 end
 
+Dir["#{@@root_dir}/test/*"].each do |testcase|
+  require testcase
+end
 
