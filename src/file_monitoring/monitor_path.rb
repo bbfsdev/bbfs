@@ -1,3 +1,11 @@
+#  Path monitoring.
+
+#  Enum-like structure that includes possible filesystem entities (files/directories) states:
+# * <tt>NON_EXISTING</tt> - Entity that was treated during previous run, but absent currently
+# * <tt>NEW</tt> - Entity that was found and added to control during this run
+# * <tt>CHANGED</tt> - State was changed between two checks
+# * <tt>UNCHANGED</tt> - Opposite to CHANGED
+# * <tt>STABLE</tt> - Entity is in the UNCHANGED state for a defined (by user) number of iterations
 class FileStatEnum
   NON_EXISTING = "NON_EXISTING"
   NEW = "NEW"
@@ -6,28 +14,39 @@ class FileStatEnum
   STABLE = "STABLE"
 end
 
+#  This class holds current state of file and methods to control and report changes
 class FileStat
-  attr_accessor :stable_state, :state, :size, :modification_time
-  attr_reader :cycles, :path
+  attr_reader :cycles, :path, :stable_state, :state, :size, :modification_time
 
   DEFAULT_STABLE_STATE = 10
 
   @@log = nil
 
+  #  Initializes new file monitoring object
+  # ==== Arguments:
+  #
+  # * <tt>path</tt> - File location
+  # * <tt>stable_state</tt> - Number of iterations to move unchanged file to stable state
   def initialize(path, stable_state = DEFAULT_STABLE_STATE)
     @path ||= path
     @size = nil
     @modification_time = nil
-    @cycles = 0
+    @cycles = 0  # number of iterations from the last file modification
     @state = FileStatEnum::NON_EXISTING
 
-    @stable_state = stable_state
+    @stable_state = stable_state  # number of iteration to move unchanged file to stable state
   end
 
+  #  Sets a log file to report changes
+  # ==== Arguments:
+  #
+  # * <tt>log</tt> - already opened ruby File object
   def self.set_log (log)
     @@log = log
   end
 
+  #  Checks whether file was changed from the last iteration.
+  #  For files size and modification time are checked.
   def monitor
     file_stats = File.lstat(@path) rescue nil
     new_state = nil
@@ -58,10 +77,12 @@ class FileStat
     self.state= new_state
   end
 
+  #  Checks that stored file attributes are the same as file attributes taken from file system.
   def changed?(file_stats)
     not (file_stats.size == size and file_stats.mtime.utc == modification_time.utc)
   end
 
+  #  Sets and writes to the log a new state.
   def state= (new_state)
     if (@state != new_state or @state == FileStatEnum::CHANGED)
       @state = new_state
@@ -72,53 +93,71 @@ class FileStat
     end
   end
 
+  #  Checks whether path and state are the same as of the argument
   def == (other)
     @path == other.path and @stable_state == other.stable_state
   end
 
-  def to_s (ident = 0)
-    (" " * ident) + path.to_s + " : " + state.to_s
+  #  Returns path and state of the file with indentation
+  def to_s (indent = 0)
+    (" " * indent) + path.to_s + " : " + state.to_s
   end
 
+  #  Reports current state with identification.
+  #  # This format used by log file.
   def cur_stat
     # TODO what output format have to be ?
     Time.now.utc.to_s + " : " + self.state + " : " + self.path
   end
 end
 
+#  This class holds current state of directory and methods to control changes
 class DirStat < FileStat
+  #  Initializes new directory monitoring object
+  # ==== Arguments:
+  #
+  # * <tt>path</tt> - File location
+  # * <tt>stable_state</tt> - Number of iterations to move unchanged directory to stable state
   def initialize(path, stable_state = DEFAULT_STABLE_STATE)
     super
     @dirs = nil
     @files = nil
   end
+
+  #  Adds directory for monitoring.
   def add_dir (dir)
     @dirs[dir.path] = dir
   end
 
+  #  Adds file for monitoring.
   def add_file (file)
     @files[file.path] = file
   end
 
+  #  Removes directory from monitoring.
   def rm_dir(dir)
     @dirs.delete(dir.path)
   end
 
+  #  Removes file from monitoring.
   def rm_file(file)
     @files.delete(file.path)
   end
 
+  #  Checks that there is a sub-folder with a given path.
   def has_dir?(path)
     @dirs.has_key?(path)
   end
 
+  #  Checks that there is a file with a given path.
   def has_file?(path)
     @files.has_key?(path)
   end
 
-  def to_s(ident = 0)
-    ident_increment = 2
-    child_ident = ident + ident_increment
+  #  Returns string with contains path and state of this directory as well as it's structure.
+  def to_s(indent = 0)
+    indent_increment = 2
+    child_indent = indent + indent_increment
     res = super
     @files.each_value do |file|
       res += "\n" + file.to_s(child_ident)
@@ -129,6 +168,8 @@ class DirStat < FileStat
     res
   end
 
+  #  Checks that directory structure (i.e. files and directories located directly under this directory)
+  #  wasn't changed since the last iteration.
   def monitor
     was_changed = false
     new_state = nil
@@ -159,8 +200,7 @@ class DirStat < FileStat
     self.state= new_state
   end
 
-  # Updates the files and dirs hashes and globs the directory for changes.
-
+  # Updates the files and directories hashes and globs the directory for changes.
   def update_dir
     was_changed = false
 
@@ -188,6 +228,7 @@ class DirStat < FileStat
     return was_changed
   end
 
+  #  Globs the directory for new files and directories
   def glob_me
     was_changed = false
     files = Dir.glob(path + "/*")
@@ -219,6 +260,6 @@ class DirStat < FileStat
     return was_changed
   end
 
-  protected :add_dir, :add_file, :rm_dir, :rm_file
+  protected :add_dir, :add_file, :rm_dir, :rm_file, :update_dir, :glob_me
 end
 
