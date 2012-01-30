@@ -1,4 +1,4 @@
-require 'file_monitoring/monitor_path.rb'
+require './file_monitoring/monitor_path.rb'
 require 'algorithms'
 require 'fileutils'
 require 'yaml'
@@ -13,7 +13,7 @@ def monitor_files(config_path)
     priority = (Time.now + elem["scan_period"]).to_i
     pq.push([priority, elem, DirStat.new(elem["path"], elem["stable_state"])], -priority)
   }
-
+  
   log_path = File.expand_path("~/.bbfs/log/file_monitoring.log")
   if config_yml.key?("log_path")
     log_path = File.expand_path(config_yml["log_path"])
