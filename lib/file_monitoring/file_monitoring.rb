@@ -1,4 +1,4 @@
-require './file_monitoring/monitor_path.rb'
+require 'file_monitoring/monitor_path.rb'
 require 'algorithms'
 require 'fileutils'
 require 'yaml'
@@ -6,6 +6,7 @@ require 'yaml'
 # The main method. Loops on all paths each time span and monitors them.
 def monitor_files(config_path)
   config_yml = YAML::load_file(config_path)
+
   conf_array = config_yml["paths"]
 
   pq = Containers::PriorityQueue.new

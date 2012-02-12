@@ -6,6 +6,10 @@
 # A log file is written with all incremental changes of files.
 #
 # Install:
+# gem install file_monitoring
+#
+# Local Install:
+# go to bbfs directory.
 # gem build file_monitoring.gemspec
 # gem install file_monitoring
 #
@@ -37,18 +41,14 @@ if ARGV.length > 1
   conf_file_path = File.expand_path(ARGV[1])
 end
 
-daemon_suffix = ''
-if ARGV.length > 2
-  daemon_suffix = '_' + ARGV[2]
-end
-
-puts "Config taken from:" + conf_file_path
+puts "Taking config from:" + conf_file_path
+YAML::load_file(conf_file_path) rescue abort("Can't load %s" % conf_file_path)
 pid_dir = File.expand_path('~/.bbfs/run/')
 FileUtils.mkdir_p(pid_dir)
 puts "pid dir:" + pid_dir
 
 Daemons.run_proc(
-  'file_monitoring' + daemon_suffix, # name of daemon
+  'file_monitoring', # name of daemon
   :dir_mode => :normal,
   :dir => pid_dir, # directory where pid file will be stored
 #  :backtrace => true,
