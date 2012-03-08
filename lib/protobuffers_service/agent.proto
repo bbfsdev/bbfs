@@ -1,0 +1,23 @@
+/**
+ * Created by IntelliJ IDEA.
+ * User: genadyp
+ * Date: 11/30/11
+ * Time: 7:54 AM
+ * To change this template use File | Settings | File Templates.
+ */
+
+import "content_data.proto";
+
+message IndexerPatternsMessage {
+    repeated string positive_patterns = 1;
+    repeated string negative_patterns = 2;
+}
+
+message IndexerArgumentsMessage {
+    optional IndexerPatternsMessage patterns = 1;
+    optional ContentDataMessage otherDB = 2;
+}
+
+service AgentService {
+    rpc Index (IndexerArgumentsMessage) returns (ContentDataMessage);
+}

@@ -1,0 +1,3 @@
+hd1:+:.\resources\index_agent_test\**\*
+hd1:-:.\resources\index_agent_test\**\*.h
+hd1:-:./resources/index_agent_test/lib/**/*

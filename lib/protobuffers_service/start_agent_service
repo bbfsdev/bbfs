@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+require './agent_service'
+
+::AgentService.new(:Port => 9999).start

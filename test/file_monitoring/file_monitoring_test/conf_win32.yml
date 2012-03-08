@@ -1,0 +1,5 @@
+log_path: C:\Kab.Tech\bbfs\resources\file_monitoring\log
+paths:
+- path: C:/Kab.Tech/bbfs/resources/path_monitor_test
+  scan_period: 1
+  stable_state: 5
