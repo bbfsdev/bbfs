@@ -12,4 +12,5 @@ Gem::Specification.new do |s|
   s.executables << 'file_monitoring_win32'
   s.add_dependency("algorithms")
   s.add_dependency('win32-service')
+  s.require_paths << 'lib'
 end

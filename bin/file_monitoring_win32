@@ -47,7 +47,7 @@ RUBY_INTERPRETER_PATH = File.join(Config::CONFIG["bindir"],
                                   Config::CONFIG["RUBY_INSTALL_NAME"] +
                                       Config::CONFIG["EXEEXT"]).to_dos
 
-bin_dir = "#{File.dirname(File.expand_path($0))}".to_dos
+bin_dir = "#{File.dirname(File.expand_path(__FILE__))}".to_dos
 root_dir = "#{File.dirname(bin_dir)}".to_dos
 lib_dir = File.join(root_dir, "lib").to_dos
 bin_full_path = File.join(root_dir, SERVICE_EXE).to_dos
@@ -60,7 +60,7 @@ daemon_suffix = (ARGV.length > 1 ? '_' + ARGV[1] : '')
 argv = ARGV.join(' ')
 
 binary_path = RUBY_INTERPRETER_PATH + " -C " + lib_dir + " #{bin_full_path} #{argv}"
-#puts  binary_path
+
 service_name = SERVICE_NAME + daemon_suffix
 
 begin
@@ -79,6 +79,6 @@ begin
 
   Service.start(service_name)
 rescue Exception => err
-  puts " ***Daemon failure #{Time.now} err=#{err} "
+  puts " ***Daemon failure #{Time.now} err=#{err}"
   raise
 end
