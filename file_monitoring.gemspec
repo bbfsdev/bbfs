@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'file_monitoring'
-  s.version     = '0.0.1'
+  s.version     = '0.0.3'
   s.date        = '2012-01-01'
   s.summary     = "Deamon for monitoring file changes."
   s.description = "Deamon for monitoring file changes."
