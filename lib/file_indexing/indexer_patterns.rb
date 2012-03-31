@@ -20,14 +20,14 @@ class IndexerPatterns
 
   def serialize
     # TODO add a test (including empty collections)
-     indexer_patterns = IndexerPatternsMessage.new
-     positive_patterns.each do |pattern|
-        indexer_patterns.positive_patterns << pattern
-      end
-      negative_patterns.each do |pattern|
-        indexer_patterns.negative_patterns << pattern
-      end
-     indexer_patterns
+    indexer_patterns = IndexerPatternsMessage.new
+    positive_patterns.each do |pattern|
+      indexer_patterns.positive_patterns << pattern
+    end
+    negative_patterns.each do |pattern|
+      indexer_patterns.negative_patterns << pattern
+    end
+    indexer_patterns
   end
 
   # @param pattern [String]
