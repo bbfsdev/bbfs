@@ -11,47 +11,47 @@ require './indexer_patterns'
 ####################
 
 class IndexAgent
-attr_reader :db
+  attr_reader :db
 
-LOCALTZ = Time.now.zone
-ENV['TZ'] = 'UTC'
+  LOCALTZ = Time.now.zone
+  ENV['TZ'] = 'UTC'
 
-	def initialize(server_name, device)
+  def initialize(server_name, device)
     init_log()
     init_db()
-	end
+  end
 
   def init_db()
     @db = ContentData.new
   end
 
-	def init_log()
-		@log = Logger.new(STDERR)
-		@log.level = Logger::WARN
-		@log.datetime_format = "%Y-%m-%d %H:%M:%S"
-	end
+  def init_log()
+    @log = Logger.new(STDERR)
+    @log.level = Logger::WARN
+    @log.datetime_format = "%Y-%m-%d %H:%M:%S"
+  end
 
-	def set_log(log_path, log_level)
-		@log = Logger.new(log_path) if log_path
-		@log.level = log_level
-	end
+  def set_log(log_path, log_level)
+    @log = Logger.new(log_path) if log_path
+    @log.level = log_level
+  end
 
   # Calculate file checksum (SHA1)
-	def self.get_checksum(filename)
-		digest = Digest::SHA1.new
-    	begin
-        file = File.new(filename)
-        while buffer = file.read(65536)
-    			digest << buffer
-        end
-    		#@log.info { digest.hexdigest.downcase + ' ' + filename }
-    		digest.hexdigest.downcase
-      rescue Errno::EACCES, Errno::ETXTBSY => exp
-        @log.warn { "#{exp.message}" }
-    		false
-      ensure
-        file.close if file != nil
+  def self.get_checksum(filename)
+    digest = Digest::SHA1.new
+    begin
+      file = File.new(filename)
+      while buffer = file.read(65536)
+        digest << buffer
       end
+      #@log.info { digest.hexdigest.downcase + ' ' + filename }
+      digest.hexdigest.downcase
+    rescue Errno::EACCES, Errno::ETXTBSY => exp
+      @log.warn { "#{exp.message}" }
+      false
+    ensure
+      file.close if file != nil
+    end
   end
 
   # get all files
@@ -71,9 +71,9 @@ ENV['TZ'] = 'UTC'
     forbid_patterns = Array.new
     otherDB_table = Hash.new   # contains instances from given DB while full path name is a key and instance is a value
     otherDB_contents = Hash.new  # given DB contents
-    
-    # if there is a given DB then populate table with files 
-    # that was already indexed on this server/device 
+
+    # if there is a given DB then populate table with files
+    # that was already indexed on this server/device
     if (otherDB != nil)
       otherDB_contents.update(otherDB.contents)
       otherDB.instances.each_value do |i|
@@ -101,20 +101,20 @@ ENV['TZ'] = 'UTC'
         files.delete(File.expand_path(f))
       end
     end
-    
+
     # create and add contents and instances
     files.each do |file|
       file_stats = File.lstat(file)
-      
+
       # index only files
-      next if (file_stats.directory?)   
-      
-      # keep only files with names in UTF-8      
+      next if (file_stats.directory?)
+
+      # keep only files with names in UTF-8
       unless file.force_encoding("UTF-8").valid_encoding?
         @log.warn { "Non-UTF8 file name \"#{file}\"" }
         next
       end
-      
+
       # add files present in the given DB to the DB and remove these files
       # from further processing (save checksum calculation)
       if otherDB_table.has_key?(file)
@@ -125,7 +125,7 @@ ENV['TZ'] = 'UTC'
           next
         end
       end
-    
+
       # calculate a checksum
       unless (checksum = self.class.get_checksum(file))
         @log.warn { "Cheksum failure: " + file }
