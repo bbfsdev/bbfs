@@ -22,7 +22,7 @@ class IndexAgentTest < Test::Unit::TestCase
 
     patterns.add_pattern('./resources/index_agent_test/lib/**/*', false)
     indexer = IndexAgent.new('large_server_1', 'hd1')
-    
+
     indexer.index(patterns)
     # ./resources/index_agent_test/lib/libexslt.lib
     assert_equal(false, indexer.db.content_exists('9e409338c0d8e0bbdbf5316cb569a0afcdb321db'))
@@ -34,11 +34,11 @@ class IndexAgentTest < Test::Unit::TestCase
     id_regex = /get_checksum/
     get_checksum_num = 0
     set_trace_func Proc.new { |event, file, line, id, binding, classname|
-      if event =~ event_regex and id.to_s =~ id_regex 
+      if event =~ event_regex and id.to_s =~ id_regex
         printf "[%8s] %30s %30s (%s:%-2d)\n", event, id, classname, file, line
         get_checksum_num +=1
       end
-    }    
+    }
     new_indexer.index(patterns, indexer.db)
     set_trace_func nil
     assert_equal(new_indexer.db, indexer.db)

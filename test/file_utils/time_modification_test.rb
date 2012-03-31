@@ -6,7 +6,7 @@ require 'test/unit'
 require 'fileutils'
 
 
-class TestTimeModification < Test::Unit::TestCase  
+class TestTimeModification < Test::Unit::TestCase
   # directory where tested files will be placed: <application_root_dir>/tests/../resources/time_modification_test
   RESOURCES_DIR = File.expand_path(File.dirname(__FILE__) + "/../resources/time_modification_test")
   MOD_TIME_CONTENTS = ContentData.parse_time("2001/02/01 02:23:59.000")  # minimal time that will be inserted in content
@@ -18,12 +18,12 @@ class TestTimeModification < Test::Unit::TestCase
   @input_db
   @mod_content_checksum = nil  # checksum of the content that was manually modified 
   @mod_instance_checksum = nil  # checksum of the instance that was manually modified 
-  
+
   def setup
     sizes = [500, 1000, 1500]
     numb_of_copies = 2
     test_file_name = "test_file"
-    
+
     Dir.mkdir(RESOURCES_DIR) unless (File.exists?(RESOURCES_DIR))
     raise "Can't create writable working directory: #{RESOURCES_DIR}" unless (File.exists?(RESOURCES_DIR) and File.writable?(RESOURCES_DIR))
     # prepare files for testing
@@ -49,17 +49,17 @@ class TestTimeModification < Test::Unit::TestCase
 
 
     @input_db = ContentData.new  # ContentData that will contain manually modified entries
-    
+
     # modifying content
     indexer.db.contents.each_value do |content|
-      if (@mod_content_checksum == nil) 
+      if (@mod_content_checksum == nil)
         @input_db.add_content(Content.new(content.checksum, content.size, MOD_TIME_CONTENTS))
         @mod_content_checksum = content.checksum
       else
         @input_db.add_content(content)
       end
     end
-    
+
     # modifying instance that doesn't belong to the instances of modified content 
     indexer.db.instances.each_value do |instance|
       if (instance.checksum != @mod_content_checksum and @mod_instance_checksum == nil)
@@ -68,13 +68,13 @@ class TestTimeModification < Test::Unit::TestCase
         @mod_instance_checksum = instance.checksum
         File.utime(File.atime(instance.full_path), MOD_TIME_INSTANCES, instance.full_path) # physically update modification time of the file
       else
-        @input_db.add_instance(instance)        
+        @input_db.add_instance(instance)
       end
     end
-    
-    raise "one of the time modifications failed" unless @mod_content_checksum != nil and @mod_instance_checksum != nil 
+
+    raise "one of the time modifications failed" unless @mod_content_checksum != nil and @mod_instance_checksum != nil
   end
-  
+
   def test_modify
     mod_db = FileUtil.unify_time (@input_db) # modified ContentData. Test files also were modified.
 
@@ -89,16 +89,16 @@ class TestTimeModification < Test::Unit::TestCase
         break
       end
     end
-    
+
     # checking that instances were modified according to the instance and content with minimal time
     mod_db.instances.each_value do |instance|
-      if (instance.checksum == @mod_content_checksum) 
+      if (instance.checksum == @mod_content_checksum)
         assert_equal(MOD_TIME_CONTENTS, instance.modification_time)
-      elsif (instance.checksum == @mod_instance_checksum) 
-        assert_equal(MOD_TIME_INSTANCES, instance.modification_time)        
+      elsif (instance.checksum == @mod_instance_checksum)
+        assert_equal(MOD_TIME_INSTANCES, instance.modification_time)
       end
     end
-    
+
     # checking that files were actually modified
     instance = mod_db.instances.values[0]
     indexer = IndexAgent.new(instance.server_name, instance.device)
