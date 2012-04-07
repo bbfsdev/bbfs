@@ -11,18 +11,18 @@ require './indexer_patterns'
 ####################
 
 class IndexAgent
-  attr_reader :db
+  attr_reader :indexed_content
 
   LOCALTZ = Time.now.zone
   ENV['TZ'] = 'UTC'
 
-  def initialize(server_name, device)
+  def initialize
     init_log()
     init_db()
   end
 
   def init_db()
-    @db = ContentData.new
+    @indexed_content = ContentData.new
   end
 
   def init_log()
@@ -120,8 +120,8 @@ class IndexAgent
       if otherDB_table.has_key?(file)
         instance = otherDB_table[file]
         if instance.size == file_stats.size and instance.modification_time == file_stats.mtime.utc
-          @db.add_content(otherDB_contents[instance.checksum])
-          @db.add_instance(instance)
+          @indexed_content.add_content(otherDB_contents[instance.checksum])
+          @indexed_content.add_instance(instance)
           next
         end
       end
@@ -132,10 +132,10 @@ class IndexAgent
         next
       end
 
-      @db.add_content(Content.new(checksum, file_stats.size, Time.now.utc)) unless (@db.content_exists(checksum))
+      @indexed_content.add_content(Content.new(checksum, file_stats.size, Time.now.utc)) unless (@indexed_content.content_exists(checksum))
 
       instance = ContentInstance.new(checksum, file_stats.size, server_name, file_stats.dev.to_s, File.expand_path(file), file_stats.mtime.utc)
-      @db.add_instance(instance)
+      @indexed_content.add_instance(instance)
     end
   end
 end

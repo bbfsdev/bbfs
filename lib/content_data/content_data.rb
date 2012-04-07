@@ -215,6 +215,10 @@ module BBFS
         @instances[key] = instance
       end
 
+      def empty?
+        @contents.empty?
+      end
+
       def content_exists(checksum)
         @contents.key? checksum
       end
