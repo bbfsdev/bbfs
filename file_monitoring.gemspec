@@ -6,7 +6,7 @@ Gem::Specification.new do |s|
   s.description = "Deamon for monitoring file changes."
   s.authors     = ["Gena Petelko, Kolman Vornovitsky"]
   s.email       = 'kolmanv@gmail.com'
-  s.files       = ["lib/file_monitoring/file_monitoring.rb",
+  s.files       = ["lib/file_monitoring.rb",
                    "lib/file_monitoring/monitor_path.rb"]
   s.executables << 'file_monitoring'
   s.add_dependency("algorithms")

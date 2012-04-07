@@ -82,6 +82,10 @@ class FileStat
     not (file_stats.size == size and file_stats.mtime.utc == modification_time.utc)
   end
 
+  def set_event_queue(queue)
+    @event_queue = queue
+  end
+
   #  Sets and writes to the log a new state.
   def state= (new_state)
     if (@state != new_state or @state == FileStatEnum::CHANGED)
@@ -89,6 +93,9 @@ class FileStat
       if (@@log)
         @@log.puts(cur_stat)
         @@log.flush  #Ruby1.9.3: note that this is Ruby internal buffering only; the OS may buffer the data as well
+      end
+      if (@event_queue)
+        event_queue.push([self.state, self.path])
       end
     end
   end
