@@ -1,5 +1,5 @@
 
-# A simple parameters module.
+# A simple params module.
 module BBFS
   module PARAMS
     def parameter(name, default_value, description)
