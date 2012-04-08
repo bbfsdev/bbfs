@@ -7,4 +7,6 @@ rescue LoadError
   require 'content_server'
 end
 
+BBFS::PARAMS.remote_server = 'localhost'
+
 BBFS::ContentServer.run
