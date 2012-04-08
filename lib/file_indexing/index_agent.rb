@@ -1,4 +1,3 @@
-require 'rubygems'
 require 'digest/sha1'
 require 'logger'
 require 'pp'
