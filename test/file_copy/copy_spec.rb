@@ -6,7 +6,7 @@ module BBFS
 
       describe 'FileCopy::ssh_connect' do
         it 'should raise error when username not specified' do
-          ENV.should_receive(:[]).with("USER").and_return(nil)
+          ENV.stub(:[]).with(any_args()).and_return(nil)
           expect { FileCopy::ssh_connect(nil, nil, 'a server') }.should raise_error "Undefined username"
         end
 
@@ -15,13 +15,13 @@ module BBFS
         end
 
         it 'should try to connect if username is set explicitly' do
-          Net::SSH.should_receive(:start).with(any_args()).and_return(true)
-          FileCopy::ssh_connect('kuku', nil, 'a server').should == true
+          Net::SSH.should_receive(:start).with(any_args())
+          FileCopy::ssh_connect('kuku', nil, 'a server')
         end
         it 'should try to connect if username is set via ENV variable' do
-          Net::SSH.should_receive(:start).with(any_args()).and_return(true)
-          ENV.should_receive(:[]).with("USER").and_return('kuku')
-          FileCopy::ssh_connect(nil, nil, 'a server').should == true
+          Net::SSH.should_receive(:start).with(any_args())
+          ENV.stub(:[]).with("USER").and_return('kuku')
+          FileCopy::ssh_connect(nil, nil, 'a server')
         end
       end
 

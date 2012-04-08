@@ -25,6 +25,7 @@ module BBFS
 
     # Simply copy map files using sftp server on dest_server.
     # Note: stfp.upload support parallel uploads - default is 2.
+    # TODO(kolman): packing files, all, not all, determine by part of file.
     def self.sftp_copy(username, password, server, files_map)
       ssh = FileCopy.ssh_connect(username, password, server)
       ssh.sftp.connect do |sftp|
