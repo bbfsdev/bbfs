@@ -208,12 +208,12 @@ class FileUtil
   # Input: ContentData
   # Output: ContentData with unified times
   #         Files modification time attribute physically updated
-  # Assumption: Files in the input db are from this device. 
+  # Assumption: Files in the input db are from this device.
   #             There is no check what device they are belong - only the check of server name.
   #             It is a user responsibility (meanwhile) to provide a correct input
   #             If file has a modification time attribute that doesn't present in the input db,
   #             then the assumption is that this file wasnt indexized and it will not be treated
-  #             (e.i. we do nothing with it)  
+  #             (e.i. we do nothing with it)
   def self.unify_time(db)
     mod_db = ContentData.unify_time(db)
     mod_db.instances.each_value do |instance|
@@ -276,7 +276,7 @@ COMMANDS["indexer"] = "  indexer --patterns=<path> [--exist_cd=<path>]"
 COMMANDS["crawler"] = "  crawler --conf_file=<path> [--cd_out=<path>] [--cd_in=<path>]"
 
 def print_usage
-  puts "Usage: fileutil <command> parameters..."
+  puts "Usage: fileutil <command> params..."
   puts "Commands:"
   COMMANDS.each { |name, description|
     puts description
