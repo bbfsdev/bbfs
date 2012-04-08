@@ -1,4 +1,4 @@
-require 'parameters'
+require 'params'
 
 require_relative 'file_monitoring/file_monitoring'
 
