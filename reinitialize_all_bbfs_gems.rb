@@ -15,11 +15,13 @@ end
 
 uninstall_gem('content_data')
 uninstall_gem('file_monitoring')
+uninstall_gem('file_indexing')
 uninstall_gem('content_server')
 uninstall_gem('parameters')
 uninstall_gem('file_copy')
 build_and_install_gem('file_copy')
 build_and_install_gem('parameters')
 build_and_install_gem('content_data')
+build_and_install_gem('file_indexing')
 build_and_install_gem('file_monitoring')
 build_and_install_gem('content_server')
