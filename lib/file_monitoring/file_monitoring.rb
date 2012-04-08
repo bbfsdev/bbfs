@@ -1,14 +1,24 @@
+require 'algorithms'
+require 'fileutils'
+require 'yaml'
+
+require_relative 'monitor_path'
+
 module BBFS
   module FileMonitoring
 
     class FileMonitoring
+
+      def set_config_path(config_path)
+        @config_path = config_path
+      end
 
       def set_event_queue(queue)
         @event_queue = queue
       end
 
       def monitor_files
-        config_yml = YAML::load_file(PARAMS.config_path)
+        config_yml = YAML::load_file(@config_path)
 
         conf_array = config_yml["paths"]
 
