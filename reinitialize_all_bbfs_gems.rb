@@ -1,3 +1,5 @@
+# TODO(kolman): This actually should be a rake file!
+
 @@upload = ARGV.size > 0 && ARGV[0] == 'upload'
 
 def uninstall_gem(gem_name)

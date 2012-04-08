@@ -13,9 +13,10 @@ Gem::Specification.new do |s|
                    'lib/content_server/queue_indexer.rb']
   s.test_files  = ['test/content_server/content_server_spec.rb']
   s.executables << 'content_server' << 'backup_server'
-  s.add_dependency('file_monitoring')
-  s.add_dependency('file_indexing')
-  s.add_dependency('params')
-  s.add_dependency('file_copy')
   s.add_dependency('content_data')
+  s.add_dependency('eventmachine')
+  s.add_dependency('file_copy')
+  s.add_dependency('file_indexing')
+  s.add_dependency('file_monitoring')
+  s.add_dependency('params')
 end
