@@ -1,5 +1,6 @@
 require 'content_data'
-require 'file_copy/copy'
+require 'file_copy'
+require 'file_indexing'
 require 'file_monitoring'
 require 'thread'
 require 'params'
@@ -17,7 +18,7 @@ module BBFS
     PARAMS.parameter('remote_listening_port', 3333, 'Listening port for backup server content data.')
     PARAMS.parameter('backup_username', nil, 'Backup server username.')
     PARAMS.parameter('backup_password', nil, 'Backup server password.')
-    PARAMS.parameter('backup_destination_folder', File.expand_path('~/.bbfs/data'),
+    PARAMS.parameter('backup_destination_folder', File.expand_path('~/backup_data'),
                      'Backup server destination folder.')
     PARAMS.parameter('content_data_path', File.expand_path('~/.bbfs/var/content.data'),
                      'ContentData file path.')
@@ -53,9 +54,8 @@ module BBFS
 
       # # # # # # # # # # # # # #
       # Initialize/Start local indexer
-      copy_files_events = Queue.new
       local_server_content_data_queue = Queue.new
-      queue_indexer = QueueIndexer.new(copy_files_events,
+      queue_indexer = QueueIndexer.new(monitoring_events,
                                        local_server_content_data_queue,
                                        PARAMS.content_data_path)
       # Start indexing on demand and write changes to queue
@@ -63,6 +63,7 @@ module BBFS
 
       # # # # # # # # # # # # # # # # # # # # # #
       # Initialize/Start content data comparator
+      copy_files_events = Queue.new
       all_threads << Thread.new do
         backup_server_content = nil
         local_server_content = nil
@@ -71,19 +72,22 @@ module BBFS
           # Note: This thread should be the only consumer of local_server_content_data_queue
           # Note: The server will wait in the first time on pop until local sends it's content data
           while !local_server_content || local_server_content_data_queue.size > 1
+            p 'Waiting on local server content data.'
             local_server_content_data = local_server_content_data_queue.pop
           end
 
           # Note: This thread should be the only consumer of backup_server_content_data_queue
           # Note: The server will wait in the first time on pop until backup sends it's content data
           while !backup_server_content || backup_server_content_data_queue.size > 1
+            p 'Waiting on backup server content data.'
             backup_server_content_data = backup_server_content_data_queue.pop
           end
 
+          p 'Updating file copy queue.'
           # Remove backup content data from local server
           content_to_copy = ContentData.remove(backup_server_content_data, local_server_content)
           # Add copy instruction in case content is not empty
-          output_queue.push(content_to_copy) unless content_to_copy.empty?
+          copy_files_events.push(content_to_copy) unless content_to_copy.empty?
         end
       end
 
@@ -92,6 +96,7 @@ module BBFS
       # Start copying files on demand
       all_threads << Thread.new do
         while true do
+          p 'Waiting on copy files events.'
           copy_event = copy_files_events.pop
 
           # Prepare source,dest map for copy.
@@ -107,6 +112,7 @@ module BBFS
             end
           }
 
+          p "Copying files: #{files_map}."
           # Copy files, waits until files are finished copying.
           FileCopy::sftp_copy(PARAMS.backup_username,
                               PARAMS.backup_password,
@@ -115,6 +121,7 @@ module BBFS
         end
       end
 
+      all_threads.each { |t| t.abort_on_exception = true }
       all_threads.each { |t| t.join }
       # Should never reach this line.
     end
@@ -143,9 +150,8 @@ module BBFS
 
       # # # # # # # # # # # # # #
       # Initialize/Start local indexer
-      copy_files_events = Queue.new
       local_server_content_data_queue = Queue.new
-      queue_indexer = QueueIndexer.new(copy_files_events,
+      queue_indexer = QueueIndexer.new(monitoring_events,
                                        local_server_content_data_queue,
                                        PARAMS.content_data_path)
       # Start indexing on demand and write changes to queue
@@ -160,10 +166,16 @@ module BBFS
       all_threads << Thread.new do
         content_data_sender.connect
         while true do
+          p 'Waiting on local server content data queue.'
           content_data_sender.send_content_data(local_server_content_data_queue.pop)
         end
       end
+
+      all_threads.each { |t| t.abort_on_exception = true }
+      all_threads.each { |t| t.join }
+      # Should never reach this line.
     end
+    module_function :run_backup_server
 
   end # module ContentServer
 end # module BBFS
