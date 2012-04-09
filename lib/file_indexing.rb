@@ -1,3 +1,5 @@
+require 'content_data'
+
 require_relative 'file_indexing/index_agent'
 require_relative 'file_indexing/indexer_patterns'
 
