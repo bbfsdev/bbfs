@@ -25,7 +25,9 @@ module BBFS
         pq = Containers::PriorityQueue.new
         conf_array.each { |elem|
           priority = (Time.now + elem["scan_period"]).to_i
-          pq.push([priority, elem, DirStat.new(elem["path"], elem["stable_state"])], -priority)
+          dir_stat = DirStat.new(elem["path"], elem["stable_state"])
+          dir_stat.set_event_queue(@event_queue) if @event_queue
+          pq.push([priority, elem, dir_stat], -priority)
         }
 
         log_path = File.expand_path("~/.bbfs/log/file_monitoring.log")
