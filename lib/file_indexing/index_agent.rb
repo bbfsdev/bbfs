@@ -66,6 +66,7 @@ module BBFS
 
       # index device according to the pattern
       # store the result
+      # does not adds automatically otherDB to stored result
       # TODO device support
       def index(patterns, otherDB = nil)
         abort "#{self.class}: DB not empty. Current implementation permits only one running of index" \
