@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'content_server'
-  s.version     = '0.0.1'
+  s.version     = '0.0.2'
   s.summary     = 'Servers for backing up content.'
   s.description = 'Monitor and Index a directory and back it up to backup server.'
                   'Backups content as opposed to files. Two identical files are considered'

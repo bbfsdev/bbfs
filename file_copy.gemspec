@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'file_copy'
-  s.version     = '0.0.1'
+  s.version     = '0.0.2'
   s.summary     = 'Library for copying files remotely.'
   s.description = 'Library for copying files to remote servers.'
   s.authors     = ['Gena Petelko, Kolman Vornovitsky']

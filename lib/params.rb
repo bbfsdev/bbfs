@@ -1,4 +1,3 @@
-
 # A simple params module.
 module BBFS
   module PARAMS
@@ -7,7 +6,6 @@ module BBFS
       self.class.send('attr_accessor', name)
     end
     module_function :parameter
-
   end
 end
 

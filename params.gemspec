@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'params'
-  s.version     = '0.0.1'
+  s.version     = '0.0.2'
   s.summary     = 'Dynamically stores, parses and providers params.'
   s.description = 'Dynamically stores, parses and providers params. Uses module local readers.'
   s.authors     = ['Gena Petelko', 'Kolman Vornovitsky']

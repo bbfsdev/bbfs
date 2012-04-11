@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'file_indexing'
-  s.version     = '0.0.1'
+  s.version     = '0.0.2'
   s.summary     = 'Indexes files.'
   s.description = 'Indexes files, treats files with same binary sequence as one content.'
   s.authors     = ['Gena Petelko, Kolman Vornovitsky']

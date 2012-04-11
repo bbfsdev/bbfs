@@ -1,2 +1,18 @@
 Big brother file system (distributed file system).
-# TODO Description will be added soon
+
+Backup system:
+Content server monitors a set of directories (blobs/patterns).
+The files in those directories are indexed (calculating their SHA1).
+Each unique content is backed up to the remote (backup) server.
+The backup server also monitors a set of directories (blobs/patterns).
+The files in those directories are also indexed.
+The content server copies new/changed files in the backup server.
+The backup server index those new files too and send the content data (their SHA1 to the original server).
+
+To install the content server and backup server:
+gem install content_server
+
+Run content server:
+> content_server
+Rn backup server:
+> backup_server

@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'content_data'
-  s.version     = '0.0.1'
+  s.version     = '0.0.2'
   s.summary     = 'Data structure for an abstract layer over files.'
   s.description = 'Data structure for an abstract layer over files. Each binary sequence is a content, '
                   'each file is content instance.'

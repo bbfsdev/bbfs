@@ -1,5 +1,10 @@
 #!/usr/bin/env ruby
 
+# Runs backup server. This server monitors a set of directories (blobs/patterns).
+# The files in those directories are indexed (calculating their SHA1).
+# A remote server copies new/changed files in the backup server. The backup server
+# index those new files too and send the content data (their SHA1 to the original server).
+
 begin
   require 'content_server'
 rescue LoadError
