@@ -59,8 +59,6 @@ module BBFS
     end
     module_function :sftp_mkdir_recursive
 
-
-
   end
 end
 
