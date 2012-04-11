@@ -2,8 +2,9 @@ require 'content_data'
 require 'file_copy'
 require 'file_indexing'
 require 'file_monitoring'
-require 'thread'
 require 'params'
+require 'set'
+require 'thread'
 
 require_relative 'content_server/content_receiver'
 require_relative 'content_server/queue_indexer'
@@ -45,11 +46,10 @@ module BBFS
       backup_server_content_data_queue = Queue.new
       content_data_receiver = ContentDataReceiver.new(
           backup_server_content_data_queue,
-          PARAMS.remote_server,
           PARAMS.remote_listening_port)
       # Start listening to backup server
       all_threads << Thread.new do
-        content_data_receiver.start_server
+        content_data_receiver.run
       end
 
       # # # # # # # # # # # # # #
@@ -65,28 +65,28 @@ module BBFS
       # Initialize/Start content data comparator
       copy_files_events = Queue.new
       all_threads << Thread.new do
-        backup_server_content = nil
-        local_server_content = nil
+        backup_server_content_data = ContentData::ContentData.new
+        local_server_content_data = nil
         while true do
 
           # Note: This thread should be the only consumer of local_server_content_data_queue
-          # Note: The server will wait in the first time on pop until local sends it's content data
-          while !local_server_content || local_server_content_data_queue.size > 1
-            p 'Waiting on local server content data.'
-            local_server_content_data = local_server_content_data_queue.pop
-          end
+          p 'Waiting on local server content data.'
+          local_server_content_data = local_server_content_data_queue.pop
 
           # Note: This thread should be the only consumer of backup_server_content_data_queue
           # Note: The server will wait in the first time on pop until backup sends it's content data
-          while !backup_server_content || backup_server_content_data_queue.size > 1
+          while backup_server_content_data_queue.size > 0
             p 'Waiting on backup server content data.'
             backup_server_content_data = backup_server_content_data_queue.pop
           end
 
           p 'Updating file copy queue.'
+          p "local_server_content_data #{local_server_content_data}."
+          p "backup_server_content_data #{backup_server_content_data}."
           # Remove backup content data from local server
-          content_to_copy = ContentData.remove(backup_server_content_data, local_server_content)
+          content_to_copy = ContentData::ContentData.remove(backup_server_content_data, local_server_content_data)
           # Add copy instruction in case content is not empty
+          p "Content to copy: #{content_to_copy}"
           copy_files_events.push(content_to_copy) unless content_to_copy.empty?
         end
       end
@@ -99,12 +99,16 @@ module BBFS
           p 'Waiting on copy files events.'
           copy_event = copy_files_events.pop
 
+          p "Copy file event: #{copy_event}"
+
           # Prepare source,dest map for copy.
           used_contents = Set.new
           files_map = Hash.new
-          copy_event.instances.each { |instance|
+          p "Instances: #{copy_event.instances}"
+          copy_event.instances.each { |key, instance|
+            p "Instance: #{instance}"
             # Add instance only if such content has not added yet.
-            if !used_contents.has_key?(instance.checksum)
+            if !used_contents.member?(instance.checksum)
               files_map[instance.full_path] = destination_filename(
                   PARAMS.backup_destination_folder,
                   instance.checksum)
@@ -133,6 +137,7 @@ module BBFS
     def destination_filename(folder, sha1)
       File.join(folder, sha1[0,2], sha1[2,2], sha1[4,2], sha1)
     end
+    module_function :destination_filename
 
     def run_backup_server
       all_threads = []
@@ -164,7 +169,6 @@ module BBFS
           PARAMS.remote_listening_port)
       # Start sending to backup server
       all_threads << Thread.new do
-        content_data_sender.connect
         while true do
           p 'Waiting on local server content data queue.'
           content_data_sender.send_content_data(local_server_content_data_queue.pop)
