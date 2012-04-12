@@ -28,14 +28,21 @@ module BBFS
       # TODO(kolman): Very bad test, should rewrite and understand how to
       # write test correctly.
       describe 'FileCopy::sftp_copy' do
-        it 'should copy files' do
+        it 'call upload with correct files' do
           ssh_connection = double('Net::SSH::Connection')
-          FileCopy.should_receive(:ssh_connect).with(any_args()).and_return(ssh_connection)
           sftp_session = double('Net::SFTP::Session')
-          ssh_connection.should_receive(:sftp).with(any_args()).and_return(sftp_session)
-          sftp_session.should_receive(:connect).with(any_args()).and_yield(sftp_session)
           uploader = double('Operations::Upload')
-          uploader.should_receive(:wait).with(any_args()).and_return(true, true)
+          sftp_attributes = double('Attributes')
+
+          # Stubbing sftp.
+          FileCopy.stub(:ssh_connect).and_return(ssh_connection)
+          ssh_connection.stub(:sftp).and_return(sftp_session)
+          sftp_session.stub(:connect).and_yield(sftp_session)
+          sftp_session.stub(:stat!).and_return(sftp_attributes)
+          sftp_attributes.stub(:directory?).and_return(true)
+          uploader.stub(:wait).and_return(true, true)
+
+          # Test file uploaded
           sftp_session.should_receive(:upload).with('a', 'b').and_return(uploader)
           sftp_session.should_receive(:upload).with('c', 'd').and_return(uploader)
           FileCopy::sftp_copy(nil, nil, nil, { 'a' => 'b', 'c' => 'd' })
