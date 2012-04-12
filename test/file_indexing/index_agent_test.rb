@@ -9,22 +9,23 @@ module BBFS
         def test_index
           indexer = IndexAgent.new
           patterns = IndexerPatterns.new
-          patterns.add_pattern('.\index_agent_test\**\*')
-          patterns.add_pattern('.\index_agent_test\**\*.h', false)
+          patterns.add_pattern File.join(File.dirname(__FILE__), 'index_agent_test\**\*')
+          patterns.add_pattern File.join(File.dirname(__FILE__), 'index_agent_test\**\*.h'), false
 
           indexer.index(patterns)
-          # ./resources/index_agent_test/lib/libexslt.lib
+          # ./index_agent_test/lib/libexslt.lib
+          p "Contents: #{indexer.indexed_content.contents}."
           assert(indexer.indexed_content.content_exists('c6d9d837659e38d906a4bbdcc6703bc37e9ac7e8'))
-          # ./resources/index_agent_test/include/libexslt/exsltexports.h
+          # .index_agent_test/include/libexslt/exsltexports.h
           assert_equal(false, indexer.indexed_content.content_exists('5c87a31b0106b3c4bb1768e43f5b8c41139882c2'))
-          # ./resources/index_agent_test/bin/xsltproc.exe
+          # ./index_agent_test/bin/xsltproc.exe
           assert(indexer.indexed_content.content_exists('d0d57ff4834a517a52004f59ee5cdb63f2f0427b'))
 
           patterns.add_pattern('./resources/index_agent_test/lib/**/*', false)
           indexer = IndexAgent.new
 
           indexer.index(patterns)
-          # ./resources/index_agent_test/lib/libexslt.lib
+          # ./index_agent_test/lib/libexslt.lib
           assert_equal(false, indexer.indexed_content.content_exists('9e409338c0d8e0bbdbf5316cb569a0afcdb321db'))
 
           # checking that existing db as a prameter for indexer is really working
@@ -48,4 +49,3 @@ module BBFS
     end
   end
 end
-

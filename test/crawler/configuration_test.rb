@@ -1,14 +1,17 @@
-require './configuration.rb'
 require 'test/unit'
+
+require_relative '../../lib/crawler/configuration'
 
 class TestConfiguration < Test::Unit::TestCase
   def test_conf_1
-    conf = Configuration.new('resources/configuration_test.1.conf')
+    conf = Configuration.new File.join(File.dirname(__FILE__),
+                                       '/configuration_test/configuration_test.1.conf')
     assert_equal(1, conf.server_conf_vec.length)
   end
 
   def test_conf
-    conf = Configuration.new('resources/configuration_test.conf')
+    conf = Configuration.new File.join(File.dirname(__FILE__),
+                                       '/configuration_test/configuration_test.conf')
     assert_equal(4, conf.server_conf_vec.length)
     assert_equal("large_server_1", conf.server_conf_vec[0].name)
     assert_equal("kuku_crawl", conf.server_conf_vec[0].username)
@@ -47,7 +50,8 @@ class TestConfiguration < Test::Unit::TestCase
   end
 
   def test_bad_conf
-    conf = Configuration.new('resources/configuration_test.bad.conf')
+    conf = Configuration.new File.join(File.dirname(__FILE__),
+                                       '/configuration_test/configuration_test.bad.conf')
     assert_equal(nil, conf.server_conf_vec)
   end
 end
