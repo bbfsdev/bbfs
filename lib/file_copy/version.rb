@@ -1,6 +1,5 @@
-require 'file_copy/copy'
-
 module BBFS
   module FileCopy
+    VERSION = "0.0.2"
   end
 end

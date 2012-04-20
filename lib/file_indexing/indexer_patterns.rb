@@ -60,6 +60,10 @@ module BBFS
           end
         end
       end
+
+      def size
+        return @positive_patterns.size
+      end
     end
 
   end

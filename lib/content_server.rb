@@ -6,24 +6,22 @@ require 'params'
 require 'set'
 require 'thread'
 
-require_relative 'content_server/content_receiver'
-require_relative 'content_server/queue_indexer'
+require 'content_server/content_receiver'
+require 'content_server/queue_indexer'
 
 # Content server. Monitors files, index local files, listen to backup server content,
 # copy changes and new files to backup server.
 module BBFS
   module ContentServer
-    VERSION = '0.0.1'
-
-    PARAMS.parameter('remote_server', 'localhost', 'IP or DNS of backup server.')
-    PARAMS.parameter('remote_listening_port', 3333, 'Listening port for backup server content data.')
-    PARAMS.parameter('backup_username', nil, 'Backup server username.')
-    PARAMS.parameter('backup_password', nil, 'Backup server password.')
-    PARAMS.parameter('backup_destination_folder', File.expand_path('~/backup_data'),
+    Params.parameter('remote_server', 'localhost', 'IP or DNS of backup server.')
+    Params.parameter('remote_listening_port', 3333, 'Listening port for backup server content data.')
+    Params.parameter('backup_username', nil, 'Backup server username.')
+    Params.parameter('backup_password', nil, 'Backup server password.')
+    Params.parameter('backup_destination_folder', File.expand_path('~/backup_data'),
                      'Backup server destination folder.')
-    PARAMS.parameter('content_data_path', File.expand_path('~/.bbfs/var/content.data'),
+    Params.parameter('content_data_path', File.expand_path('~/.bbfs/var/content.data'),
                      'ContentData file path.')
-    PARAMS.parameter('monitoring_config_path', File.expand_path('~/.bbfs/etc/file_monitoring.yml'),
+    Params.parameter('monitoring_config_path', File.expand_path('~/.bbfs/etc/file_monitoring.yml'),
                      'Configuration file for monitoring.')
 
     def run
@@ -33,7 +31,7 @@ module BBFS
       # Initialize/Start monitoring
       monitoring_events = Queue.new
       fm = FileMonitoring::FileMonitoring.new
-      fm.set_config_path(PARAMS.monitoring_config_path)
+      fm.set_config_path(Params.monitoring_config_path)
       fm.set_event_queue(monitoring_events)
       # Start monitoring and writing changes to queue
       all_threads << Thread.new do
@@ -46,7 +44,7 @@ module BBFS
       backup_server_content_data_queue = Queue.new
       content_data_receiver = ContentDataReceiver.new(
           backup_server_content_data_queue,
-          PARAMS.remote_listening_port)
+          Params.remote_listening_port)
       # Start listening to backup server
       all_threads << Thread.new do
         content_data_receiver.run
@@ -57,7 +55,7 @@ module BBFS
       local_server_content_data_queue = Queue.new
       queue_indexer = QueueIndexer.new(monitoring_events,
                                        local_server_content_data_queue,
-                                       PARAMS.content_data_path)
+                                       Params.content_data_path)
       # Start indexing on demand and write changes to queue
       all_threads << queue_indexer.run
 
@@ -110,7 +108,7 @@ module BBFS
             # Add instance only if such content has not added yet.
             if !used_contents.member?(instance.checksum)
               files_map[instance.full_path] = destination_filename(
-                  PARAMS.backup_destination_folder,
+                  Params.backup_destination_folder,
                   instance.checksum)
               used_contents.add(instance.checksum)
             end
@@ -118,9 +116,9 @@ module BBFS
 
           p "Copying files: #{files_map}."
           # Copy files, waits until files are finished copying.
-          FileCopy::sftp_copy(PARAMS.backup_username,
-                              PARAMS.backup_password,
-                              PARAMS.remote_server,
+          FileCopy::sftp_copy(Params.backup_username,
+                              Params.backup_password,
+                              Params.remote_server,
                               files_map)
         end
       end
@@ -146,7 +144,7 @@ module BBFS
       # Initialize/Start monitoring
       monitoring_events = Queue.new
       fm = FileMonitoring::FileMonitoring.new
-      fm.set_config_path(PARAMS.monitoring_config_path)
+      fm.set_config_path(Params.monitoring_config_path)
       fm.set_event_queue(monitoring_events)
       # Start monitoring and writing changes to queue
       all_threads << Thread.new do
@@ -158,15 +156,15 @@ module BBFS
       local_server_content_data_queue = Queue.new
       queue_indexer = QueueIndexer.new(monitoring_events,
                                        local_server_content_data_queue,
-                                       PARAMS.content_data_path)
+                                       Params.content_data_path)
       # Start indexing on demand and write changes to queue
       all_threads << queue_indexer.run
 
       # # # # # # # # # # # # # # # # # # # # # # # # # # #
       # Initialize/Start backup server content data sender
       content_data_sender = ContentDataSender.new(
-          PARAMS.remote_server,
-          PARAMS.remote_listening_port)
+          Params.remote_server,
+          Params.remote_listening_port)
       # Start sending to backup server
       all_threads << Thread.new do
         while true do

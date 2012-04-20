@@ -1,0 +1,12 @@
+#!/usr/bin/env ruby
+
+# This utility executable is used to easily execute BBFS operations on files.
+
+begin
+  require 'file_utils'
+rescue LoadError
+  require 'rubygems'
+  require 'file_utils'
+end
+
+BBFS::FileUtils::run

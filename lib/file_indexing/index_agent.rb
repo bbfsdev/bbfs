@@ -4,8 +4,7 @@ require 'pp'
 require 'time'
 
 require 'content_data'
-
-require_relative 'indexer_patterns'
+require 'file_indexing/indexer_patterns'
 
 module BBFS
   module FileIndexing
