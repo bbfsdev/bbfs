@@ -1,3 +1,5 @@
+require 'rspec'
+
 require_relative '../../lib/file_copy/copy.rb'
 
 module BBFS
