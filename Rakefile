@@ -21,7 +21,7 @@ end
 desc 'Unistall gems'
 task :uninstall do
   FileList['*.gem'].each { |gem|
-    sh "gem uninstall #{gem}"
+    sh "echo | gem uninstall #{gem[/[^-]*/]}"
   }
 end
 
@@ -38,3 +38,7 @@ desc "Run specs"
 RSpec::Core::RakeTask.new do |t|
   t.pattern = "./test/**/*_spec.rb"
 end
+
+#Spec::Rake::SpecTask.new do |t|
+#  t.libs << 'lib'
+#end

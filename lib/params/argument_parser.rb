@@ -1,6 +1,5 @@
 module BBFS
-  module PARAMS
-
+  module Params
     class ReadArgs
       def self.read_arguments(argv, parsed_arguments, commands = nil)
         argv.each { |arg|

@@ -1,11 +1,11 @@
 # This file is the basic file manipulation tool for the distributed system.
 # All the basic commands should reside here.
 
-require 'fileutils'
+require 'file_utils'
 
-require_relative '../../lib/content_data'
-require_relative '../../lib/file_indexing'
-require_relative '../../lib/params'
+require 'content_data'
+require 'file_indexing'
+require 'params'
 
 module BBFS
   module FileUtils
@@ -135,28 +135,29 @@ module BBFS
             return
           end unless not arguments["patterns"].nil?
 
-          patterns = IndexerPatterns.new
-          patterns.parse_from_file(arguments["patterns"])
+          patterns = BBFS::FileIndexing::IndexerPatterns.new
+          arguments["patterns"].split(':').each { |pattern|
+            p "Pattern: #{pattern}"
+            patterns.add_pattern File.expand_path(pattern)
+          }
 
-          unless (patterns.size > 0)
+          unless patterns.size > 0
             puts "Error loading patterns=%s (empty file)" % arguments["patterns"]
             return
           end
 
           exist_cd = nil
           if (arguments.has_key?"exist_cd")
-            exist_cd = ContentData.new()
+            exist_cd = BBFS::ContentData::ContentData.new()
             exist_cd.from_file(arguments["exist_cd"])
             begin
               puts "Error loading content data exist_cd=%s" % arguments["exist_cd"]
               return
             end unless not exist_cd.nil?
           end
-          m = /([^:]*):([+-]):(.*)/.match(patterns[0])
-          device_name = m[1]
-          indexer = IndexAgent.new  # (`hostname`.chomp, device_name)
+          indexer = BBFS::FileIndexing::IndexAgent.new
           indexer.index(patterns, exist_cd)
-          puts indexer.db.to_s
+          puts indexer.indexed_content.to_s
           # crawler
         elsif arguments["command"] == "crawler"
           begin
@@ -275,7 +276,7 @@ module BBFS
     COMMANDS["indexer"] = "  indexer --patterns=<path> [--exist_cd=<path>]"
     COMMANDS["crawler"] = "  crawler --conf_file=<path> [--cd_out=<path>] [--cd_in=<path>]"
 
-    def print_usage
+    def self.print_usage
       puts "Usage: fileutil <command> params..."
       puts "Commands:"
       COMMANDS.each { |name, description|
@@ -283,16 +284,14 @@ module BBFS
       }
     end
 
-    def main
+    def self.run
       parsed_arguments = Hash.new
       begin
         print_usage
         return
-      end unless ReadArgs.read_arguments(ARGV, parsed_arguments, COMMANDS)
-      fileutil = FileUtil.new(parsed_arguments)
+      end unless Params::ReadArgs.read_arguments(ARGV, parsed_arguments, COMMANDS)
+      FileUtils.new(parsed_arguments)
     end
-
-    #main
 
   end
 end

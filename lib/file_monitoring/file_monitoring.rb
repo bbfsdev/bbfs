@@ -3,12 +3,12 @@ require 'fileutils'
 require 'params'
 require 'yaml'
 
-require_relative 'monitor_path'
+require 'file_monitoring/monitor_path'
 
 module BBFS
   module FileMonitoring
 
-    PARAMS.parameter('default_log_path', File.expand_path('~/.bbfs/log/file_monitoring.log'),
+    Params.parameter('default_log_path', File.expand_path('~/.bbfs/log/file_monitoring.log'),
                      'Default path for log file.')
 
     class FileMonitoring
@@ -34,7 +34,7 @@ module BBFS
           pq.push([priority, elem, dir_stat], -priority)
         }
 
-        log_path = PARAMS.default_log_path
+        log_path = Params.default_log_path
         if config_yml.key?('log_path')
           log_path = File.expand_path(config_yml['log_path'])
         end
