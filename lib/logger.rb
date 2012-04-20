@@ -1,91 +1,84 @@
-class MyLogger
+require ('./params.rb')
 
-  ############################ Init\cleanup methods
+module BBFS
+  # Module: BBFSLogger.
+  # Abstruct: The BBFSLogger is used to log debug\info\error messages
+  module Logger
 
-  #initializer
-  # Abstruct: initialize the logger class.
-  # @param loggerName [string]    - the logger name
-  # @param loggerFileName [string]    - the file name to log
-  def initialize (loggerName,loggerFileName)
-    @name =  loggerName
-    @fileName =  loggerFileName
-    @file = File.new(loggerFileName, "w")
-    @debugLevel = 0
-  end
+    VERSION = '0.0.1'
 
-  #closeLogger
-  # Abstruct: cleanup. Close the log file
-  def closeLogger()
-    @file.close
-    puts "logger:#{@name} file:#{@fileName} is closed"
-  end
+    #Global params used
+    PARAMS.parameter('log_file', File.expand_path('log1.txt') , 'log file name.')
+    PARAMS.parameter('logger_debug_level', 0 , 'Logger level.')
 
+    #Open the Logger file
+    @@file = File.new(PARAMS.log_file, "w")
 
+    #Log to output
+    puts "BBFS logger: file:#{PARAMS.log_file} is opened\nStart Logging..\n"
 
-
-  ############################## members access
-  attr_reader (:name)
-  attr_reader (:debugLevel)
-  attr_reader (:fileName)
-
-
-
-
-  ############################### Set methods
-  #debugLevel=
-  # Abstruct: set log level
-  # @param level [decimal]  log level: 1 | 2 | 3
-  def debugLevel= (level)
-    @debugLevel = level
-  end
-
-
-
-  ############################### Log messages methods
-  #logWarning
-  # Abstruct: Logs warning messages
-  # @param msg [string]  string to log as warning
-  def logWarning (msg)
-    @file.puts "logger:[#{@name}:Warning] #{msg}"
-  end
-  #logError
-  # Abstruct: Logs error messages
-  # @param msg [string]  string to log as error
-  def logError (msg)
-    @file.puts "logger:[#{@name}:Error] #{msg}"
-  end
-  #logInfo
-  # Abstruct: Logs info messages
-  # @param msg [string]  string to log as info
-  def logInfo (msg)
-    sleep(1)
-    @file.puts "logger:[#{@name}:Info] #{msg}"
-  end
-  #logDebug1
-  # Abstruct: Logs debug messages level 1
-  # @param msg [string]  string to log as debug messages level 1
-  def logDebug1 (msg)
-    if (@debugLevel > 0 ) then
-      @file.puts "logger:[#{@name}:DEBUG 1] #{msg}"
+    # module method: closeLogger
+    # Abstruct: cleanup. Close the log file
+    def Logger.closeLogger()
+      @@file.close
+      puts "BBFS logger: file:#{PARAMS.log_file} is closed.\nEnd Logging."
     end
-  end
-  #logDebug2
-  # Abstruct: Logs debug messages level 2
-  # @param msg [string]  string to log as debug messages level 2
-  def logDebug2 (msg)
-    if (@debugLevel > 1 ) then
-      @file.puts "logger:[#{@name}:DEBUG 2] #{msg}"
+    # module method: ReformatCallerData
+    # Abstruct:  Auxiliary method to parse the data of the caller object.
+    #            the regular expresion will find the name of the caller file and the line number of the last call
+    #            i.e.'some_file.rb:12:at mothod_a' , 'some_other_file.rb:19:at mothod_b' , .. -->  some_file.rb:12
+    def Logger.ExtractOnlyLastCallFileNameAndLine(callerDB)
+       #the regular expresion will find the name of the caller file and the line number of the last call
+      /(.*:\d+)/ =~ callerDB[0]
+      return $1
     end
-  end
-  #logDebug3
-  # Abstruct: Logs debug messages level 3
-  # @param msg [string]  string to log as debug messages level 3
-  def logDebug3 (msg)
-    if (@debugLevel > 2 ) then
-      @file.puts "logger:[#{@name}:DEBUG 3] #{msg}"
+
+    ############################### Log messages methods
+    # module method: logWarning
+    # Abstruct: Logs warning messages
+    # @param msg [string]  string to log as warning
+    def Logger.logWarning (msg)
+      @@file.puts "BBFS logger #{Time.new()}[WARNING]:#{Logger.ExtractOnlyLastCallFileNameAndLine(caller)}:#{msg}"
+    end
+    # module method: logError
+    # Abstruct: Logs error messages
+    # @param msg [string]  string to log as error
+    def Logger.logError (msg)
+      @@file.puts "BBFS logger #{Time.new()}[ERROR]:#{Logger.ExtractOnlyLastCallFileNameAndLine(caller)}:#{msg}"
+    end
+    # module method: logInfo
+    # Abstruct: Logs info messages
+    # @param msg [string]  string to log as info
+    def Logger.logInfo (msg)
+      @@file.puts "BBFS logger #{Time.new()}[INFO]:#{Logger.ExtractOnlyLastCallFileNameAndLine(caller)}:#{msg}"
+    end
+    # module method: logDebug1
+    # Abstruct: Logs debug messages level 1
+    # @param msg [string]  string to log as debug messages level 1
+    def Logger.logDebug1 (msg)
+      if (PARAMS.logger_debug_level > 0 ) then
+        @@file.puts "BBFS logger #{Time.new()}[DEBUG-1]:#{Logger.ExtractOnlyLastCallFileNameAndLine(caller)}:#{msg}"
+      end
+    end
+    # module method: logDebug2
+    # Abstruct: Logs debug messages level 2
+    # @param msg [string]  string to log as debug messages level 2
+    def Logger.logDebug2 (msg)
+      if (PARAMS.logger_debug_level > 1 ) then
+        @@file.puts "BBFS logger #{Time.new()}[DEBUG-2]:#{Logger.ExtractOnlyLastCallFileNameAndLine(caller)}:#{msg}"
+      end
+    end
+    # module method: logDebug3
+    # Abstruct: Logs debug messages level 3
+    # @param msg [string]  string to log as debug messages level 3
+    def Logger.logDebug3 (msg)
+      if (PARAMS.logger_debug_level > 2 ) then
+        @@file.puts "BBFS logger #{Time.new()}[DEBUG-3]:#{Logger.ExtractOnlyLastCallFileNameAndLine(caller)}:#{msg}"
+      end
     end
   end
 end
+
 
 
 
