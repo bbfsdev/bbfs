@@ -12,9 +12,9 @@ module BBFS
         # directory where tested files will be placed: __FILE__/time_modification_test
         RESOURCES_DIR = File.expand_path(File.dirname(__FILE__) + "/time_modification_test")
         # minimal time that will be inserted in content
-        MOD_TIME_CONTENTS = ContentData::ContentData.parse_time("2001/02/01 02:23:59.000")
+        MOD_TIME_CONTENTS = ContentData::ContentData.parse_time("1296527039")
         # minimal time that will be inserted in instance
-        MOD_TIME_INSTANCES = ContentData::ContentData.parse_time("2002/02/01 02:23:59.000")
+        MOD_TIME_INSTANCES = ContentData::ContentData.parse_time("1296527039")
         #time_str =  "2002/02/01 02:23:59.000"
         #MOD_TIME_INSTANCES = Time.strftime( time_str, '%Y/%m/%d %H:%M:%S.%L' )
         DEVICE_NAME = "hd1"
@@ -29,18 +29,20 @@ module BBFS
           test_file_name = "test_file"
 
           Dir.mkdir(RESOURCES_DIR) unless (File.exists?(RESOURCES_DIR))
-          raise "Can't create writable working directory: #{RESOURCES_DIR}" unless (File.exists?(RESOURCES_DIR) and File.writable?(RESOURCES_DIR))
+          raise "Can't create writable working directory: #{RESOURCES_DIR}" unless \
+              (File.exists?(RESOURCES_DIR) and File.writable?(RESOURCES_DIR))
           # prepare files for testing
           sizes.each do |size|
             file_path = "#{RESOURCES_DIR}/#{test_file_name}.#{size}"
-            File.open(file_path, "w", 0777) do |file|
+            file = File.open(file_path, "w", 0777) do |file|
               content = Array.new
               size.times do |i|
                 content.push(sprintf("%5d ", i))
               end
               file.puts(content)
+
             end
-            #file.close # looks like it redundant
+            File.utime File.atime(file_path), MOD_TIME_CONTENTS, file_path
             numb_of_copies.times do |i|
               ::FileUtils.cp(file_path, "#{file_path}.#{i}")
             end
@@ -51,34 +53,8 @@ module BBFS
           patterns.add_pattern(RESOURCES_DIR + '\*')
           indexer.index(patterns)
 
-          @input_db = ContentData::ContentData.new  # ContentData that will contain manually modified entries
+          @input_db = indexer.indexed_content
 
-          # modifying content
-          indexer.indexed_content.contents.each_value do |content|
-            if (@mod_content_checksum == nil)
-              @input_db.add_content(ContentData::Content.new(content.checksum, content.size, MOD_TIME_CONTENTS))
-              @mod_content_checksum = content.checksum
-            else
-              @input_db.add_content(content)
-            end
-          end
-
-          # modifying instance that doesn't belong to the instances of modified content
-          indexer.indexed_content.instances.each_value do |instance|
-            if (instance.checksum != @mod_content_checksum and @mod_instance_checksum == nil)
-              mod_instance = ContentData::ContentInstance.new(
-                  instance.checksum, instance.size, instance.server_name,
-                  instance.device, instance.full_path, MOD_TIME_INSTANCES)
-              @input_db.add_instance(mod_instance)
-              @mod_instance_checksum = instance.checksum
-              # physically update modification time of the file
-              File.utime(File.atime(instance.full_path), MOD_TIME_INSTANCES, instance.full_path)
-            else
-              @input_db.add_instance(instance)
-            end
-          end
-
-          raise "one of the time modifications failed" unless @mod_content_checksum != nil && @mod_instance_checksum != nil
         end
 
         def test_modify
