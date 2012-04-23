@@ -31,6 +31,7 @@ module BBFS
           priority = (Time.now + elem['scan_period']).to_i
           dir_stat = DirStat.new(elem['path'], elem['stable_state'])
           dir_stat.set_event_queue(@event_queue) if @event_queue
+          puts [priority, elem, dir_stat]
           pq.push([priority, elem, dir_stat], -priority)
         }
 
@@ -54,7 +55,6 @@ module BBFS
           if (time_span > 0)
             sleep(time_span)
           end
-
           dir_stat.monitor
 
           #puts conf['path']

@@ -175,10 +175,10 @@ module BBFS
         res = super
         @files.each_value do |file|
           res += "\n" + file.to_s(child_ident)
-        end
+        end if @files
         @dirs.each_value do |dir|
           res += "\n" + dir.to_s(child_ident)
-        end
+        end if @dirs
         res
       end
 

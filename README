@@ -16,3 +16,11 @@ Run content server:
 > content_server
 Rn backup server:
 > backup_server
+
+Installation of BBFS development kit:
+> git clone git@github.com:kolmanv/bbfs.git
+> cd bbfs
+> bundle install
+If the install fails (you are on windows/mac), follow instructions and install DevKit/XCode.
+> rake
+

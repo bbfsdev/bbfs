@@ -11,7 +11,7 @@ module BBFS
       password = (password and password.length > 0) ? password : nil
       port = 22 # 22 is a standart SSH port
       raise "Undefined server" unless server
-      p "Trying to connect(ssh): #{username}, #{password}, #{server}."
+      p "Trying to connect(ssh): #{username}, #{password}, #{server}, #{port}."
       if (username and password)
         Net::SSH.start(server, username,
                        :password => password,
