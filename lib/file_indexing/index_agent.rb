@@ -71,7 +71,7 @@ module BBFS
         abort "#{self.class}: DB not empty. Current implementation permits only one running of index" \
             unless @indexed_content.contents.empty?
 
-        server_name = `hostname`
+        server_name = `hostname`.strip
         permit_patterns = Array.new
         forbid_patterns = Array.new
         otherDB_table = Hash.new   # contains instances from given DB while full path name is a key and instance is a value
@@ -139,11 +139,11 @@ module BBFS
             next
           end
 
-          @indexed_content.add_content(ContentData::Content.new(checksum, file_stats.size, Time.now.utc)) \
+          @indexed_content.add_content ContentData::Content.new(checksum, file_stats.size, Time.now.utc) \
               unless @indexed_content.content_exists(checksum)
 
           instance = ContentData::ContentInstance.new(checksum, file_stats.size, server_name, file_stats.dev.to_s,
-                                                      File.expand_path(file), file_stats.mtime.utc)
+                                                          File.expand_path(file), file_stats.mtime.utc)
           @indexed_content.add_instance(instance)
         end
       end

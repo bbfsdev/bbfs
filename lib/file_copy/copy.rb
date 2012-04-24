@@ -54,7 +54,9 @@ module BBFS
       if !dir_stat
         p "Directory does not exists: #{path}."
         sftp_mkdir_recursive sftp, File.dirname(path)
-        sftp.mkdir!(path)
+        p "Making dir #{path}."
+        response = sftp.mkdir!(path)
+        p "Making dir ok:#{response.ok?}."
       end
     end
     module_function :sftp_mkdir_recursive
