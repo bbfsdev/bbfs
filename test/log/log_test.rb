@@ -1,5 +1,5 @@
-require ('./log.rb')
-require ('./params.rb')
+require ('log')
+require ('params')
 require 'test/unit'
 
 module BBFS

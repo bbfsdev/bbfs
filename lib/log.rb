@@ -1,4 +1,4 @@
-require ('./params.rb')
+require ('params')
 require ('thread')
 
 module BBFS
