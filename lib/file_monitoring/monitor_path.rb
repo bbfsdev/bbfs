@@ -100,7 +100,7 @@ module BBFS
             @@log.puts(cur_stat)
             @@log.flush  #Ruby1.9.3: note that this is Ruby internal buffering only; the OS may buffer the data as well
           end
-          if (@event_queue)
+          if (@event_queue && !self.instance_of?(DirStat))
             p "Writing to event queue [#{self.state}, #{self.path}]"
             @event_queue.push([self.state, self.path])
           end
@@ -125,7 +125,7 @@ module BBFS
       end
     end
 
-#  This class holds current state of directory and methods to control changes
+    #  This class holds current state of directory and methods to control changes
     class DirStat < FileStat
       #  Initializes new directory monitoring object
       # ==== Arguments:
@@ -175,10 +175,10 @@ module BBFS
         res = super
         @files.each_value do |file|
           res += "\n" + file.to_s(child_ident)
-        end
+        end if @files
         @dirs.each_value do |dir|
           res += "\n" + dir.to_s(child_ident)
-        end
+        end if @dirs
         res
       end
 

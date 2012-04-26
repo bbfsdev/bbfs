@@ -223,6 +223,7 @@ module BBFS
         @contents.key? checksum
       end
 
+      # TODO(kolman): The semantics of thir merge is merge! change in all file.
       def merge(content_data)
         content_data.contents.values.each { |content|
           add_content(content)
@@ -296,7 +297,7 @@ module BBFS
         number_of_instances = lines[i].to_i
         i += 1
         number_of_instances.times {
-          parameters = lines[i].split(",")
+          parameters = lines[i].split(',')
           # bugfix: if file name consist a comma then parsing based on comma separating fails
           if (parameters.size > 6)
             (5..parameters.size-2).each do |i|
@@ -317,20 +318,15 @@ module BBFS
         }
       end
 
-      def self.parse_time(time_str)
-        return Nil unless time_str.instance_of?String
-        time = Time.strptime( time_str, '%Y/%m/%d %H:%M:%S.%L' )
-        # another option to parse a time
-        #require 'scanf.rb'
-        #time_arr = time_str.scanf("%d/%d/%d %d:%d:%d.%d")
-        #time = Time.utc(time_arr[0], time_arr[1],time_arr[2],time_arr[3],time_arr[4],time_arr[5],time_arr[6])
+      def self.parse_time time_str
+        return nil unless time_str.instance_of? String
+        seconds_from_epoch = Integer time_str  # Not using to_i here because it does not check string is integer.
+        time = Time.at seconds_from_epoch
       end
 
       def self.format_time(time)
-        return Nil unless time.instance_of?Time
-        #puts time.class
-        str = time.strftime( '%Y/%m/%d %H:%M:%S.%L' )
-        #puts str
+        return nil unless time.instance_of?Time
+        str = time.to_i.to_s
         return str
       end
 
@@ -339,8 +335,8 @@ module BBFS
         return b unless not a.nil?
         return a unless not b.nil?
 
-        return Nil unless a.instance_of?ContentData
-        return Nil unless b.instance_of?ContentData
+        return nil unless a.instance_of?ContentData
+        return nil unless b.instance_of?ContentData
 
         ret = ContentData.new
         ret.merge(a)
@@ -351,8 +347,8 @@ module BBFS
 
       # removed content data a from content data b and returns the new content data.
       def self.remove(a, b)
-        return Nil unless a.instance_of?ContentData
-        return Nil unless b.instance_of?ContentData
+        return nil unless a.instance_of?ContentData
+        return nil unless b.instance_of?ContentData
 
         ret = ContentData.new
 

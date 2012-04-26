@@ -16,7 +16,7 @@ module BBFS
 
       def run
         server_content_data = ContentData::ContentData.new
-        server_content_data.from_file(@content_data_path)
+        server_content_data.from_file(@content_data_path) rescue Errno::ENOENT
         # Start indexing on demand and write changes to queue
         thread = Thread.new do
           while true do
@@ -28,17 +28,16 @@ module BBFS
               p "Indexing content #{event[1]}."
               index_agent = FileIndexing::IndexAgent.new
               indexer_patterns = FileIndexing::IndexerPatterns.new
-
               indexer_patterns.add_pattern(event[1])
               index_agent.index(indexer_patterns, server_content_data)
-              server_content_data = index_agent.indexed_content
-              # TODO(kolman) Don't write to file each change?
+              server_content_data.merge index_agent.indexed_content
+              # TODO(kolman): Don't write to file each change?
               p "Writing server content data to #{@content_data_path}."
               server_content_data.to_file(@content_data_path)
               p 'Adding server content data to queue.'
               @output_queue.push(server_content_data)
             end
-            p 'End of if.'
+            #p 'End of if.'
           end  # while true do
         end  # Thread.new do
         thread

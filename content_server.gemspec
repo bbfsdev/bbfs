@@ -1,6 +1,8 @@
+require File.expand_path('../lib/content_server/version', __FILE__)
+
 Gem::Specification.new do |s|
   s.name        = 'content_server'
-  s.version     = '0.0.1'
+  s.version     = BBFS::ContentServer::VERSION
   s.summary     = 'Servers for backing up content.'
   s.description = 'Monitor and Index a directory and back it up to backup server.'
                   'Backups content as opposed to files. Two identical files are considered'
@@ -12,7 +14,7 @@ Gem::Specification.new do |s|
                    'lib/content_server/content_receiver.rb',
                    'lib/content_server/queue_indexer.rb']
   s.test_files  = ['test/content_server/content_server_spec.rb']
-  s.executables << 'content_server' << 'backup_server'
+  s.executables = ['content_server', 'backup_server']
   s.add_dependency('content_data')
   s.add_dependency('eventmachine')
   s.add_dependency('file_copy')

@@ -1,6 +1,8 @@
+require File.expand_path('../lib/file_monitoring/version', __FILE__)
+
 Gem::Specification.new do |s|
   s.name        = 'file_monitoring'
-  s.version     = '0.0.3'
+  s.version     = BBFS::FileMonitoring::VERSION
   s.date        = '2012-01-01'
   s.summary     = 'Deamon for monitoring file changes.'
   s.description = 'Deamon for monitoring file changes in set of patterns (blobs).'

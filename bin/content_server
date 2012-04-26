@@ -1,5 +1,9 @@
 #!/usr/bin/env ruby
 
+# Runs content server. This server monitors a set of directories (blobs/patterns).
+# The files in those directories are indexed (calculating their SHA1).
+# Each unique content is backed up to the remote (backup) server.
+
 begin
   require 'content_server'
 rescue LoadError
