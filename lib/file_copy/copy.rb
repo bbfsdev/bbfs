@@ -11,7 +11,7 @@ module BBFS
       password = (password and password.length > 0) ? password : nil
       port = 22 # 22 is a standart SSH port
       raise "Undefined server" unless server
-      p "Trying to connect(ssh): #{username}, #{password}, #{server}."
+      p "Trying to connect(ssh): #{username}, #{password}, #{server}, #{port}."
       if (username and password)
         Net::SSH.start(server, username,
                        :password => password,
@@ -54,7 +54,9 @@ module BBFS
       if !dir_stat
         p "Directory does not exists: #{path}."
         sftp_mkdir_recursive sftp, File.dirname(path)
-        sftp.mkdir!(path)
+        p "Making dir #{path}."
+        response = sftp.mkdir!(path)
+        p "Making dir ok:#{response.ok?}."
       end
     end
     module_function :sftp_mkdir_recursive

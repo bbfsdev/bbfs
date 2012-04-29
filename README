@@ -9,10 +9,56 @@ The files in those directories are also indexed.
 The content server copies new/changed files in the backup server.
 The backup server index those new files too and send the content data (their SHA1 to the original server).
 
-To install the content server and backup server:
-gem install content_server
+Installation of BBFS development kit:
+> git clone git@github.com:kolmanv/bbfs.git
+> cd bbfs
+bbfs> bundle install
+If the install fails (you are on windows/mac), follow instructions and install DevKit/XCode.
+
+Install and run sftp server (for example set a 'test' user with 'test' password) on backup server
+with default dir similar to backup file monitoring dir, for example: C:/Users/kolman/backup_data
+
+Prepare file monitoring yml files:
+~/.bbfs/etc/file_monitoring.yml:
+paths:
+- path: C:/Users/kolman/test_files
+  scan_period: 1
+  stable_state: 5
+
+~/.bbfs/etc/backup_file_monitoring.yml:
+paths:
+- path: C:/Users/kolman/backup_data
+  scan_period: 1
+  stable_state: 5
+
+Note that for now parameter parsing is not yet available so just hard-code the parameters in the
+executables and run the local code:
+
+For content server:
+...
+BBFS::Params.remote_server = '127.0.0.1'
+BBFS::Params.backup_username = 'test'
+BBFS::Params.backup_password = 'test'
+BBFS::Params.content_data_path = File.expand_path('~/.bbfs/var/server_content.data')
+...
+
+For backup server:
+...
+BBFS::Params.monitoring_config_path = File.expand_path('~/.bbfs/etc/backup_file_monitoring.yml')
+...
 
 Run content server:
-> content_server
-Rn backup server:
-> backup_server
+bbfs> ruby -Ilib bin/content_server
+Run backup server (after content server is running):
+bbfs> ruby -Ilib bin/backup_server
+
+Later when paramter parsing will be available we could do:
+Run content server:
+bbfs> ruby -Ilib bin/content_server --remote_server='127.0.0.1' --backup_username=test \
+            --backup_password=test --content_data_path=~/.bbfs/var/server_content.data
+Run backup server (after content server is running):
+bbfs> ruby -Ilib bin/backup_server --monitoring_config_path=~/.bbfs/etc/backup_file_monitoring.yml
+
+To test and spec your project run:
+> rake
+

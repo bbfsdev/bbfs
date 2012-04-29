@@ -297,7 +297,7 @@ module BBFS
         number_of_instances = lines[i].to_i
         i += 1
         number_of_instances.times {
-          parameters = lines[i].split(",")
+          parameters = lines[i].split(',')
           # bugfix: if file name consist a comma then parsing based on comma separating fails
           if (parameters.size > 6)
             (5..parameters.size-2).each do |i|
