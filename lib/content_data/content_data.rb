@@ -386,12 +386,12 @@ module BBFS
           checksum = instance.checksum
           time = instance.modification_time
 
-          unless (checksum2instances.has_key?checksum)
+          unless (checksum2instances.has_key? checksum)
             checksum2instances[checksum] = []
           end
           checksum2instances[checksum] << instance
 
-          if (not checksum2time.has_key?checksum)
+          if (not checksum2time.has_key? checksum)
             checksum2time[checksum] = time
           elsif ((checksum2time[checksum] <=> time) > 0)
             checksum2time[checksum] = time
@@ -401,7 +401,7 @@ module BBFS
         # update min time table with time information from contents
         db.contents.each do |checksum, content|
           time = content.first_appearance_time
-          if (not checksum2time.has_key?checksum)
+          if (not checksum2time.has_key? checksum)
             checksum2time[checksum] = time
           elsif ((checksum2time[checksum] <=> time) > 0)
             checksum2time[checksum] = time
