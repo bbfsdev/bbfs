@@ -12,9 +12,9 @@ module BBFS
         # directory where tested files will be placed: __FILE__/time_modification_test
         RESOURCES_DIR = File.expand_path(File.dirname(__FILE__) + "/time_modification_test")
         # minimal time that will be inserted in content
-        MOD_TIME_CONTENTS = ContentData::ContentData.parse_time("1296527039")
+        MOD_TIME_CONTENTS = ContentData::ContentData.parse_time("1306527039")
         # minimal time that will be inserted in instance
-        MOD_TIME_INSTANCES = ContentData::ContentData.parse_time("1296527039")
+        MOD_TIME_INSTANCES = ContentData::ContentData.parse_time("1306527039")
         #time_str =  "2002/02/01 02:23:59.000"
         #MOD_TIME_INSTANCES = Time.strftime( time_str, '%Y/%m/%d %H:%M:%S.%L' )
         DEVICE_NAME = "hd1"
@@ -40,7 +40,6 @@ module BBFS
                 content.push(sprintf("%5d ", i))
               end
               file.puts(content)
-
             end
             File.utime File.atime(file_path), MOD_TIME_CONTENTS, file_path
             numb_of_copies.times do |i|
@@ -54,9 +53,41 @@ module BBFS
           indexer.index(patterns)
 
           @input_db = indexer.indexed_content
-
         end
 
+		def test_local_os
+		  Dir.mkdir(RESOURCES_DIR) unless (File.exists?(RESOURCES_DIR))
+		  file_path = "#{RESOURCES_DIR}/local_os_test.test"
+		  file = File.open(file_path, "w", 0777) do |file|
+            file.puts("kuku")
+          end
+		  file_stats = File.stat(file_path)
+		  p "MOD_TIME_CONTENTS: #{MOD_TIME_CONTENTS}."
+		  p "MOD_TIME_CONTENTS: #{MOD_TIME_CONTENTS.to_i}."
+		  p "file_stat.mtime: #{file_stats.mtime}."
+		  p "file_stat.mtime: #{file_stats.mtime.to_i}."
+		  p "File.mtime: #{File.mtime(file_path)}."
+		  p "File.mtime: #{File.mtime(file_path).to_i}."
+          File.utime File.atime(file_path), MOD_TIME_CONTENTS, file_path
+		  file_stats = File.stat(file_path)
+		  p "file_stat.mtime: #{file_stats.mtime}."
+		  p "file_stat.mtime: #{file_stats.mtime.to_i}."
+		  p "File.mtime: #{File.mtime(file_path)}."
+		  p "File.mtime: #{File.mtime(file_path).to_i}."
+		  
+		  file_mtime = nil
+		  file = File.open(file_path, "r") do |file|
+            p "file.open.mtime = #{file.mtime}"
+			p "file.open.mtime = #{file.mtime.to_i}"
+			file_mtime = file.mtime
+          end
+		  
+		  assert_equal(MOD_TIME_CONTENTS, file_mtime)
+		  
+		  # !!! This fails on windows with different timezone
+		  #assert_equal(MOD_TIME_CONTENTS, file_stats.mtime)
+		end
+		
         def test_modify
           # modified ContentData. Test files also were modified.
           mod_db = FileUtils.unify_time @input_db
@@ -88,6 +119,8 @@ module BBFS
           patterns = FileIndexing::IndexerPatterns.new
           patterns.add_pattern(File.dirname(instance.full_path) + '/*')     # this pattern index all files
           indexer.index(patterns, mod_db)
+		  p mod_db.to_s
+		  p indexer.indexed_content.to_s
           assert_equal(indexer.indexed_content, mod_db)
         end
       end
