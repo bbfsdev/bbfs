@@ -1,9 +1,10 @@
+require 'fileutils'
 require 'time'
 require 'test/unit'
 
-require_relative '../../lib/content_data/content_data'
-require_relative '../../lib/file_indexing/index_agent'
-require_relative '../../lib/file_utils/file_utils'
+require 'content_data'
+require 'file_indexing'
+require 'file_utils'
 
 module BBFS
   module FileUtils
