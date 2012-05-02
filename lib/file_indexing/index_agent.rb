@@ -126,7 +126,7 @@ module BBFS
           # from further processing (save checksum calculation)
           if otherDB_table.has_key?(file)
             instance = otherDB_table[file]
-            if instance.size == file_stats.size and instance.modification_time == file_stats.mtime.utc
+            if instance.size == file_stats.size and instance.modification_time == File.open(file, 'r') { |f| f.mtime }
               @indexed_content.add_content(otherDB_contents[instance.checksum])
               @indexed_content.add_instance(instance)
               next
@@ -143,7 +143,7 @@ module BBFS
               unless @indexed_content.content_exists(checksum)
 
           instance = ContentData::ContentInstance.new(checksum, file_stats.size, server_name, file_stats.dev.to_s,
-                                                          File.expand_path(file), file_stats.mtime.utc)
+                                                          File.expand_path(file), File.open(file, 'r') { |f| f.mtime })
           @indexed_content.add_instance(instance)
         end
       end

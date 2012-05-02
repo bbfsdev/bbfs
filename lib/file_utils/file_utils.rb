@@ -218,13 +218,23 @@ module BBFS
       def self.unify_time(db)
         mod_db = ContentData::ContentData.unify_time(db)
         mod_db.instances.each_value do |instance|
-          next unless db.instances.has_key?instance.global_path
+          next unless db.instances.has_key? instance.global_path
           if (File.exists?(instance.full_path))
-            file_stats = File.lstat(instance.full_path)
-            if (file_stats.mtime == db.instances[instance.global_path].modification_time \
-			    and file_stats.size == instance.size \
-          and (file_stats.mtime <=> instance.modification_time) > 0)
-              File.utime(File.atime(instance.full_path), instance.modification_time, instance.full_path)
+            file_mtime, file_size = File.open(instance.full_path) { |f| [f.mtime, f.size] }
+			p "file:#{instance.full_path} file_mtime:#{file_mtime}."
+			p "update mtime:#{instance.modification_time}"
+			p "original instance mtime:#{db.instances[instance.global_path].modification_time}."
+			p "unify instance mtime:#{instance.modification_time}."
+			p "unify instance mtime:#{instance.modification_time.to_i}."
+			p "Comparison: #{file_mtime <=> instance.modification_time}"
+            if (file_mtime == db.instances[instance.global_path].modification_time \
+			    and file_size == instance.size \
+                and (file_mtime <=> instance.modification_time) > 0)
+			  p "Comparison success."
+              File.utime File.atime(instance.full_path), instance.modification_time, instance.full_path
+			  file_mtime = File.open(instance.full_path) { |f| f.mtime }
+			  p "file mtime:#{file_mtime}."
+			  p "file mtime:#{file_mtime.to_i}."
             end
           end
         end
