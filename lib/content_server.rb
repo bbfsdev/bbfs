@@ -14,11 +14,12 @@ require 'content_server/queue_indexer'
 module BBFS
   module ContentServer
     Params.parameter('remote_server', 'localhost', 'IP or DNS of backup server.')
-    Params.parameter('remote_listening_port', 3333, 'Listening port for backup server content data.')
+    Params.parameter('remote_listening_port', 3333,
+                     'Listening port for backup server content data.')
     Params.parameter('backup_username', nil, 'Backup server username.')
     Params.parameter('backup_password', nil, 'Backup server password.')
-    Params.parameter('backup_destination_folder', File.expand_path('~/backup_data'),
-                     'Backup server destination folder.')
+    Params.parameter('backup_destination_folder', '',
+                     'Backup server destination folder, default is the relative local folder.')
     Params.parameter('content_data_path', File.expand_path('~/.bbfs/var/content.data'),
                      'ContentData file path.')
     Params.parameter('monitoring_config_path', File.expand_path('~/.bbfs/etc/file_monitoring.yml'),
@@ -133,7 +134,7 @@ module BBFS
     # for example: folder:/mnt/hd1/bbbackup, sha1:d0be2dc421be4fcd0172e5afceea3970e2f3d940
     # dest filename: /mnt/hd1/bbbackup/d0/be/2d/d0be2dc421be4fcd0172e5afceea3970e2f3d940
     def destination_filename(folder, sha1)
-      File.join(folder, sha1[0,2], sha1[2,2], sha1[4,2], sha1)
+      File.join(folder, sha1[0,2], sha1[2,2], sha1)
     end
     module_function :destination_filename
 
