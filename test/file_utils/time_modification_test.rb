@@ -56,6 +56,8 @@ module BBFS
           @input_db = indexer.indexed_content
         end
 
+    # This test compares two ways of ruby + OS to get mtime (modification file) of a file.
+    # We can see that in Windows there is a difference.
 		def test_local_os
 		  Dir.mkdir(RESOURCES_DIR) unless (File.exists?(RESOURCES_DIR))
 		  file_path = "#{RESOURCES_DIR}/local_os_test.test"
