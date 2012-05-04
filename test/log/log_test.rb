@@ -1,4 +1,3 @@
-
 require ('params')
 require 'test/unit'
 require_relative '../../lib/log.rb'
@@ -6,30 +5,22 @@ require_relative '../../lib/log/log_consumer.rb'
 
 module BBFS
   module Log
-
     class TestConsumer < Consumer
 
       def initialize
         super
         @dataList = []
-        @semaphore = Mutex.new
       end
 
       def consume data
-        @semaphore.synchronize{
           @dataList.push data
-        }
       end
 
       def getDataList
-        @semaphore.synchronize{
           return @dataList
-        }
       end
       def init
-        @semaphore.synchronize{
           @dataList.clear
-        }
       end
     end
 
@@ -63,8 +54,6 @@ module BBFS
       end
 
       def test_check_warning_format
-        #Params.log_file_name = File.expand_path 'log_test_out_dir/log_test.txt'
-
         #set test phase
         Log.init
         testConsumer = TestConsumer.new
@@ -90,7 +79,6 @@ module BBFS
       end
 
       def test_check_error_format
-
         #set test phase
         Log.init
         testConsumer = TestConsumer.new

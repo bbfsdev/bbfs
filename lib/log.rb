@@ -3,11 +3,9 @@ require ('thread')
 require ('log/log_consumer.rb')
 
 module BBFS
-
   # Module: Log.
   # Abstruct: The Log is used to log info\warning\error\debug messages
   module Log
-
     #Global params used
     Params.parameter 'log_param_auto_start',false, 'log param. If true, log will start automatically when Log module is required. Else, Init module method should be called'
     Params.parameter 'log_debug_level', 0 , 'Log level.'
@@ -24,11 +22,11 @@ module BBFS
       # 1. console consumer - If enabled, will flush the log immediately to the console
       # 2. bufferConsumerProducer - If enabled, will use the file consumer to flush a buffer to a file
       @consumers.clear
-      if true == Params.log_write_to_console then
+      if Params.log_write_to_console then
         consoleConsumer = ConsoleConsumer.new
         @consumers.push consoleConsumer
       end
-      if true == Params.log_write_to_file then
+      if Params.log_write_to_file then
         fileConsumer = FileConsumer.new Params.log_file_name
         bufferConsumerProducer = BufferConsumerProducer.new Params.log_param_number_of_mega_bytes_stored_before_flush, Params.log_param_max_elapsed_time_in_seconds_from_last_flush
         bufferConsumerProducer.addConsumer fileConsumer
@@ -36,7 +34,7 @@ module BBFS
       end
     end
 
-    if (true == Params.log_param_auto_start) then
+    if Params.log_param_auto_start then
       Log.init
     end
 
@@ -49,11 +47,10 @@ module BBFS
     #            the regular expression will find the name of the caller file and the line number of the last call
     #            i.e.'some_file.rb:12:at mothod_a' , 'some_other_file.rb:19:at mothod_b' , .. -->  some_file.rb:12
     def Log.ExtractOnlyLastCallFileNameAndLine callerInfo
-       #the regular expresion will find the name of the caller file and the line number of the last call
+       #the regular expression will find the name of the caller file and the line number of the last call
        /([a-zA-Z0-9\-_\.]+\.rb:\d+)/ =~ callerInfo[0]
       return $1
     end
-
 
     ############################### Log messages methods
     # module method: logWarning
@@ -107,7 +104,6 @@ module BBFS
     end
 
     Log.logInfo 'BBFS Log started.'
-
   end
 end
 

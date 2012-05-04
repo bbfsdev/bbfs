@@ -3,8 +3,8 @@ require ('params')
 
 module BBFS
   module Log
-
     Params.parameter 'log_param_thread_sleep_time_in_seconds', 0.5 , 'log param. Thread sleep time in seconds'
+
     class Consumer
       def initialize
         @ConsumerQueue = Queue.new
