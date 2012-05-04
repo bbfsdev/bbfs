@@ -1,6 +1,8 @@
 Big brother file system (distributed file system).
+--------------------------------------------------
 
 Backup system:
+--------------
 Content server monitors a set of directories (blobs/patterns).
 The files in those directories are indexed (calculating their SHA1).
 Each unique content is backed up to the remote (backup) server.
@@ -9,6 +11,8 @@ The files in those directories are also indexed.
 The content server copies new/changed files in the backup server.
 The backup server index those new files too and send the content data (their SHA1 to the original server).
 
+How to install and run:
+-----------------------
 A) Installation of BBFS development kit:
   1) Download and install git.
   2) Download and install ruby.
@@ -82,3 +86,23 @@ G) (Optional) Later when paramter parsing will be available we could do:
               --backup_password=test --content_data_path=~/.bbfs/var/server_content.data
   Run backup server (after content server is running):
   bbfs> ruby -Ilib bin/backup_server --monitoring_config_path=~/.bbfs/etc/backup_file_monitoring.yml
+
+How to contribute to this project:
+----------------------------------
+A) Clone the project:
+  > git@github.com:kolmanv/bbfs.git
+  > cd bbfs
+B) Master is sarced! Note this, this is important : you will never commit or merge into master branch.
+  Master is master. You will use to get the changes, and only that.
+C) Topic branch:
+  So you want to fix a bug, add a great feature ? No problem, you create a new branch (because remember you will never
+  commit or merge into your master branch!) :
+  bbfs> git checkout -b feature-world-conquest
+  Then you work in this branch, commit when you want, revert, etc. In short: you work. If you work on two different topics
+  (add the world conquest feature and fix a bug) you create a topic branch for each. Don't forget to test your changes!
+D) Fetch master: It's been a while you work on different topics. You want to test your changes with last changes :
+  bbfs> git merge master
+  Resolve conflicts if any, and try.
+E) OK, it works. Now, you want to publish your changes to master branch. You go to github at
+  https://github.com/kolmanv/bbfs, then for each new topic branches, you select it, then do a pull request. We'll review
+  the code, eventually merge it in the master branch. Then you'll be able to drop your old topic branches.
