@@ -34,20 +34,21 @@ module BBFS
 
     class TestLog < Test::Unit::TestCase
 
-      Params.log_write_to_file = false
-      Params.log_write_to_console = false
+      def initialize name
+        super
+        @test_consumer = TestConsumer.new
+        Log.clear
+        Log.add_consumer @test_consumer
+      end
 
       def test_check_info_format
         #set test phase
-        Log.init
-        test_consumer = TestConsumer.new
-        Log.add_consumer test_consumer
         testTime = Time.now
         Log.info 'This is a test INFO message.'
         line = __LINE__ - 1
         sleep 0.1
         #check test phase
-        messages = test_consumer.get_data_list
+        messages = @test_consumer.get_data_list
         assert_equal messages.size, 1, \
           "1 line should be found. Test found:#{messages.size}"
         #check expected format: [BBFS LOG] [Time] [INFO] [log_test.rb:11]
@@ -65,16 +66,13 @@ module BBFS
 
       def test_check_warning_format
         #set test phase
-        Log.init
-        test_consumer = TestConsumer.new
-        Log.add_consumer test_consumer
         testTime = Time.now
         Log.warning 'This is a test WARNING message.'
         line = __LINE__ - 1
         sleep 0.1
 
         #check test phase
-        messages = test_consumer.get_data_list
+        messages = @test_consumer.get_data_list
         assert_equal messages.size, 1, "1 line should be found. Test found:#{messages.size}"
         #check expected format: [BBFS LOG] [Time] [WARNING] [log_test.rb:35] \
         # [This is a test WARNING message.]
@@ -91,16 +89,13 @@ module BBFS
 
       def test_check_error_format
         #set test phase
-        Log.init
-        test_consumer = TestConsumer.new
-        Log.add_consumer test_consumer
         testTime = Time.now
         Log.error 'This is a test ERROR message.'
         line = __LINE__ - 1
         sleep 0.1
 
         #check test phase
-        messages = test_consumer.get_data_list
+        messages = @test_consumer.get_data_list
         assert_equal messages.size, 1, "1 line should be found. Test found:#{messages.size}"
         #check expected format: [BBFS LOG] [Time] [ERROR] [log_test.rb:35] \
         # [This is a test ERROR message.]
@@ -117,28 +112,26 @@ module BBFS
 
       def test_check_debug_level_0
         #set test phase
-        Log.init
         Params.log_debug_level = 0
-        test_consumer = TestConsumer.new
-        Log.add_consumer test_consumer
+        #@test_consumer = TestConsumer.new
+        #Log.add_consumer @test_consumer
         Log.debug1 'This is a test debug-1 message.'
         Log.debug2 'This is a test debug-2 message.'
         Log.debug3 'This is a test debug-3 message.'
         sleep 0.1
 
         #check test phase
-        messages = test_consumer.get_data_list
+        messages = @test_consumer.get_data_list
         assert_equal messages.size, 0 , \
           "At debug level 0, no debug messages should be found.Test found:#{messages.size} messages."
       end
 
       def test_check_debug_level_1
         #set test phase
-        Log.init
         testTime = Time.now
         Params.log_debug_level = 1
-        test_consumer = TestConsumer.new
-        Log.add_consumer test_consumer
+        #@test_consumer = TestConsumer.new
+        #Log.add_consumer @test_consumer
         Log.debug1 'This is a test DEBUG-1 message.'
         line = __LINE__ - 1
         Log.debug2 'This is a test DEBUG-2 message.'
@@ -146,7 +139,7 @@ module BBFS
         sleep 0.1
 
         #check test phase
-        messages = test_consumer.get_data_list
+        messages = @test_consumer.get_data_list
         assert_equal messages.size, 1, \
           "At debug level 1, 1 line should be found. Test found:#{messages.size} messages."
         #check expected format: [BBFS LOG] [Time] [DEBUG-1] [log_test.rb:35] \
@@ -164,11 +157,10 @@ module BBFS
 
       def test_check_debug_level_2
         #set test phase
-        Log.init
         testTime = Time.now
         Params.log_debug_level = 2
-        test_consumer = TestConsumer.new
-        Log.add_consumer test_consumer
+        #@test_consumer = TestConsumer.new
+        #Log.add_consumer @test_consumer
         Log.debug1 'This is a test DEBUG-1 message.'
         line1 = __LINE__ - 1
         Log.debug2 'This is a test DEBUG-2 message.'
@@ -177,7 +169,7 @@ module BBFS
         sleep 0.1
 
         #check test phase
-        messages = test_consumer.get_data_list
+        messages = @test_consumer.get_data_list
         assert_equal messages.size, 2, \
           "At debug level 2, 2 lines should be found. Test found:#{messages.size} messages."
         #check expected format: [BBFS LOG] [Time] [DEBUG-1] [log_test.rb:35] \
@@ -205,11 +197,10 @@ module BBFS
 
       def test_check_debug_level_3
         #set test phase
-        Log.init
         testTime = Time.now
         Params.log_debug_level = 3
-        test_consumer = TestConsumer.new
-        Log.add_consumer test_consumer
+        #@test_consumer = TestConsumer.new
+        #Log.add_consumer @test_consumer
         Log.debug1 'This is a test DEBUG-1 message.'
         line1 = __LINE__ - 1
         Log.debug2 'This is a test DEBUG-2 message.'
@@ -219,7 +210,7 @@ module BBFS
         sleep 0.1
 
         #check test phase
-        messages = test_consumer.get_data_list
+        messages = @test_consumer.get_data_list
         assert_equal messages.size, 3, \
           "At debug level 3, 3 lines should be found. Test found:#{messages.size} messages."
         #check expected format: [BBFS LOG] [Time] [DEBUG-1] [log_test.rb:35] \
