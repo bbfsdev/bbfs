@@ -66,7 +66,7 @@ module BBFS
       @consumers.push consumer
     end
 
-    # Returns the file name and line number from caller data
+    # formatting the data and push to consumers
     def Log.basic msg, type
        /([a-zA-Z0-9\-_\.]+\.rb:\d+)/ =~ caller[1]
        data = "[BBFS LOG] [#{Time.now()}] [#{type}] [#{$1}] [#{msg}]"
@@ -110,7 +110,3 @@ module BBFS
     end
   end
 end
-
-
-
-
