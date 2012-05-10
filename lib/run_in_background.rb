@@ -1,8 +1,9 @@
-
+# Author: Genady Petelko (nukegluk@gmail.com)
+# Description: The file contains implementation of 'RunInBackground' module.
 
 module BBFS
   # This library provides a basic cross-platform functionality to run arbitrary ruby scripts
-  # in backgroubd and control them. <br>Supported platforms: Windows, Linux, Mac
+  # in background and control them. <br>Supported platforms: Windows, Linux, Mac
   # == General Limitations:
   # *  Only ruby scripts can be run in background.
   # *  No multiple instances with the same name  
@@ -75,7 +76,7 @@ module BBFS
     # * <tt>opts_specific</tt> - Hash of platform specific options (only for more specific usage)
     # For more information regarding such options see documentation for 
     # win32-sevice (Windows), daemons (Linux/Mac)
-    def RunInBackground.start(binary_path, binary_args, name, opts_specific = {})
+    def RunInBackground.start binary_path, binary_args, name, opts_specific = {}
       if binary_path == nil or binary_args == nil or name == nil
         raise ArgumentError.new("binary path, binary args, name arguments must be defined")
       end
@@ -89,7 +90,7 @@ module BBFS
       end
     end
 
-    def RunInBackground.start_linux(binary_path, binary_args, name, opts = {})
+    def RunInBackground.start_linux binary_path, binary_args, name, opts = {}
       unless File.executable_real? binary_path
         raise ArgumentError.new("#{binary_path} can't be executed") 
       end
@@ -113,7 +114,7 @@ module BBFS
       Process.waitpid pid
     end
 
-    def RunInBackground.start_windows(binary_path, binary_args, name, opts = {})
+    def RunInBackground.start_windows binary_path, binary_args, name, opts = {}
       raise ArgumentError.new("#{binary_path} doesn't exist'") unless File.exists? binary_path
       binary_path.tr!('/','\\')
       opts[:binary_path_name] = "#{RUBY_INTERPRETER_PATH} #{binary_path} #{binary_args.join(' ')}"
@@ -141,7 +142,7 @@ module BBFS
     # <br>Current process will be closed.
     # <br>It suggested to remove from ARGV any command line arguments that point 
     # to run script in background, <br>otherwise you may receive an unexpexted result
-    def RunInBackground.start!(name, opts = {})
+    def RunInBackground.start! name, opts = {}
       start(File.expand_path($0), ARGV, name, opts)
       exit!
     end
@@ -151,7 +152,7 @@ module BBFS
     # <br>The code that is run in this script should be an extension of Win32::Daemon class.
     # <br>For more information see Win32::Daemon help and examples.
     # <br>No need  to wrap such a script.
-    def RunInBackground.start_win32service(binary_path, binary_args, name, opts_specific = {})
+    def RunInBackground.start_win32service binary_path, binary_args, name, opts_specific = {}
       if OS == :WINDOWS
         start_windows binary_path, binary_args, name, opts_specific
       else  # OS == :LINUX
@@ -165,13 +166,13 @@ module BBFS
     # * <tt>binary_args</tt> - array (not nil) of scripts command line arguments
     #
     # NOTE binary_path and binary_args contents will be change
-    def RunInBackground.wrap_windows(binary_path, binary_args)
+    def RunInBackground.wrap_windows binary_path, binary_args
       raise ArgumentError.new("#{binary_path} doesn't exists") unless File.exists? binary_path
       binary_args.insert(0, RUBY_INTERPRETER_PATH, binary_path.tr('/','\\'))
       binary_path.replace(WRAPPER_SCRIPT)
     end
 
-    def RunInBackground.stop(name)
+    def RunInBackground.stop name
       if not exists? name
         raise ArgumentError.new("Daemon #{name} doesn't exists")
       elsif OS == :WINDOWS
@@ -188,7 +189,7 @@ module BBFS
 
     # Delete service/daemon.
     # <br>If running then stop and delete.
-    def RunInBackground.delete(name)
+    def RunInBackground.delete name
       if not exists? name
         raise ArgumentError.new("Daemon #{name} doesn't exists")
       elsif running? name
@@ -206,7 +207,7 @@ module BBFS
       end
     end
 
-    def RunInBackground.exists?(name)
+    def RunInBackground.exists? name
       if name == nil
         raise ArgumentError.new("service/daemon name argument must be defined")
       elsif OS == :WINDOWS
@@ -217,7 +218,7 @@ module BBFS
       end
     end
 
-    def RunInBackground.running?(name)
+    def RunInBackground.running? name
       if not exists? name
         raise ArgumentError.new("Daemon #{name} doesn't exists")
       elsif OS == :WINDOWS
