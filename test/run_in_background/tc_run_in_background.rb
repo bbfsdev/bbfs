@@ -81,18 +81,18 @@ module BBFS
       assert_raise(ArgumentError) { RunInBackground.delete(@bad_daemon) }
       assert_nothing_raised { RunInBackground.delete(@good_daemon) }
       sleep 2  # it takes time to delete daemon 
-      assert_equal(RunInBackground.exists?(@good_daemon), false)   
+      assert_equal(false, RunInBackground.exists?(@good_daemon))   
 
       if RunInBackground.exists?(@good_daemonize)
         assert_nothing_raised { RunInBackground.delete(@good_daemonize) }
         sleep 2  # it takes time to delete daemon 
-        assert_equal(RunInBackground.exists?(@good_daemonize), false)   
+        assert_equal(false, RunInBackground.exists?(@good_daemonize))   
       end
 
       if RunInBackground.exists?(@good_win32daemon)
         assert_nothing_raised { RunInBackground.delete(@good_win32daemon) }
         sleep 2  # it takes time to delete daemon 
-        assert_equal(RunInBackground.exists?(@good_win32daemon), false)   
+        assert_equal(false, RunInBackground.exists?(@good_win32daemon))   
       end
     end
   end
