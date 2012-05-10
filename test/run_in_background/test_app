@@ -1,0 +1,25 @@
+#!/usr/bin/env ruby
+
+#Script used for RunInBackground tests.
+#usage: $0 number_of_iterations [daemon_name_if_daemonized]
+
+LOG_FILE = File.join(File.dirname(File.expand_path(__FILE__)), "..", "..", "fm_test.log").to_s
+DBG = false  # NOTE be sure to disable it in production 
+
+if ARGV.size > 1 
+	require "run_in_background"
+	puts "Before run in background" if DBG
+	# ARGV.pop returns frozen string and thus causes a failure of Service.create
+	# to fix it new string with the same content created.
+	BBFS::RunInBackground.start!(String.new(ARGV.pop))
+	puts "After run in background: ERROR" if DBG
+end
+
+max = (ARGV.size > 0 && ARGV[0] != nil && ARGV[0].to_i > 0)? ARGV[0].to_i : 200
+
+File.open(LOG_FILE, 'a+') {|f| f.puts ARGV[0].class } if DBG
+while max > 0
+	File.open(LOG_FILE,'a+'){ |f| f.puts " ***Daemon  #{Time.now} #{max} " } if DBG
+	sleep 1
+	max -= 1
+end
