@@ -2,6 +2,8 @@
 # Description: The file contains the code which implements the 'Log' module
 # Run: Add to 'require' list.
 # Note: The logger will be automatically initialized if log_param_auto_start is true
+#       If log_param_auto_start is false then 'Log.init' method will be called
+#       on the first attempt to log.
 
 require ('params')
 require ('thread')
@@ -10,12 +12,21 @@ require ('log/log_consumer.rb')
 module BBFS
   # Module: Log.
   # Abstruct: The Log is used to log info\warning\error\debug messages
-  # Note that the logger will be automatically initialized if log_param_auto_start is true
+  # Note: The logger will be automatically initialized if log_param_auto_start is true
+  #       If log_param_auto_start is false then 'Log.init' method will be called
+  #       on the first attempt to log.
   module Log
-    # Global params used
+    #Auxiliary method to retrieve the executable name
+    def Log.executable_name
+      /([a-zA-Z0-9\-_\.]+):\d+/ =~ caller[caller.size-1]
+      return $1
+    end
+
+    # Global params
     Params.parameter 'log_param_auto_start',false, \
-      'log param. If true, log will start automatically when Log module is required. ' + \
-      'Else, Init module method should be called'
+      'log param. If true, log will start automatically. ' + \
+      'Else, init should be called. ' + \
+      'Else Init will be called automatically on the first attempt to log.'
     Params.parameter 'log_debug_level', 0 , 'Log level.'
     Params.parameter 'log_param_number_of_mega_bytes_stored_before_flush', 1 , \
       'log param. Number of mega bytes stored before they are flushed.'
@@ -25,11 +36,11 @@ module BBFS
       'If true then the logger will write the messages to a file.'
     Params.parameter 'log_write_to_console', true , \
       'If true then the logger will write the messages to the console.'
-    /([a-zA-Z0-9\-_\.]+):\d+/ =~ caller[caller.size-1]
-    Params.parameter 'log_file_name', File.expand_path("~/.bbfs/#{$1}.log") , \
-      'Default log file name: ~/.bbfs/<executable_name>.log'
+    Params.parameter 'log_file_name', File.expand_path("~/.bbfs/log/#{Log.executable_name}.log") , \
+      'Default log file name: ~/.bbfs/log/<executable_name>.log'
 
     @consumers = []
+    @log_initialized = false
 
     #Note that the logger will be automatically initialized if log_param_auto_start is true
     if Params.log_param_auto_start then
@@ -38,7 +49,7 @@ module BBFS
 
     # Init the Log consumers
     def Log.init
-      Log.clear
+      Log.clear_consumers
       # Console - If enabled, will flush the log immediately to the console
       if Params.log_write_to_console then
         console_consumer = ConsoleConsumer.new
@@ -53,11 +64,12 @@ module BBFS
         buffer_consumer_producer.add_consumer file_consumer
         @consumers.push buffer_consumer_producer
       end
-      Log.info 'BBFS Log started.'  # log first data
+      @log_initialized = true
+      Log.info 'BBFS Log initialized.'  # log first data
     end
 
     # Clears consumers
-    def Log.clear
+    def Log.clear_consumers
       @consumers.clear
     end
 
@@ -68,6 +80,7 @@ module BBFS
 
     # formatting the data and push to consumers
     def Log.basic msg, type
+      Log.init if not @log_initialized
        /([a-zA-Z0-9\-_\.]+\.rb:\d+)/ =~ caller[1]
        data = "[BBFS LOG] [#{Time.now()}] [#{type}] [#{$1}] [#{msg}]"
        @consumers.each { |consumer| consumer.push_data data  }
@@ -108,5 +121,6 @@ module BBFS
         Log.basic msg, 'DEBUG-3'
       end
     end
+
   end
 end
