@@ -263,7 +263,7 @@ module BBFS
         ref_cd.instances.values.each { |instance|
           if inverted_index.key? instance.checksum
             symlink_path = dest + instance.full_path
-            FileUtils.mkdir_p(File.dirname(symlink_path)) unless (Dir.exists?(File.dirname(symlink_path)))
+            ::FileUtils.mkdir_p(File.dirname(symlink_path)) unless (Dir.exists?(File.dirname(symlink_path)))
             File.symlink(inverted_index[instance.checksum].full_path, symlink_path)
           else
             not_found.add_content(ref_cd.contents[instance.checksum])
