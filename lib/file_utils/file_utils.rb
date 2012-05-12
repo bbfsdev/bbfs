@@ -250,7 +250,7 @@ module BBFS
         # symlinks are not implemented in Windows
         raise NotImplementedError.new if (RUBY_PLATFORM =~ /mingw/ or RUBY_PLATFORM =~ /ms/ or RUBY_PLATFORM =~ /win/)
 
-        not_found = ContentData.new
+        not_found = ContentData::ContentData.new
         inverted_index = Hash.new
         base_cd.instances.values.each{ |instance|
           inverted_index[instance.checksum] = instance
