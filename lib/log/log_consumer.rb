@@ -3,13 +3,12 @@
 # Note: The library could be enhance in the future due to project requirement (such as logging
 # to mail, archives, remote servers etc)
 
-require ('thread')
-require ('params')
+require 'thread'
+require 'params'
 
 module BBFS
 
   module Log
-
     Params.parameter 'log_param_thread_sleep_time_in_seconds', 0.5 , \
     'log param. Thread sleep time in seconds'
 
@@ -38,7 +37,6 @@ module BBFS
     # It saves all the data it consumes in a buffer which has a size and time limits.
     # When one of the limits is exceeded, it flushes the buffer to it's own consumers
     class BufferConsumerProducer < Consumer
-
       def initialize buffer_size_in_mega_bytes, buffer_time_out_in_seconds
         super()
         @buffer_size_in_bytes = buffer_size_in_mega_bytes * 1000000
@@ -91,7 +89,6 @@ module BBFS
         if File.exist? @file_name then
           File.delete @file_name
         end
-
       end
 
       def consume data
