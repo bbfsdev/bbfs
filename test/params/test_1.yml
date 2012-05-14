@@ -1,7 +1,1 @@
-
-- name: param_1
-  value: value_defined_at_yml_file
-  desc: Defined at yaml file.
-
-    
-
+param_1: value_1_yml
