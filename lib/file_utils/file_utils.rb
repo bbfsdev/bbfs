@@ -6,6 +6,7 @@ require 'file_utils'
 require 'content_data'
 require 'file_indexing'
 require 'params'
+require_relative 'file_generator/file_generator'
 
 module BBFS
   module FileUtils
@@ -188,6 +189,9 @@ module BBFS
 
           threads.each { |a| a.join }
           join_servers_results(conf.server_conf_vec, arguments["cd_out"])
+        elsif arguments["command"] == "generate_files"
+          fg = FileGenerator.new()
+          fg.run()
         end
       end
 
@@ -285,6 +289,7 @@ module BBFS
     COMMANDS["unify_time"] = "  unify_time --cd=<path>"
     COMMANDS["indexer"] = "  indexer --patterns=<path> [--exist_cd=<path>]"
     COMMANDS["crawler"] = "  crawler --conf_file=<path> [--cd_out=<path>] [--cd_in=<path>]"
+    COMMANDS["generate_files"] = "  generate_files"
 
     def self.print_usage
       puts "Usage: fileutil <command> params..."

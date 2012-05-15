@@ -9,7 +9,10 @@ Gem::Specification.new do |s|
   s.email       = 'kolmanv@gmail.com'
   s.homepage    = 'http://github.com/kolmanv/bbfs'
   s.files       = ['lib/file_utils.rb',
-                   'lib/file_utils/file_utils.rb']
+                   'lib/file_utils/file_utils.rb',
+                   'file_utils/file_generator/file_generator.rb',
+                   'file_utils/file_generator/file_generator_parameters.rb',
+                   'file_utils/file_generator/file_generator_parameters.yml']
   #s.test_files  = ['test/file_utils/file_utils_spec.rb']
   s.executables = ['file_utils']
 end
