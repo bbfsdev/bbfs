@@ -9,7 +9,7 @@
 require 'win32/daemon'
 include Win32
 
-# there is a non-determenistic error running in debug mode with logger
+# there is a non-deterministic error running in debug mode with logger
 DBG = false  # NOTE be sure to disable it in production
 
 if DBG
