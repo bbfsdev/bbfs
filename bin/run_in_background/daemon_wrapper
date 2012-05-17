@@ -1,0 +1,69 @@
+#!/usr/bin/env ruby
+# Wrapper script, that can receive commands from Windows Service Control and run user script,
+# provided as it's argument.
+# NOTE This wrapper script doesn't intended to be run from command line,
+# rather be started and conrolled by Windows Service Control. 
+# usage: $0 <abs path to Ruby> <abs path to script> [blank-separated list of script's arguments]
+# example: C:\ruby.exe c:\dev\daemon_wrapper c:\ruby.exe c:\dev\test_app 1000 -dbg=true
+
+require 'win32/daemon'
+include Win32
+
+# there is a non-determenistic error running in debug mode with logger
+DBG = false  # NOTE be sure to disable it in production
+
+if DBG
+  begin
+    require 'params'
+    require 'log'
+  rescue LoadError
+    $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..', 'lib'))
+    $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..'))
+    require 'params'
+    require 'log'
+  end
+  # On WindowsXP log can be found under:
+  # C:/Documents and Settings/NetworkService/.bbfs/daemon_wrapper.log
+  BBFS::Params.log_write_to_console = false
+  BBFS::Params.log_file_name = File.join(Dir.home, '.bbfs', "#{File.basename(__FILE__)}_#{Process.pid}.log")
+  BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 0
+  BBFS::Log.init
+end
+
+begin
+  class WrapperDaemon < Daemon
+    def service_main
+      #if DBG
+        #File.open(BBFS::Params.log_file_name, 'a+') do |f| 
+          #f.puts "Wrapper starts: #{ARGV.join(" ")}"
+        #end 
+      #end
+      BBFS::Log.info "Wrapper starts: #{ARGV.join(" ")}" if DBG 
+      @pid = Process.spawn ARGV.join(" ")
+      Process.waitpid @pid
+      #if DBG
+        #File.open(BBFS::Params.log_file_name, 'a+') do |f| 
+          #f.puts "Wrapper inner app pid: #{@pid}"
+        #end 
+      #end
+      BBFS::Log.info "Wrapper inner app pid: #{@pid}" if DBG 
+    end
+
+    def service_stop
+      Process.kill 9, @pid
+      exit!
+    end
+  end
+
+  WrapperDaemon.mainloop
+
+rescue Exception => err
+  #if DBG
+    #File.open(BBFS::Params.log_file_name, 'a+') do |f| 
+      #f.puts "Wrapper error: #{err}"
+    #end 
+  #end
+  BBFS::Log.error "Wrapper error: #{err}" if DBG 
+  raise
+end
+
