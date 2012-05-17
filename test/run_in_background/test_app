@@ -3,23 +3,61 @@
 #Script used for RunInBackground tests.
 #usage: $0 number_of_iterations [daemon_name_if_daemonized]
 
-LOG_FILE = File.join(File.dirname(File.expand_path(__FILE__)), "..", "..", "fm_test.log").to_s
 DBG = false  # NOTE be sure to disable it in production 
 
-if ARGV.size > 1 
-	require "run_in_background"
-	puts "Before run in background" if DBG
+if DBG
+  begin
+    require 'params'
+    require 'log'
+  rescue LoadError
+    $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..', 'lib'))
+    $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..'))
+    require 'params'
+    require 'log'
+  end
+  # On WindowsXP log can be found under:
+  # C:/Documents and Settings/NetworkService/.bbfs/test_app_<pid>.log
+  BBFS::Params.log_file_name = File.join(Dir.home, '.bbfs', "#{File.basename(__FILE__)}_#{Process.pid}.log")
+  BBFS::Params.log_write_to_console = false
+  BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 0
+  BBFS::Log.init
+end
+
+if ARGV.size == 2 
+  begin
+    require 'run_in_background'
+  rescue LoadError
+    $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..', 'lib'))
+    $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..'))
+    require 'run_in_background'
+  end
+
+  #if DBG
+    #File.open(BBFS::Params.log_file_name, 'a+') do |f| 
+      #f.puts "#{Time.now} Before run in background: PID #{Process.pid}"
+    #end
+  #end
+  BBFS::Log.info "Before run in background: PID #{Process.pid}" if DBG
 	# ARGV.pop returns frozen string and thus causes a failure of Service.create
 	# to fix it new string with the same content created.
 	BBFS::RunInBackground.start!(String.new(ARGV.pop))
-	puts "After run in background: ERROR" if DBG
+  #if DBG
+    #File.open(BBFS::Params.log_file_name, 'a+') do |f| 
+      #f.puts "After run in background: ERROR"
+    #end
+  #end
+	BBFS::Log.error "After run in background: ERROR" if DBG
 end
 
 max = (ARGV.size > 0 && ARGV[0] != nil && ARGV[0].to_i > 0)? ARGV[0].to_i : 200
 
-File.open(LOG_FILE, 'a+') {|f| f.puts ARGV[0].class } if DBG
 while max > 0
-	File.open(LOG_FILE,'a+'){ |f| f.puts " ***Daemon  #{Time.now} #{max} " } if DBG
+  #if DBG
+    #File.open(BBFS::Params.log_file_name, 'a+') do |f| 
+      #f.puts "#{max}"
+    #end
+  #end
+  BBFS::Log.info "#{max}" if DBG
 	sleep 1
 	max -= 1
 end

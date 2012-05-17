@@ -10,8 +10,9 @@ Supported platforms: Windows, Linux, Mac."
   s.authors     = ['Genady Petelko']
   s.email       = 'nukegluk@gmail.com'
   s.homepage    = 'http://github.com/kolmanv/bbfs'
-  s.files       = ['lib/run_in_background.rb']
-  s.test_files  = ['test/run_in_background/tc_run_in_background.rb', 
+  s.files       = ['lib/run_in_background.rb', 'bin/run_in_background/daemon_wrapper']
+  s.test_files  = ['test/run_in_background/run_in_background_test.rb', 
                    'test/run_in_background/test_app']
-  s.executables << 'daemon_wrapper'
+  # Shouldn't be run from comman line
+  # #s.executables << 'run_in_background/daemon_wrapper'  
 end
