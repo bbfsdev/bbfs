@@ -20,6 +20,7 @@ module BBFS
       @bad_daemon = "bad_daemon_test"
       @binary = File.join(File.dirname(File.expand_path(__FILE__)), "test_app")
       @binary.tr!('/','\\') if OS == :WINDOWS
+      File.chmod(0755, @binary) if OS == :LINUX && !File.executable?(@binary)
       @absent_binary = File.join(File.dirname(File.expand_path(__FILE__)), "test_app_absent")
     end
 
