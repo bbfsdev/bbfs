@@ -1,3 +1,4 @@
+require 'fileutils'
 require 'test/unit'
 
 require_relative '../../lib/content_data/content_data'
@@ -19,7 +20,6 @@ module BBFS
         @base_db
 
         def setup
-
           sizes = [500, 1000, 1500]
           numb_of_copies = 2
           test_file_name = "test_file"   # file name format: <test_file_name_prefix>.<size>[.serial_number_if_more_then_1]
@@ -97,8 +97,9 @@ module BBFS
           begin
             not_found_db = FileUtils.mksymlink(@ref_db, @base_db, DEST_DIR)
           rescue NotImplementedError
-            puts "symlinks are unimplemented on this machine"
-            return nil
+            assert RUBY_PLATFORM =~ /mingw/ || RUBY_PLATFORM =~ /ms/ || RUBY_PLATFORM =~ /win/, \
+                    'Symbolics links should be implemented for non windows platforms.'
+            return
           end
 
           base_path2checksum = Hash.new

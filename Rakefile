@@ -28,8 +28,7 @@ end
 require 'rake/testtask'
 Rake::TestTask.new do |t|
   t.libs << 'test' << 'spec'
-  t.test_files = FileList['test/*/*test*.rb']
-#  t.spec_files = FileList['test/*/*spec*.rb']
+  t.test_files = FileList['./test/**/*_test.rb']
   t.verbose = true
 end
 

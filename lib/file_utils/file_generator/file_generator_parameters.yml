@@ -1,0 +1,14 @@
+defaults:
+  target_path:  ./Users/slava/test_files
+  file_name_template: auto_generated_file_4_backup_server
+  dir_name_template:  test_dir_4_backup_server
+  file_size_in_mb: 500
+  total_created_directories: -1
+  total_files_in_dir: 10
+  sleep_time_in_seconds:  10
+  upper_size_in_mb: 500
+  down_size_in_mb: 50
+  lower_limit_4_files_in_dir: 10
+  upper_limit_4_files_in_dir: 20
+  is_tot_files_in_dir_random: true
+  is_use_random_size: true

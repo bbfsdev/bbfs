@@ -3,7 +3,7 @@
 # run: rake test.
 # Note: This file will be tested along with all project tests.
 
-require ('params')
+require 'params'
 require 'test/unit'
 require_relative '../../lib/log.rb'
 require_relative '../../lib/log/log_consumer.rb'
@@ -14,7 +14,6 @@ module BBFS
     # Creating a test consumer class to be able to read the data pushed
     # to the consumer by the logger
     class TestConsumer < Consumer
-
       def initialize
         super
         @data_list = []
@@ -33,11 +32,12 @@ module BBFS
     end
 
     class TestLog < Test::Unit::TestCase
-
       def initialize name
         super
+        Params.log_write_to_console = false
+        Params.log_write_to_file = false
+        Log.init
         @test_consumer = TestConsumer.new
-        Log.clear
         Log.add_consumer @test_consumer
       end
 
@@ -46,9 +46,11 @@ module BBFS
         testTime = Time.now
         Log.info 'This is a test INFO message.'
         line = __LINE__ - 1
-        sleep 0.1
         #check test phase
-        messages = @test_consumer.get_data_list
+        messages = []
+        while messages.empty? do
+          messages = @test_consumer.get_data_list
+        end
         assert_equal messages.size, 1, \
           "1 line should be found. Test found:#{messages.size}"
         #check expected format: [BBFS LOG] [Time] [INFO] [log_test.rb:11]
@@ -69,10 +71,12 @@ module BBFS
         testTime = Time.now
         Log.warning 'This is a test WARNING message.'
         line = __LINE__ - 1
-        sleep 0.1
 
         #check test phase
-        messages = @test_consumer.get_data_list
+        messages = []
+        while messages.empty? do
+          messages = @test_consumer.get_data_list
+        end
         assert_equal messages.size, 1, "1 line should be found. Test found:#{messages.size}"
         #check expected format: [BBFS LOG] [Time] [WARNING] [log_test.rb:35] \
         # [This is a test WARNING message.]
@@ -92,10 +96,12 @@ module BBFS
         testTime = Time.now
         Log.error 'This is a test ERROR message.'
         line = __LINE__ - 1
-        sleep 0.1
 
         #check test phase
-        messages = @test_consumer.get_data_list
+        messages = []
+        while messages.empty? do
+          messages = @test_consumer.get_data_list
+        end
         assert_equal messages.size, 1, "1 line should be found. Test found:#{messages.size}"
         #check expected format: [BBFS LOG] [Time] [ERROR] [log_test.rb:35] \
         # [This is a test ERROR message.]
@@ -118,8 +124,6 @@ module BBFS
         Log.debug1 'This is a test debug-1 message.'
         Log.debug2 'This is a test debug-2 message.'
         Log.debug3 'This is a test debug-3 message.'
-        sleep 0.1
-
         #check test phase
         messages = @test_consumer.get_data_list
         assert_equal messages.size, 0 , \
@@ -136,10 +140,12 @@ module BBFS
         line = __LINE__ - 1
         Log.debug2 'This is a test DEBUG-2 message.'
         Log.debug3 'This is a test DEBUG-3 message.'
-        sleep 0.1
 
         #check test phase
-        messages = @test_consumer.get_data_list
+        messages = []
+        while messages.empty? do
+          messages = @test_consumer.get_data_list
+        end
         assert_equal messages.size, 1, \
           "At debug level 1, 1 line should be found. Test found:#{messages.size} messages."
         #check expected format: [BBFS LOG] [Time] [DEBUG-1] [log_test.rb:35] \
@@ -166,10 +172,12 @@ module BBFS
         Log.debug2 'This is a test DEBUG-2 message.'
         line2 = __LINE__ - 1
         Log.debug3 'This is a test DEBUG-3 message.'
-        sleep 0.1
 
         #check test phase
-        messages = @test_consumer.get_data_list
+        messages = []
+        while messages.empty? do
+          messages = @test_consumer.get_data_list
+        end
         assert_equal messages.size, 2, \
           "At debug level 2, 2 lines should be found. Test found:#{messages.size} messages."
         #check expected format: [BBFS LOG] [Time] [DEBUG-1] [log_test.rb:35] \
@@ -207,10 +215,12 @@ module BBFS
         line2 = __LINE__ - 1
         Log.debug3 'This is a test DEBUG-3 message.'
         line3 = __LINE__ - 1
-        sleep 0.1
 
         #check test phase
-        messages = @test_consumer.get_data_list
+        messages = []
+        while messages.empty? do
+          messages = @test_consumer.get_data_list
+        end
         assert_equal messages.size, 3, \
           "At debug level 3, 3 lines should be found. Test found:#{messages.size} messages."
         #check expected format: [BBFS LOG] [Time] [DEBUG-1] [log_test.rb:35] \
@@ -248,6 +258,3 @@ module BBFS
     end
   end
 end
-
-
-

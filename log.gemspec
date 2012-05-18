@@ -10,5 +10,6 @@ Gem::Specification.new do |s|
   s.homepage    = 'http://github.com/yarondbb/bbfs'
   s.files       = ['lib/log.rb',
                    'lib/log/log_consumer.rb']
-  s.test_files  = ['test/log/log_test.rb']                  
+  s.test_files  = ['test/log/log_test.rb']
+  s.add_dependency('params')
 end
