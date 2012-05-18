@@ -129,7 +129,7 @@ module BBFS
     end
 
     def RunInBackground.start_linux binary_path, binary_args, name, opts = {}
-      unless File.executable_real? binary_path
+      unless File.executable? binary_path
         raise ArgumentError.new("#{binary_path} can't be executed")
       end
 
