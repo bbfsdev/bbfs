@@ -1,28 +1,37 @@
+require 'optparse'
+
 module BBFS
   module Params
-    class ReadArgs
-      def self.read_arguments(argv, parsed_arguments, commands = nil)
-        argv.each { |arg|
-          if arg.start_with?("--")
-            words = arg[2,arg.length-2].split('=')
-            parsed_arguments[words[0]]=words[1]
-          elsif commands != nil and not commands.key?(arg)
-            puts "Unknown command '%s'." % arg
-            return false
-          else
-            if parsed_arguments.key? arg
-              puts "Parse error, two commands found %s and %s" % parsed_arguments["command"], arg
-              return false
+    class ParseArgs
+      def self.Parse(args)
+        parsing_result = Hash.new         #Define parsing Results Hash
+        options = Hash.new                #Hash of parsing options
+        names = Params.instance_variables #Define all available parameters
+
+        names.each do  |name|
+          value = Params.instance_variable_get(name)    # Get names values
+          tmp_name= name.to_s
+          tmp_name.slice!(0)
+          options[tmp_name] = value  # Create options Hash
+        end
+
+        opts = OptionParser.new do |opts|   # Define options for parsing
+          # List of flags.
+          options.each do |name,value|
+            tmp_name = name.to_s
+            tmp_name = "--"+ tmp_name
+
+            parsing_result[name] = "Parsing Failed"
+            opts.on(tmp_name,value.to_s,name.to_s) do |result|
+              parsing_result[name] = result
             end
-            parsed_arguments["command"] = arg
+
           end
-        }
+          opts.parse(args) # Parse request
+        end
 
-        return false unless commands == nil or parsed_arguments["command"] != nil
-        return false unless commands == nil or parsed_arguments["command"] != ""
-
-        return true
-      end
+        return parsing_result
+      end  # End of parsing Function
     end
 
   end
