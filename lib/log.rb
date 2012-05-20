@@ -5,9 +5,9 @@
 #       If log_param_auto_start is false then 'Log.init' method will be called
 #       on the first attempt to log.
 
-require ('params')
-require ('thread')
-require ('log/log_consumer.rb')
+require 'params'
+require 'thread'
+require 'log/log_consumer.rb'
 
 module BBFS
   # Module: Log.
