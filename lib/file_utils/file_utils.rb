@@ -1,12 +1,11 @@
 # This file is the basic file manipulation tool for the distributed system.
 # All the basic commands should reside here.
 
-require 'file_utils'
-
 require 'content_data'
 require 'file_indexing'
+require 'file_utils'
+require 'file_utils/file_generator/file_generator'
 require 'params'
-require_relative 'file_generator/file_generator'
 
 module BBFS
   module FileUtils
