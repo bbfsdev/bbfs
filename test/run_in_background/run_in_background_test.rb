@@ -48,7 +48,7 @@ module BBFS
       assert_equal(true, RunInBackground.running?(@good_daemon))
 
       # test daemonazing (start!)
-      # from the nature of daemonized need to run another scripts that will be daemonized
+      # from the nature of daemonization need to run it from another process that will be daemonized
       ruby = (OS == :WINDOWS ? RunInBackground::RUBY_INTERPRETER_PATH : "ruby")
       cmd = "#{ruby} -Ilib #{@binary} 50 #{@good_daemonize}"
       pid = spawn(cmd)
