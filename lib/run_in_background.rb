@@ -40,7 +40,7 @@ module BBFS
 
     # maximal time to wait untill OS will finish a requested operation
     # e.g. daemon start/delete
-    TIMEOUT = 10
+    TIMEOUT = 20
 
     if RUBY_PLATFORM =~ /linux/ or RUBY_PLATFORM =~ /darwin/
       begin
@@ -236,6 +236,10 @@ module BBFS
         #end
         #Process.waitpid pid
       end
+  #info_file = File.join(Dir.home, '.bbfs', "#{File.basename(__FILE__)}_#{Process.pid}.log")
+  #File.open(info_file, 'a+') do |f|
+    #f.puts "stop"
+  #end
     end
 
     # Delete service/daemon.

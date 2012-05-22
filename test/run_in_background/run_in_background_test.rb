@@ -50,13 +50,13 @@ module BBFS
       # test daemonazing (start!)
       # from the nature of daemonized need to run another scripts that will be daemonized
       ruby = (OS == :WINDOWS ? RunInBackground::RUBY_INTERPRETER_PATH : "ruby")
-      cmd = "#{ruby} -Ilib #{@binary} 1000 #{@good_daemonize}"
+      cmd = "#{ruby} -Ilib #{@binary} 50 #{@good_daemonize}"
       pid = spawn(cmd)
       Process.waitpid pid
       # checking that it indeed was daemonized
       # e.i. process was killed and code rerun in background
       sleep 2
-      assert_raise(Errno::ESRCH) { Process.kill(0, pid) }  # extra check cause of waitpid
+      assert_raise(Errno::ESRCH) { Process.kill(0, pid) }
       assert_equal(true, RunInBackground.exists?(@good_daemonize))
       assert_equal(true, RunInBackground.running?(@good_daemonize))
 
@@ -75,6 +75,11 @@ module BBFS
           RunInBackground.start_win32service(@absent_binary, [], @bad_daemon)
         }
       end
+
+      #sleep 10
+      #assert_equal(true, RunInBackground.running?(@good_daemon))
+      #assert_equal(true, RunInBackground.running?(@good_daemonize))
+      #assert_equal(true, RunInBackground.running?(@good_win32daemon))
 
       # test delete
       # test application should actually stop here
@@ -96,8 +101,8 @@ module BBFS
 
     def teardown
       RunInBackground.delete @good_daemon if RunInBackground.exists? @good_daemon
-      RunInBackground.delete @good_daemon if RunInBackground.exists? @good_daemonize
-      RunInBackground.delete @good_daemon if RunInBackground.exists? @good_win32daemon
+      RunInBackground.delete @good_daemonize if RunInBackground.exists? @good_daemonize
+      RunInBackground.delete @good_win32daemon if RunInBackground.exists? @good_win32daemon
     end
   end
 end

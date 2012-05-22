@@ -3,67 +3,92 @@
 # provided as it's argument.
 # NOTE This wrapper script doesn't intended to be run from command line,
 # rather be started and conrolled by Windows Service Control. 
+# For more information see documentations and examples of win32-daemon library.
 # usage: $0 <abs path to Ruby> <abs path to script> [blank-separated list of script's arguments]
 # example: C:\ruby.exe c:\dev\daemon_wrapper c:\ruby.exe c:\dev\test_app 1000 -dbg=true
 
 require 'win32/daemon'
+# looks that win32 equivalent of waitpid doesn't works properly
+#require 'win32/process'
 include Win32
 
 # there is a non-deterministic error running in debug mode with logger
 DBG = false  # NOTE be sure to disable it in production
 
+begin
+  require 'params'
+  require 'log'
+rescue LoadError
+  $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..', 'lib'))
+  $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..'))
+  require 'params'
+  require 'log'
+end
+
+BBFS::Params.log_write_to_console = false
+# On WindowsXP log can be found under:
+# C:/Documents and Settings/NetworkService/.bbfs/daemon_wrapper_<pid>.log
+BBFS::Params.log_file_name = File.join(Dir.home, '.bbfs', "#{File.basename(__FILE__)}_#{Process.pid}.log")
+BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 1
 if DBG
-  begin
-    require 'params'
-    require 'log'
-  rescue LoadError
-    $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..', 'lib'))
-    $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..'))
-    require 'params'
-    require 'log'
-  end
-  # On WindowsXP log can be found under:
-  # C:/Documents and Settings/NetworkService/.bbfs/daemon_wrapper.log
-  BBFS::Params.log_write_to_console = false
-  BBFS::Params.log_file_name = File.join(Dir.home, '.bbfs', "#{File.basename(__FILE__)}_#{Process.pid}.log")
-  BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 0
+  BBFS::Params.log_debug_level = 1
   BBFS::Log.init
 end
 
-begin
+#begin
   class WrapperDaemon < Daemon
     def service_main
-      #if DBG
-        #File.open(BBFS::Params.log_file_name, 'a+') do |f| 
-          #f.puts "Wrapper starts: #{ARGV.join(" ")}"
-        #end 
-      #end
-      BBFS::Log.info "Wrapper starts: #{ARGV.join(" ")}" if DBG 
+      BBFS::Log.debug1 "Wrapper starts: #{ARGV.join(" ")}"
       @pid = Process.spawn ARGV.join(" ")
-      Process.waitpid @pid
-      #if DBG
-        #File.open(BBFS::Params.log_file_name, 'a+') do |f| 
-          #f.puts "Wrapper inner app pid: #{@pid}"
-        #end 
-      #end
-      BBFS::Log.info "Wrapper inner app pid: #{@pid}" if DBG 
+      BBFS::Log.debug1 "Wrapper inner app pid: #{@pid}"
+
+      while running?
+        begin
+          # checking whether inner application is alive
+          Process.kill 0, @pid  
+        rescue Errno::ESRCH
+          # if inner application exited then stop the service
+          service_stop
+        end
+        sleep 0.5
+      end
+      # if got here then process is about to exit
+      #Process.waitpid @pid
     end
 
     def service_stop
-      Process.kill 9, @pid
+      begin
+        Process.kill 0, @pid  # checking whether inner application is alive
+        Process.kill 9, @pid  # kill the inner application
+        #sleep 5 
+        begin
+          # checking whether inner application is alive
+          Process.kill 0, @pid  
+          BBFS::Log.debug1 "inner app still alive after kill. wait till exit..."
+          # may be redundant. children processes on Windows look be detached.
+          # also can be rather dangerous to use here.
+          pid_exit_stat = Process.waitpid2 @pid
+          BBFS::Log.debug1 "inner application exit status: #{pid_exit_stat}"
+        rescue Errno::ESRCH
+          BBFS::Log.debug1 "inner app was killed"
+        end
+        begin
+          # checking whether inner application is alive
+          Process.kill 0, @pid  
+          BBFS::Log.debug1 "inner app still alive after wait"
+        rescue Errno::ESRCH
+          BBFS::Log.debug1 "inner app deleted after wait"
+        end
+      rescue Errno::ESRCH
+        # if got here then inner application is already exit. do nothing.
+        BBFS::Log.debug1 "inner app already deleted"
+      end 
+      BBFS::Log.debug1 "Wrapper was stopped"
+      # let log be written
+      sleep BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush + 0.5
       exit!
     end
   end
 
   WrapperDaemon.mainloop
-
-rescue Exception => err
-  #if DBG
-    #File.open(BBFS::Params.log_file_name, 'a+') do |f| 
-      #f.puts "Wrapper error: #{err}"
-    #end 
-  #end
-  BBFS::Log.error "Wrapper error: #{err}" if DBG 
-  raise
-end
 

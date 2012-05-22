@@ -1,11 +1,11 @@
 #!/usr/bin/env ruby
 
-#Script used for RunInBackground tests.
-#usage: $0 number_of_iterations [daemon_name_if_daemonized]
+# Toy script used for RunInBackground tests.
+# usage: $0 number_of_iterations [daemon_name_if_daemonized]
 
 DBG = false  # NOTE be sure to disable it in production 
 
-if DBG
+begin
   begin
     require 'params'
     require 'log'
@@ -15,49 +15,44 @@ if DBG
     require 'params'
     require 'log'
   end
+
   # On WindowsXP log can be found under:
   # C:/Documents and Settings/NetworkService/.bbfs/test_app_<pid>.log
   BBFS::Params.log_file_name = File.join(Dir.home, '.bbfs', "#{File.basename(__FILE__)}_#{Process.pid}.log")
   BBFS::Params.log_write_to_console = false
-  BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 0
-  BBFS::Log.init
-end
-
-if ARGV.size == 2 
-  begin
-    require 'run_in_background'
-  rescue LoadError
-    $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..', 'lib'))
-    $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..'))
-    require 'run_in_background'
+  BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 1     
+  if DBG
+    BBFS::Params.log_debug_level = 1
+    BBFS::Log.init
   end
 
-  #if DBG
-    #File.open(BBFS::Params.log_file_name, 'a+') do |f| 
-      #f.puts "#{Time.now} Before run in background: PID #{Process.pid}"
-    #end
-  #end
-  BBFS::Log.info "Before run in background: PID #{Process.pid}" if DBG
-	# ARGV.pop returns frozen string and thus causes a failure of Service.create
-	# to fix it new string with the same content created.
-	BBFS::RunInBackground.start!(String.new(ARGV.pop))
-  #if DBG
-    #File.open(BBFS::Params.log_file_name, 'a+') do |f| 
-      #f.puts "After run in background: ERROR"
-    #end
-  #end
-	BBFS::Log.error "After run in background: ERROR" if DBG
-end
+  # app should be run in background
+  if ARGV.size == 2 
+    begin
+      require 'run_in_background'
+    rescue LoadError
+      $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..', 'lib'))
+      $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..'))
+      require 'run_in_background'
+    end
 
-max = (ARGV.size > 0 && ARGV[0] != nil && ARGV[0].to_i > 0)? ARGV[0].to_i : 200
+    BBFS::Log.debug1 "Before run in background: PID #{Process.pid}"
+    # ARGV.pop returns frozen string and thus causes a failure of Service.create
+    # to fix it new string with the same content created.
+    BBFS::RunInBackground.start!(String.new(ARGV.pop))
+    # if got here then error
+    BBFS::Log.error "After run in background: ERROR"
+  end
 
-while max > 0
-  #if DBG
-    #File.open(BBFS::Params.log_file_name, 'a+') do |f| 
-      #f.puts "#{max}"
-    #end
-  #end
-  BBFS::Log.info "#{max}" if DBG
-	sleep 1
-	max -= 1
+  max = (ARGV.size > 0 && ARGV[0] != nil && ARGV[0].to_i > 0)? ARGV[0].to_i : 200
+
+  while max > 0
+    BBFS::Log.debug1 "#{max}"
+    sleep 1
+    max -= 1
+  end
+
+rescue Exception => err
+  BBFS::Log.error "Wrapper error: #{err}" 
+  raise
 end
