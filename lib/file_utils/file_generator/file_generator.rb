@@ -1,13 +1,12 @@
 require 'digest'
 require 'file_utils/file_generator/file_generator_parameters'
 require 'fileutils'
-require 'params'
 
 #Generates files with random content with random file size
 # according to given FileGeneratorParameters
 class FileGenerator
   attr_accessor :file_gen_params
-  attr_reader :one_kb_string, :one_mb_string
+  attr_reader :one_mb_string
 
   def initialize (file_gen_params = FileGeneratorParameters.new())
     @file_gen_params = file_gen_params
@@ -15,10 +14,6 @@ class FileGenerator
 
   def one_mb_string
     @one_mb_string || @one_mb_string = prepare_one_mb_string
-  end
-
-  def one_kb_string
-    @one_kb_string || @one_kb_string = prepare_one_kb_string
   end
 
   def get_small_rand_unique_str
@@ -31,14 +26,6 @@ class FileGenerator
 
   def get_random_letter
     (rand(122-97) + 97).chr
-  end
-
-  def determine_dir_recursively (path)
-    if File.directory?(path)
-      #puts "The given path already exists #{path}"
-    else
-      FileUtils.mkdir_p path
-    end
   end
 
   def get_new_dir_name
@@ -57,10 +44,6 @@ class FileGenerator
     else
       @file_gen_params.file_size_in_mb
     end
-  end
-
-  def prepare_one_kb_string
-    (get_random_letter) * 1024
   end
 
   def prepare_one_mb_string
@@ -100,7 +83,7 @@ class FileGenerator
     dir_counter = 0
     while is_gen_dir(dir_counter)
       new_dir_name = "#{@file_gen_params.target_path}/#{get_new_dir_name}"
-      determine_dir_recursively(new_dir_name)
+      FileUtils.mkdir_p path unless File.directory?(path)
       dir_counter +=1
       file_counter = 0
 
@@ -112,9 +95,7 @@ class FileGenerator
         end
         file_counter +=1
 
-        if @file_gen_params.sleep_time_in_seconds > 0 then
-          sleep get_sleep_time_in_seconds()
-        end
+        sleep get_sleep_time_in_seconds() if @file_gen_params.sleep_time_in_seconds > 0
       end
     end
   end
