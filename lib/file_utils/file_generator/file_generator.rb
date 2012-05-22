@@ -83,7 +83,7 @@ class FileGenerator
     dir_counter = 0
     while is_gen_dir(dir_counter)
       new_dir_name = "#{@file_gen_params.target_path}/#{get_new_dir_name}"
-      FileUtils.mkdir_p path unless File.directory?(path)
+      FileUtils.mkdir_p new_dir_name unless File.directory?(new_dir_name)
       dir_counter +=1
       file_counter = 0
 
