@@ -18,7 +18,7 @@ module BBFS
           puts "loaded yml param:'#{param_name}' which does not exist in Params module."
           return false
         end
-        self.instance_variable_set '@' + param_name, proj_params[param_name]}
+        self.instance_variable_set '@' + param_name, proj_params[param_name]
       end
       return true
     end
