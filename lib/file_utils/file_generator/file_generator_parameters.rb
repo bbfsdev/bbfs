@@ -1,8 +1,5 @@
 require 'yaml'
 
-#module BBFS
-#  module FileUtils
-
 #Represents parameters for file generation
 class FileGeneratorParameters
   attr_accessor :target_path, :file_name_template, :file_size_in_mb,
@@ -181,8 +178,4 @@ class FileGeneratorParameters
         self.target_path = value
     end
   end
-
 end
-
-#  end
-#end
