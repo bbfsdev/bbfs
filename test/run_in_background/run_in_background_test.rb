@@ -7,10 +7,12 @@ module BBFS
   class TestRunInBackground < Test::Unit::TestCase
     #include BBFS::RunInBackground
 
-    if RUBY_PLATFORM =~ /mingw/ or RUBY_PLATFORM =~ /ms/ or RUBY_PLATFORM =~ /win/
+    if RUBY_PLATFORM =~ /linux/ or RUBY_PLATFORM =~ /darwin/
+      OS = :LINUX
+    elsif RUBY_PLATFORM =~ /mingw/ or RUBY_PLATFORM =~ /ms/ or RUBY_PLATFORM =~ /win/
       OS = :WINDOWS
     else
-      OS = :LINUX
+      raise "Unsupported platform #{RUBY_PLATFORM}"
     end
 
     def setup
