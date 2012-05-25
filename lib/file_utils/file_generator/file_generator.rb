@@ -82,14 +82,14 @@ class FileGenerator
   def run
     dir_counter = 0
     while is_gen_dir(dir_counter)
-      new_dir_name = "#{@file_gen_params.target_path}/#{get_new_dir_name}"
+      new_dir_name = File.join(@file_gen_params.target_path, get_new_dir_name)
       FileUtils.mkdir_p new_dir_name unless File.directory?(new_dir_name)
       dir_counter +=1
       file_counter = 0
 
       while is_gen_file(file_counter)
         new_file_name = get_new_file_name
-        File.open("#{new_dir_name}/#{new_file_name}", "w") do |f|
+        File.open(File.join(new_dir_name, new_file_name), "w") do |f|
           f.write (one_mb_string * get_file_mb_size)
           f.write new_file_name #To make file content unique
         end

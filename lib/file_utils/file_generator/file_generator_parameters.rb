@@ -7,11 +7,11 @@ class FileGeneratorParameters
     :is_use_random_size, :down_size_in_mb, :upper_size_in_mb,
     :is_tot_files_in_dir_random, :lower_limit_4_files_in_dir,
     :upper_limit_4_files_in_dir,
-    :dir_name_template
-
+    :dir_name_template, :is_use_content_server_conf
 
   def initialize(yml_file_path = "file_generator_parameters.yml")
     read_config(yml_file_path)
+    read_content_server_config if is_use_content_server_conf
   end
 
   def read_config(yml_file_path)
@@ -21,6 +21,20 @@ class FileGeneratorParameters
     rescue Exception
       #Do nothing
     end
+  end
+
+  def read_content_server_config
+    yml_file_path = File.expand_path('~/.bbfs/etc/file_monitoring.yml')
+    begin
+      config = YAML.load_file(yml_file_path)
+      config["paths"][0].each { |key, value| set_def_par_val(key, value) }
+    rescue Exception
+      #Do nothing
+    end
+  end
+
+  def is_use_content_server_conf
+    @is_use_content_server_conf ||= get_def_hc_par_val :is_use_content_server_conf
   end
 
   #Represents the Upper limit for total files in directory
@@ -125,7 +139,6 @@ class FileGeneratorParameters
     @target_path
   end
 
-
   #Returns the default hard coded parameter by the given parameter name symbol
   #In case if parameter is not defined returns string fgp_param_symbol
   def get_def_hc_par_val(param_symbol)
@@ -142,7 +155,8 @@ class FileGeneratorParameters
               when :file_size_in_mb then 500
               when :dir_name_template then "test_dir_4_backup_server"
               when :file_name_template then "auto_generated_file_4_backup_server"
-              when :target_path then "./Users/slava/test_files"
+              when :target_path then "./test_files"
+              when :is_use_content_server_conf then true
               else "fgp_#{param_symbol}"
     end
 
@@ -175,6 +189,10 @@ class FileGeneratorParameters
       when "file_name_template"
         self.file_name_template = value
       when "target_path"
+        self.target_path = value
+      when "is_use_content_server_conf"
+        self.is_use_content_server_conf = value
+      when "path"
         self.target_path = value
     end
   end
