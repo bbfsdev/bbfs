@@ -1,0 +1,43 @@
+File Generator utility
+------------------------------------------------------------------
+Generates files with random content with random file size according to the given FileGenerator Parameters.
+The FileGeneratorParameters Represents parameters for file generation and can be defined in the YAML as follow:
+defaults:
+  target_path:  C:/Users/kolman/test_files                  #Represents the target path for files generation
+  file_name_template: auto_generated_file_4_backup_server   #Represents the file name template for generated file
+  dir_name_template:  test_dir_4_backup_server              #Represents the directory name template for generated file
+  file_size_in_mb: 500                                      #Represents the required file size in MB. Not relevant if random calculation is triggered
+  total_created_directories: -1                             #Represents the total created directories. Use any negative value or zero for Infinity. Not relevant if random calculation is triggered
+  total_files_in_dir: 10                                    #Represents the total files in directory. Use any negative value or zero for Infinity
+  sleep_time_in_seconds:  10                                #Represents the sleeping time for generation files
+  upper_size_in_mb: 500                                     #Represents the upper limit file size in MB for random size calculation
+  down_size_in_mb: 50                                       #Represents the Lower limit file size in MB for random size calculation
+  lower_limit_4_files_in_dir: 10                            #Represents the Lower limit for total files in directory for random calculation
+  upper_limit_4_files_in_dir: 20                            #Represents the Upper limit for total files in directory for random calculation
+  is_tot_files_in_dir_random: true                          #Indicates that total files in a directory will be calculated randomly.
+  is_use_random_size: true                                  #Indicates that file size will be calculated randomly.
+  is_use_content_server_conf: true                          #Indicates that file size will be calculated randomly.
+
+Note that these are defaults parameter.
+It means that you can define your own YAML file with only parameter/s that you want to override.
+You have not to provide your own YMAL.
+You can change the default YAML file file_generator_parameters.yml.
+This file located in: BBFS/lib/file_generator
+
+The File Generator utility is integrated to general file utility.
+You have to install file_utils as follow:
+bbfs> gem build file_utils.gemspec
+  Successfully built RubyGem
+  Name: file_utils
+  Version: 0.0.1
+  File: file_utils-0.0.1.gem
+bbfs> gem install file_utils-0.0.1.gem
+    Successfully installed file_utils-0.0.1
+    1 gem installed
+    Installing ri documentation for file_utils-0.0.1...
+    Installing RDoc documentation for file_utils-0.0.1...
+
+The examples to run File Generator utility
+---------------------------------------------------------------
+To start File Generator utility by file_utils:
+$ file_utils generate_files
