@@ -63,7 +63,7 @@ module BBFS
           raise IOError.new("you should have read/write permissions to pid dir: #{PID_DIR}")
         end
       else
-        FileUtils.mkdir_p PID_DIR
+        ::FileUtils.mkdir_p PID_DIR
       end
     elsif RUBY_PLATFORM =~ /mingw/ or RUBY_PLATFORM =~ /ms/ or RUBY_PLATFORM =~ /win/
       require 'rbconfig'
