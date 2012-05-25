@@ -34,7 +34,7 @@ module BBFS
       'log param. Max elapsed time in seconds from last flush'
     Params.parameter 'log_write_to_file', true , \
       'If true then the logger will write the messages to a file.'
-    Params.parameter 'log_write_to_console', true , \
+    Params.parameter 'log_write_to_console', false , \
       'If true then the logger will write the messages to the console.'
     Params.parameter 'log_file_name', File.expand_path("~/.bbfs/log/#{Log.executable_name}.log") , \
       'Default log file name: ~/.bbfs/log/<executable_name>.log'
@@ -66,6 +66,7 @@ module BBFS
       end
       @log_initialized = true
       Log.info 'BBFS Log initialized.'  # log first data
+      Log.info "Log file path:'#{Params.log_file_name}'" if Params.log_write_to_file
     end
 
     # Clears consumers

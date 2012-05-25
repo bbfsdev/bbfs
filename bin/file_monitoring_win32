@@ -79,6 +79,6 @@ begin
 
   Service.start(service_name)
 rescue Exception => err
-  puts " ***Daemon failure #{Time.now} err=#{err}"
+  Log.info " ***Daemon failure #{Time.now} err=#{err}"
   raise
 end
