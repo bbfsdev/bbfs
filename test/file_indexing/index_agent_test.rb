@@ -14,7 +14,7 @@ module BBFS
 
           indexer.index(patterns)
           # ./index_agent_test/lib/libexslt.lib
-          p "Contents: #{indexer.indexed_content.contents}."
+          Log.info "Contents: #{indexer.indexed_content.contents}."
           assert(indexer.indexed_content.content_exists('c6d9d837659e38d906a4bbdcc6703bc37e9ac7e8'))
           # .index_agent_test/include/libexslt/exsltexports.h
           assert_equal(false, indexer.indexed_content.content_exists('5c87a31b0106b3c4bb1768e43f5b8c41139882c2'))
@@ -36,7 +36,7 @@ module BBFS
           get_checksum_num = 0
           set_trace_func Proc.new { |event, file, line, id, binding, classname|
             if event =~ event_regex and id.to_s =~ id_regex
-              printf "[%8s] %30s %30s (%s:%-2d)\n", event, id, classname, file, line
+              Log.info sprintf "[%8s] %30s %30s (%s:%-2d)\n", event, id, classname, file, line
               get_checksum_num +=1
             end
           }

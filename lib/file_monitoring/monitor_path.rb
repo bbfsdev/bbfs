@@ -101,7 +101,7 @@ module BBFS
             @@log.flush  #Ruby1.9.3: note that this is Ruby internal buffering only; the OS may buffer the data as well
           end
           if (@event_queue && !self.instance_of?(DirStat))
-            p "Writing to event queue [#{self.state}, #{self.path}]"
+            Log.info "Writing to event queue [#{self.state}, #{self.path}]"
             @event_queue.push([self.state, self.path])
           end
         end
