@@ -5,9 +5,9 @@
 #       If log_param_auto_start is false then 'Log.init' method will be called
 #       on the first attempt to log.
 
-require ('params')
-require ('thread')
-require ('log/log_consumer.rb')
+require 'params'
+require 'thread'
+require 'log/log_consumer.rb'
 
 module BBFS
   # Module: Log.
@@ -81,7 +81,7 @@ module BBFS
     # formatting the data and push to consumers
     def Log.basic msg, type
       Log.init if not @log_initialized
-       /([a-zA-Z0-9\-_\.]+\.rb:\d+)/ =~ caller[1]
+       /([a-zA-Z0-9\-_\.]+:\d+)/ =~ caller[1]
        data = "[BBFS LOG] [#{Time.now()}] [#{type}] [#{$1}] [#{msg}]"
        @consumers.each { |consumer| consumer.push_data data  }
     end
