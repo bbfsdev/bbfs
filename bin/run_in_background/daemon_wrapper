@@ -12,7 +12,6 @@ require 'win32/daemon'
 #require 'win32/process'
 include Win32
 
-# there is a non-deterministic error running in debug mode with logger
 DBG = false  # NOTE be sure to disable it in production
 
 begin
@@ -35,43 +34,39 @@ if DBG
   BBFS::Log.init
 end
 
-#begin
-  class WrapperDaemon < Daemon
-    def service_main
-      BBFS::Log.debug1 "Wrapper starts: #{ARGV.join(" ")}"
-      @pid = Process.spawn ARGV.join(" ")
-      BBFS::Log.debug1 "Wrapper inner app pid: #{@pid}"
+class WrapperDaemon < Daemon
+  def service_main
+    BBFS::Log.debug1 "Wrapper starts: #{ARGV.join(' ')}"
+    @pid = Process.spawn ARGV.join(" ")
+    BBFS::Log.debug1 "Wrapper inner app pid: #{@pid}"
 
-      while running?
-        begin
-          # checking whether inner application is alive
-          Process.kill 0, @pid  
-        rescue Errno::ESRCH
-          # if inner application exited then stop the service
-          service_stop
-        end
-        sleep 0.5
-      end
-      # if got here then process is about to exit
-      #Process.waitpid @pid
-    end
-
-    def service_stop
+    while running?
       begin
-        Process.kill 0, @pid  # checking whether inner application is alive
-        Process.kill 9, @pid  # kill the inner application
-        #sleep 5 
-        begin
-          # checking whether inner application is alive
-          Process.kill 0, @pid  
-          BBFS::Log.debug1 "inner app still alive after kill. wait till exit..."
-          # may be redundant. children processes on Windows look be detached.
-          # also can be rather dangerous to use here.
-          pid_exit_stat = Process.waitpid2 @pid
-          BBFS::Log.debug1 "inner application exit status: #{pid_exit_stat}"
-        rescue Errno::ESRCH
-          BBFS::Log.debug1 "inner app was killed"
-        end
+        # checking whether inner application is alive
+        Process.kill 0, @pid  
+      rescue Errno::ESRCH
+        # if inner application exited then stop the service
+        service_stop
+      end
+      sleep 0.5
+    end
+    # if got here then process is about to exit
+    #Process.waitpid @pid
+  end
+
+  def service_stop
+    begin
+      Process.kill 0, @pid  # checking whether inner application is alive
+      Process.kill 9, @pid  # kill the inner application
+      #sleep 5 
+      begin
+        # checking whether inner application is alive
+        Process.kill 0, @pid  
+        BBFS::Log.debug1 "inner app still alive after kill. wait till exit..."
+        # may be redundant. children processes on Windows look be detached.
+        # also can be rather dangerous to use here.
+        pid_exit_stat = Process.waitpid2 @pid
+        BBFS::Log.debug1 "inner application exit status: #{pid_exit_stat}"
         begin
           # checking whether inner application is alive
           Process.kill 0, @pid  
@@ -80,15 +75,18 @@ end
           BBFS::Log.debug1 "inner app deleted after wait"
         end
       rescue Errno::ESRCH
-        # if got here then inner application is already exit. do nothing.
-        BBFS::Log.debug1 "inner app already deleted"
-      end 
-      BBFS::Log.debug1 "Wrapper was stopped"
-      # let log be written
-      sleep BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush + 0.5
-      exit!
-    end
+        BBFS::Log.debug1 "inner app was killed"
+      end
+    rescue Errno::ESRCH
+      # if got here then inner application is already exit. do nothing.
+      BBFS::Log.debug1 "inner app already deleted"
+    end 
+    BBFS::Log.debug1 "Wrapper was stopped"
+    # let log be written
+    sleep BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush + 0.5
+    exit!
   end
+end
 
-  WrapperDaemon.mainloop
+WrapperDaemon.mainloop
 

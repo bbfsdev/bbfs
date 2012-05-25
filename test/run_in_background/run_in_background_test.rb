@@ -76,6 +76,8 @@ module BBFS
         }
       end
 
+      # uncomment following lines if there is a suspicion that something gone wrong
+      # inspired by bug caused by coworking of daemon_wrapper an logger
       #sleep 10
       #assert_equal(true, RunInBackground.running?(@good_daemon))
       #assert_equal(true, RunInBackground.running?(@good_daemonize))
