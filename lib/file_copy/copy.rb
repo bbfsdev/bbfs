@@ -11,7 +11,7 @@ module BBFS
       password = (password and password.length > 0) ? password : nil
       port = 22 # 22 is a standart SSH port
       raise "Undefined server" unless server
-      p "Trying to connect(ssh): #{username}, #{password}, #{server}, #{port}."
+      Log.info "Trying to connect(ssh): #{username}, #{password}, #{server}, #{port}."
       if (username and password)
         Net::SSH.start(server, username,
                        :password => password,
@@ -34,11 +34,11 @@ module BBFS
         uploads = files_map.map { |from,to|
           remote_dir = File.dirname(to)
           sftp_mkdir_recursive(sftp, File.dirname(to))
-          p "Copying #{from} to #{to}"
+          Log.info "Copying #{from} to #{to}"
           sftp.upload(from, to)
         }
         uploads.each { |u| u.wait }
-        p "Done."
+        Log.info "Done."
       end # ssh.sftp.connect
     end # def initialize
     module_function :sftp_copy
@@ -46,17 +46,17 @@ module BBFS
     def sftp_mkdir_recursive(sftp, path)
       dir_stat = nil
       begin
-        p "Stat remote dir: #{path}."
+        Log.info "Stat remote dir: #{path}."
         dir_stat = sftp.stat!(path).directory?
-        p "Stat result #{dir_stat}."
+        Log.info "Stat result #{dir_stat}."
       rescue Net::SFTP::StatusException
       end
       if !dir_stat
-        p "Directory does not exists: #{path}."
+        Log.info "Directory does not exists: #{path}."
         sftp_mkdir_recursive sftp, File.dirname(path)
-        p "Making dir #{path}."
+        Log.info "Making dir #{path}."
         response = sftp.mkdir!(path)
-        p "Making dir ok:#{response.ok?}."
+        Log.info "Making dir ok:#{response.ok?}."
       end
     end
     module_function :sftp_mkdir_recursive
