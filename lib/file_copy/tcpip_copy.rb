@@ -1,14 +1,15 @@
-# Author: Itzhak B. 
+# Author: Itzhak B.
 # Description: copy data and files by tcpip protocol
-# Run: ruby examples/receiver.rb, ruby examples/sender.rb
- 
+# Run: ruby -Ilib examples/file_copy/receiver.rb, ruby -Ilib examples/file_copy/sender.rb
+
 require 'socket'
 require 'thread'
+
 require 'log'
 
 
 module BBFS
-  module FileCopy    
+  module FileCopy
     # host that send datat and files
     class Sender
       def initialize(addr, port_num)
@@ -21,7 +22,7 @@ module BBFS
         peer_addr.shift  # removes "AF_INET"
         @LOG.info("connected to peer: #{peer_addr.join(":")}")
       end
-      
+
       def send(data)
         @LOG.debug3("data to send is (#{data}).")
         marshal_data = Marshal.dump(data)
@@ -29,25 +30,25 @@ module BBFS
         @socket.write(data_size)
         @socket.write(marshal_data)
       end
-      
+
       def send_file(file_name)
         #check if source file is exist
         if (File.exists?(file_name) == false)
           @LOG.warning("source file \'#{file_name} \' Does not exist")
           return -1
-        end    
-        
-        file = File.open(file_name, "r")    
+        end
+
+        file = File.open(file_name, "r")
         content = file.read
-        send(content)    
+        send(content)
       end
-      
+
       def close
         @socket.close
       end
     end
-    
-    # multiclient server that receive data 
+
+    # multiclient server that receive data
     class Receiver
       def initialize port_num
         @LOG = Log
@@ -57,7 +58,7 @@ module BBFS
         addr.shift            # removes "AF_INET"
         @LOG.info("server is on #{addr.join(":")}")
       end
-      
+
       # start server, when data received it pushed to queue
       def run (queue)
         loop do
@@ -76,11 +77,10 @@ module BBFS
               @LOG.debug3 "data received (#{unmarshaled_data})"
               queue.push unmarshaled_data
             end
-            @LOG.info "connection #{peer_addr.join(":")} is closed by other side"         
-          end           
-        end
-      end
-    end
+            @LOG.info "connection #{peer_addr.join(":")} is closed by other side"
+          end # Thread.start(@server.accept) do |client|
+        end # loop do
+      end # def run
+    end # class Receiver
   end # module FileCopy
 end  # module BBFS
-

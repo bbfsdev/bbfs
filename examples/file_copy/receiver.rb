@@ -1,21 +1,26 @@
-require File.dirname(__FILE__) + '/tcpip_copy.rb'
-#require File.dirname(__FILE__) + '/mylogger.rb'
+require_relative '../../lib/file_copy/tcpip_copy.rb'
 
-queue = Queue.new
-port = 50152
 
-Thread.abort_on_exception = true
+module BBFS
+  module FileCopy
+    module Examples
+      port = 50152
 
-queue = Queue.new
-rs = Receiver.new port
+      queue = Queue.new # creating queue
+      rs = Receiver.new port # creating instance of class for server (rc)
+      receiver = Thread.new do # creating thread that run the server
+        # convey to run method of server the queue in order when new message is received
+        # it will be pushed to queue
+        rs.run queue
+      end
 
-receiver = Thread.new do
-  rs.run queue
+      # when received some data from queue pop it from queue and print it to screen
+      while value = queue.pop
+        puts "consumed #{value}"
+      end
+
+      receiver.join
+    end
+  end
 end
 
-
-while value = queue.pop
-  puts "consumed #{value}"
-end
-
-receiver.join
