@@ -10,24 +10,21 @@ module BBFS
     module Test
       class TcpipReceiverTest < ::Test::Unit::TestCase
         def test_receiver
+          queue = Queue.new
+          port = 50152
 
-          def setup
-            queue = Queue.new
-            port = 50152
+          Thread.abort_on_exception = true
 
-            Thread.abort_on_exception = true
+          # create server (receiver)
+          queue = Queue.new
+          rs = Receiver.new port
 
-            # create server (receiver)
-            queue = Queue.new
-            rs = Receiver.new port
-
-            receiver = Thread.new do
-              rs.run queue
-            end
-
-            # create host (sender)
-            h = Sender.new "localhost", port
+          receiver = Thread.new do
+            rs.run queue
           end
+
+          # create host (sender)
+          h = Sender.new "localhost", port
 
           ############ TEST 1 (test send_file)#################
           #send content of FILE_NAME (by sender)
