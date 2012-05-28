@@ -11,8 +11,8 @@ module BBFS
     # Load yml params and override default values.
     # Return true, if all yml params loaded successfully.
     # Return false, if a loaded yml param does not exist.
-    def Params.read_yml_params yml_params_string
-      proj_params = YAML::load(yml_params_string)
+    def Params.read_yml_params yml_input_io
+      proj_params = YAML::load(yml_input_io)
       proj_params.keys.each do |param_name|
         if not self.instance_variable_get '@' + param_name
           puts "loaded yml param:'#{param_name}' which does not exist in Params module."
