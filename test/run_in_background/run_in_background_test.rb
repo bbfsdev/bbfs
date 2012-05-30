@@ -1,4 +1,3 @@
-require 'sys/uname'
 require 'test/unit'
 require 'run_in_background'
 
@@ -11,6 +10,7 @@ module BBFS
     if RUBY_PLATFORM =~ /linux/ or RUBY_PLATFORM =~ /darwin/
       OS = :LINUX
     elsif RUBY_PLATFORM =~ /mingw/ or RUBY_PLATFORM =~ /ms/ or RUBY_PLATFORM =~ /win/
+      require 'sys/uname'
       OS = :WINDOWS
     else
       raise "Unsupported platform #{RUBY_PLATFORM}"
