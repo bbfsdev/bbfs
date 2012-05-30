@@ -5,28 +5,10 @@
 # Each unique content is backed up to the remote (backup) server.
 
 begin
-  require 'params'
-  require 'run_in_background'
   require 'content_server'
 rescue LoadError
   require 'rubygems'
-  require 'params'
-  require 'run_in_background'
   require 'content_server'
 end
 
-BBFS::Params.parameter('start_in_background', false, 'Run this in background.')
-BBFS::Params.parameter('delete_from_background', false, 'Remove background task.')
-BBFS::Params.parameter('background_servicename', File.basename(__FILE__),
-                       'Background service name.')
-
-if BBFS::Params.delete_from_background
-  BBFS::RunInBackground.delete(BBFS::Params.background_servicename)
-end
-if BBFS::Params.background
-  BBFS::Params.background = false
-  BBFS::RunInBackground.start!(BBFS::Params.background_servicename)
-else
-  BBFS::ContentServer.run
-end
-
+BBFS::ContentServer.run
