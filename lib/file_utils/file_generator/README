@@ -71,3 +71,15 @@ The examples to run File Generator utility
 ---------------------------------------------------------------
 To start File Generator utility by file_utils:
 $ file_utils generate_files
+
+To start File Generator utility from any place:
+fg = BBFS::FileGenerator::FileGenerator.new()
+fg.run()
+
+To start File Generator utility from any place with FileGeneratorParameters:
+fp = BBFS::FileGenerator::FileGeneratorParameters.new()
+fp.target_path = "./test_files333"
+fp.file_name_template = "agf_4_bs_s"
+fg = BBFS::FileGenerator::FileGenerator.new(fp)
+fg.run()
+
