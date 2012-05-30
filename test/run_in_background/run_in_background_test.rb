@@ -1,5 +1,6 @@
-require "run_in_background"
-require "test/unit"
+require 'sys/uname'
+require 'test/unit'
+require 'run_in_background'
 
 module BBFS
   # TODO break to number of small tests according to functionality
@@ -27,6 +28,10 @@ module BBFS
     end
 
     def test_functionality
+      if OS == :WINDOWS && Sys::Uname.sysname =~ /(Windows 7)/
+        skip "This test shouldn't be run on #{$1}"
+      end
+
       # test start
       # test application should actually start here
       assert_nothing_raised{ RunInBackground.start(@binary, ["1000"], @good_daemon) }
