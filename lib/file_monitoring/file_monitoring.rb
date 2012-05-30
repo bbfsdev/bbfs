@@ -31,7 +31,7 @@ module BBFS
           priority = (Time.now + elem['scan_period']).to_i
           dir_stat = DirStat.new(elem['path'], elem['stable_state'])
           dir_stat.set_event_queue(@event_queue) if @event_queue
-          puts [priority, elem, dir_stat]
+          Log.info [priority, elem, dir_stat]
           pq.push([priority, elem, dir_stat], -priority)
         }
 
@@ -40,16 +40,16 @@ module BBFS
           log_path = File.expand_path(config_yml['log_path'])
         end
 
-        puts 'Log path:' + log_path
+        Log.info 'Log path:' + log_path
         FileUtils.mkdir_p(File.dirname(log_path))
         log = File.open(log_path, 'w')
         FileStat.set_log(log)
 
         while true do
           time, conf, dir_stat = pq.pop
-          #puts 'time:' + time.to_s()
-          #puts 'now:' + Time.now.to_i.to_s()
-          #puts conf
+          #Log.info 'time:' + time.to_s()
+          #Log.info 'now:' + Time.now.to_i.to_s()
+          #Log.info conf
 
           time_span = time - Time.now.to_i
           if (time_span > 0)
@@ -57,8 +57,8 @@ module BBFS
           end
           dir_stat.monitor
 
-          #puts conf['path']
-          #puts conf['scan_period']
+          #Log.info conf['path']
+          #Log.info conf['scan_period']
           priority = (Time.now + conf['scan_period']).to_i
           pq.push([priority, conf, dir_stat], -priority)
         end

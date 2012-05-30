@@ -96,7 +96,7 @@ module BBFS
           files = files | (collect(permit_patterns[i]));
         end
 
-        p "Files: #{files}."
+        Log.info "Files: #{files}."
 
         # expand to absolute pathes
         files.map! {|f| File.expand_path(f)}

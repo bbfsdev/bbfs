@@ -69,23 +69,23 @@ module BBFS
         while true do
 
           # Note: This thread should be the only consumer of local_server_content_data_queue
-          p 'Waiting on local server content data.'
+          Log.info 'Waiting on local server content data.'
           local_server_content_data = local_server_content_data_queue.pop
 
           # Note: This thread should be the only consumer of backup_server_content_data_queue
           # Note: The server will wait in the first time on pop until backup sends it's content data
           while backup_server_content_data_queue.size > 0
-            p 'Waiting on backup server content data.'
+            Log.info 'Waiting on backup server content data.'
             backup_server_content_data = backup_server_content_data_queue.pop
           end
 
-          p 'Updating file copy queue.'
-          p "local_server_content_data #{local_server_content_data}."
-          p "backup_server_content_data #{backup_server_content_data}."
+          Log.info 'Updating file copy queue.'
+          Log.info "local_server_content_data #{local_server_content_data}."
+          Log.info "backup_server_content_data #{backup_server_content_data}."
           # Remove backup content data from local server
           content_to_copy = ContentData::ContentData.remove(backup_server_content_data, local_server_content_data)
           # Add copy instruction in case content is not empty
-          p "Content to copy: #{content_to_copy}"
+          Log.info "Content to copy: #{content_to_copy}"
           copy_files_events.push(content_to_copy) unless content_to_copy.empty?
         end
       end
@@ -95,17 +95,17 @@ module BBFS
       # Start copying files on demand
       all_threads << Thread.new do
         while true do
-          p 'Waiting on copy files events.'
+          Log.info 'Waiting on copy files events.'
           copy_event = copy_files_events.pop
 
-          p "Copy file event: #{copy_event}"
+          Log.info "Copy file event: #{copy_event}"
 
           # Prepare source,dest map for copy.
           used_contents = Set.new
           files_map = Hash.new
-          p "Instances: #{copy_event.instances}"
+          Log.info "Instances: #{copy_event.instances}"
           copy_event.instances.each { |key, instance|
-            p "Instance: #{instance}"
+            Log.info "Instance: #{instance}"
             # Add instance only if such content has not added yet.
             if !used_contents.member?(instance.checksum)
               files_map[instance.full_path] = destination_filename(
@@ -115,7 +115,7 @@ module BBFS
             end
           }
 
-          p "Copying files: #{files_map}."
+          Log.info "Copying files: #{files_map}."
           # Copy files, waits until files are finished copying.
           FileCopy::sftp_copy(Params.backup_username,
                               Params.backup_password,
@@ -169,7 +169,7 @@ module BBFS
       # Start sending to backup server
       all_threads << Thread.new do
         while true do
-          p 'Waiting on local server content data queue.'
+          Log.info 'Waiting on local server content data queue.'
           content_data_sender.send_content_data(local_server_content_data_queue.pop)
         end
       end
