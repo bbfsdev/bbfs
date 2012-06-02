@@ -1,4 +1,4 @@
-require 'params/argument_parser'
+require 'optparse'
 require 'yaml'
 # A simple params module.
 module BBFS
@@ -22,6 +22,55 @@ module BBFS
       end
       return true
     end
+    #  Parse command line
+    #  ==== Arguments:
+    #  Pre defined in lib/params.rb as instance variables of Params module
+    def self.Parse(args)
+      parsing_result = Hash.new  #  Define parsing Results Hash
+      options = Hash.new  #  Hash of parsing options from Params
+      names = Params.instance_variables  #  Define all available parameters
+
+      names.each do  |name|
+        value = Params.instance_variable_get(name)  #  Get names values
+        tmp_name= name.to_s
+        tmp_name.slice!(0)  #  Remove @ from instance variables
+        options[tmp_name] = value  #  Create list of option arguments from Params
+      end
+
+      opts = OptionParser.new do |opts|   #  Define options switch for parsing
+                                          #  Define List of options see example on
+                                          #  http://ruby.about.com/od/advancedruby/a/optionparser2.htm
+        options.each do |name,value|
+          tmp_name = name.to_s
+          tmp_name_long = "--"+ tmp_name + "=MANDATORY"  #  Define a command with single mandatory parameter
+          tmp_value = "Default value:" + value.to_s  #  Description and Default value
+
+          #  Define type of the mandatory value
+          value_type = "String"
+          if value.is_a?(Integer)
+            value_type = "Integer"
+          end
+
+          #  Switches definition
+          parsing_result[name] = "Parsing Failed"
+          opts.on(tmp_name_long,value_type, tmp_value) do |result|
+            parsing_result[name] = result
+          end
+
+        end
+
+
+        #  Define help command for available options
+        opts.on_tail("-h", "--help", "Show this message") do
+          puts opts
+          exit
+        end
+
+        opts.parse(args)  #  Parse request
+      end
+      return parsing_result
+    end #  end of Parse function
+
   end
 end
 
