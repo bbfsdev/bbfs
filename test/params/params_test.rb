@@ -35,6 +35,29 @@ module BBFS
       assert_equal false, Params.read_yml_params('param_2: value_2_yml') , \
         'Error. yml param should not have been defined in Params'
     end
+
+    def test_parsing_of_the_defined_parameters
+      #  Define options
+      Params.parameter('remote_server', 'localhost', 'IP or DNS of backup server.')
+      Params.parameter('remote_server', 3333,
+                       'Listening port for backup server content data.')
+      Params.parameter('backup_username', nil, 'Backup server username.')
+      Params.parameter('backup_password', nil, 'Backup server password.')
+      Params.parameter('backup_destination_folder', '',
+                       'Backup server destination folder, default is the relative local folder.')
+      Params.parameter('content_data_path', File.expand_path('~/.bbfs/var/content.data'),
+                       'ContentData file path.')
+      Params.parameter('monitoring_config_path', File.expand_path('~/.bbfs/etc/file_monitoring.yml'),
+                       'Configuration file for monitoring.')
+
+      x = Params.Parse("--remote_server=2222" )
+      assert_equal('2222',x["remote_server"])
+
+      x = Params.Parse("--backup_password=kavana" )
+      assert_equal('kavana',x["backup_password"])
+      puts x
+
+    end
   end
 end
 
