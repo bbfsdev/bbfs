@@ -1,3 +1,6 @@
+# Author: Slava Pasechnik (slavapas13@gmail.com)
+# Run from bbfs> file_utils generate_files
+
 require 'digest'
 require 'fileutils'
 require 'params'
@@ -31,17 +34,14 @@ module BBFS
     #Generates files with random content with random file size according to the given Params
     class FileGenerator
       attr_reader :one_mb_string
-      FILE_EXT = "txt"
-
-      def initialize ()
-      end
+      FILE_EXT = 'txt'
 
       #Gets one MB string
       def one_mb_string
         @one_mb_string || @one_mb_string = prepare_one_mb_string
       end
 
-      #Gets the some random string [8..16]
+      #Gets the some random string
       def get_small_rand_unique_str
         rand(36**8).to_s(36)
       end
@@ -100,6 +100,7 @@ module BBFS
                   Params.lower_limit_4_files_in_dir
         end
 
+        #When total_files_in_dir < 1 it will be treated as unlimited files creation in directory
         if Params.total_files_in_dir < 1 ||
             file_counter < Params.total_files_in_dir then
           return true
@@ -114,7 +115,7 @@ module BBFS
         while is_generate_dir dir_counter
           new_dir_name = File.join Params.target_path, get_new_directory_name
           ::FileUtils.mkdir_p new_dir_name unless File.directory?(new_dir_name)
-          dir_counter +=1
+          dir_counter += 1
           file_counter = 0
 
           while is_generate_file file_counter
