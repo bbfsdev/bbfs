@@ -135,10 +135,6 @@ module BBFS
 end # module BBFS
 
 
-fg = BBFS::FileGenerator::FileGenerator.new()
-fg.run()
-
-
 
 
 
