@@ -8,7 +8,6 @@ Gem::Specification.new do |s|
   s.authors     = ['Gena Petelko', 'Kolman Vornovitsky']
   s.email       = 'kolmanv@gmail.com'
   s.homepage    = 'http://github.com/kolmanv/bbfs'
-  s.files       = ['lib/params.rb',
-                   'lib/params/argument_parser.rb']
+  s.files       = ['lib/params.rb']
 #  s.test_files  = ['test/params/params_spec.rb']
 end
