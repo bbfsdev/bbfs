@@ -1,3 +1,6 @@
+# Author: Itzhak B.
+# Description: example of using Sender class (file tcpip_copy.rb)
+# Run: ruby -Ilib examples/file_copy/sender.rb
 require_relative '../../lib/file_copy/tcpip_copy.rb'
 
 # TODO (itzhak and yaron) check why log file is not created
@@ -10,7 +13,9 @@ module BBFS
       # Helper variable: directory of current example file!
       LOCAL_PATH = File.dirname(__FILE__)
       # Directory of example files.
-      FILES_DIR = File.join(LOCAL_PATH, '/file_to_send/file_to_send.txt')
+      FILES_DIR = File.join(LOCAL_PATH, '/files_to_send/file_to_send.txt')
+
+      puts "#{FILES_DIR}"
 
       # create two clients (h and h2)
       h = Sender.new "localhost", port
