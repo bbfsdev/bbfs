@@ -9,9 +9,9 @@ require 'yaml'
 module BBFS
   module FileGenerator
     Params.parameter('target_path', 'C:/Users/Slava/test_files', 'Represents the target path for files generation')
-    Params.parameter('file_name_template', 'auto_generated_file_4_backup_server',
+    Params.parameter('file_name_prefix', 'auto_generated_file_4_backup_server',
                      'Represents the file name template for generated file')
-    Params.parameter('dir_name_template', 'test_dir_4_backup_server',
+    Params.parameter('dir_name_prefix', 'test_dir_4_backup_server',
                      'Represents the directory name template for generated file')
     Params.parameter('file_size_in_mb', 500,
                      'Represents the required file size in MB. Not relevant if random calculation is triggered')
@@ -38,7 +38,7 @@ module BBFS
 
       #Gets one MB string
       def one_mb_string
-        @one_mb_string || @one_mb_string = prepare_one_mb_string
+        @one_mb_string ||= prepare_one_mb_string
       end
 
       #Gets the some random string
@@ -124,7 +124,7 @@ module BBFS
               f.write (one_mb_string * get_file_mb_size)
               f.write new_file_name #To make file content unique
             end
-            file_counter +=1
+            file_counter += 1
 
             sleep Params.sleep_time_in_seconds if Params.sleep_time_in_seconds > 0
           end
