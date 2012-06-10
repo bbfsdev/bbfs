@@ -58,12 +58,12 @@ module BBFS
 
       #Gets the new directory name
       def get_new_directory_name
-        "#{Params.dir_name_template}_#{get_unique_name}"
+        "#{Params.dir_name_prefix}_#{get_unique_name}"
       end
 
       #Gets the new file name
       def get_new_file_name
-        "#{Params.file_name_template}_#{get_unique_name}.#{FILE_EXT}"
+        "#{Params.file_name_prefix}_#{get_unique_name}.#{FILE_EXT}"
       end
 
       #Gets the required file size im MB
