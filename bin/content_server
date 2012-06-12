@@ -5,10 +5,58 @@
 # Each unique content is backed up to the remote (backup) server.
 
 begin
+  require 'yaml'
+  require 'params'
+  require 'run_in_background'
   require 'content_server'
 rescue LoadError
   require 'rubygems'
+  require 'yaml'
+  require 'params'
+  require 'run_in_background'
   require 'content_server'
 end
+include BBFS
 
-BBFS::ContentServer.run
+# TODO add command line parsing when it will be completed
+
+# service configuration
+Params.parameter 'content_server_background', false, 'Whether server should be run in background'
+Params.parameter 'content_server_command', 'start',
+                 'Servers command. Commands are: start, delete'
+Params.parameter 'content_server_servicename', File.basename(__FILE__),
+                       'Background service name'
+Params.parameter 'content_server_config', 
+                 File.join(Dir.home, '.bbfs', 'etc', 'config', Params.servicename),
+                 'Path to servers config file'
+Params.content_server_config = File.expand_path Params.content_server_config
+
+# server configuration
+Params.remote_server = '127.0.0.1'
+Params.backup_username = 'test'
+Params.backup_password = 'test'
+Params.content_data_path = File.expand_path('~/.bbfs/var/server_content.data')
+
+if File.exists? Params.content_server_config
+  File.open(Params.content_server_config, 'r') do |file|
+    Params.read_yml_params file
+  end 
+end
+
+Log.init
+
+case Params.content_server_command
+when 'start'
+  if Params.content_server_background
+    # TODO
+  else
+    ContentServer.run
+  end
+when 'delete'
+  if RunInBackground.exists? Params.content_server_servicename
+    RunInBackground.delete Params.content_server_servicename
+  else
+    Log.warning "Can't delete. Service #{Params.content_server_servicename} already deleted"
+  end
+end
+

@@ -3,6 +3,7 @@ require 'file_copy'
 require 'file_indexing'
 require 'file_monitoring'
 require 'params'
+require 'log'
 require 'set'
 require 'thread'
 
