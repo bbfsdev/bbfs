@@ -1,103 +1,142 @@
+# Author: Slava Pasechnik (slavapas13@gmail.com)
+# Run from bbfs> file_utils generate_files
+
 require 'digest'
-require 'file_utils/file_generator/file_generator_parameters'
 require 'fileutils'
+require 'params'
+require 'yaml'
 
-#Generates files with random content with random file size
-# according to given FileGeneratorParameters
-class FileGenerator
-  attr_accessor :file_gen_params
-  attr_reader :one_mb_string
+module BBFS
+  module FileGenerator
+    Params.parameter('target_path', 'C:/Users/Slava/test_files', 'Represents the target path for files generation')
+    Params.parameter('file_name_prefix', 'auto_generated_file_4_backup_server',
+                     'Represents the file name template for generated file')
+    Params.parameter('dir_name_prefix', 'test_dir_4_backup_server',
+                     'Represents the directory name template for generated file')
+    Params.parameter('file_size_in_mb', 500,
+                     'Represents the required file size in MB. Not relevant if random calculation is triggered')
+    Params.parameter('total_created_directories', -1,
+                     'Represents the total created directories. Use any negative value or zero for Infinity.
+                      Not relevant if random calculation is triggered')
+    Params.parameter('total_files_in_dir', 10,
+                     'Represents the total files in directory. Use any negative value or zero for Infinity')
+    Params.parameter('sleep_time_in_seconds', 10, 'Represents the sleeping time for generation files')
+    Params.parameter('upper_size_in_mb', 500, 'Represents the upper limit file size in MB for random size calculation')
+    Params.parameter('down_size_in_mb', 50, 'Represents the Lower limit file size in MB for random size calculation')
+    Params.parameter('lower_limit_4_files_in_dir', 10,
+                     'Represents the Lower limit for total files in directory for random calculation')
+    Params.parameter('upper_limit_4_files_in_dir', 20,
+                     'Represents the Upper limit for total files in directory for random calculation')
+    Params.parameter('is_tot_files_in_dir_random', true,
+                     'Indicates that total files in a directory will be calculated randomly.')
+    Params.parameter('is_use_random_size', true, 'Indicates that file size will be calculated randomly.')
 
-  def initialize (file_gen_params = FileGeneratorParameters.new())
-    @file_gen_params = file_gen_params
-  end
+    #Generates files with random content with random file size according to the given Params
+    class FileGenerator
+      attr_reader :one_mb_string
+      FILE_EXT = 'txt'
 
-  def one_mb_string
-    @one_mb_string || @one_mb_string = prepare_one_mb_string
-  end
+      #Gets one MB string
+      def one_mb_string
+        @one_mb_string ||= prepare_one_mb_string
+      end
 
-  def get_small_rand_unique_str
-    rand(36**8).to_s(36)
-  end
+      #Gets the some random string
+      def get_small_rand_unique_str
+        rand(36**8).to_s(36)
+      end
 
-  def get_unique_name
-    "#{Time.new.to_i}_#{get_small_rand_unique_str}"
-  end
+      #Gets the unique name according to current time and random string
+      def get_unique_name
+        "#{Time.new.to_i}_#{get_small_rand_unique_str}"
+      end
 
-  def get_random_letter
-    (rand(122-97) + 97).chr
-  end
+      #Gets the random letter
+      def get_random_letter
+        (rand(122-97) + 97).chr
+      end
 
-  def get_new_dir_name
-    "#{@file_gen_params.dir_name_template}_#{get_unique_name}"
-  end
+      #Gets the new directory name
+      def get_new_directory_name
+        "#{Params.dir_name_prefix}_#{get_unique_name}"
+      end
 
-  def get_new_file_name
-    @file_ext = "txt"
-    "#{@file_gen_params.file_name_template}_#{get_unique_name}.#{@file_ext}"
-  end
+      #Gets the new file name
+      def get_new_file_name
+        "#{Params.file_name_prefix}_#{get_unique_name}.#{FILE_EXT}"
+      end
 
-  def get_file_mb_size
-    if @file_gen_params.is_use_random_size
-      rand(@file_gen_params.upper_size_in_mb - @file_gen_params.down_size_in_mb) +
-          @file_gen_params.down_size_in_mb
-    else
-      @file_gen_params.file_size_in_mb
-    end
-  end
-
-  def prepare_one_mb_string
-    (get_random_letter) * (1024 * 1024)
-  end
-
-  def is_gen_dir(dir_counter)
-    if @file_gen_params.total_created_directories < 1 ||
-        dir_counter < @file_gen_params.total_created_directories then
-      return true
-    else
-      return false
-    end
-  end
-
-  def get_sleep_time_in_seconds
-    @file_gen_params.sleep_time_in_seconds
-  end
-
-  def is_gen_file(file_counter)
-    if file_counter == 0 && @file_gen_params.is_tot_files_in_dir_random  then
-      @file_gen_params.total_files_in_dir =
-          rand(@file_gen_params.upper_limit_4_files_in_dir -
-                   @file_gen_params.lower_limit_4_files_in_dir) +
-              @file_gen_params.lower_limit_4_files_in_dir
-    end
-
-    if @file_gen_params.total_files_in_dir < 1 ||
-        file_counter < @file_gen_params.total_files_in_dir then
-      return true
-    else
-      return false
-    end
-  end
-
-  def run
-    dir_counter = 0
-    while is_gen_dir(dir_counter)
-      new_dir_name = File.join(@file_gen_params.target_path, get_new_dir_name)
-      FileUtils.mkdir_p new_dir_name unless File.directory?(new_dir_name)
-      dir_counter +=1
-      file_counter = 0
-
-      while is_gen_file(file_counter)
-        new_file_name = get_new_file_name
-        File.open(File.join(new_dir_name, new_file_name), "w") do |f|
-          f.write (one_mb_string * get_file_mb_size)
-          f.write new_file_name #To make file content unique
+      #Gets the required file size im MB
+      def get_file_mb_size
+        if Params.is_use_random_size
+          rand(Params.upper_size_in_mb - Params.down_size_in_mb) +
+              Params.down_size_in_mb
+        else
+          Params.file_size_in_mb
         end
-        file_counter +=1
+      end
 
-        sleep get_sleep_time_in_seconds() if @file_gen_params.sleep_time_in_seconds > 0
+      #Generates one MB string with random content
+      def prepare_one_mb_string
+        get_random_letter * (1024 * 1024)
+      end
+
+      #Determines whether to generate new directory or not
+      def is_generate_dir(dir_counter)
+        if Params.total_created_directories < 1 || #Any negative value or zero will be indication for Infinity
+            dir_counter < Params.total_created_directories then
+          return true
+        else
+          return false
+        end
+      end
+
+      #Determines whether to generate new file or not
+      def is_generate_file(file_counter)
+        if file_counter == 0 && Params.is_tot_files_in_dir_random  then
+          Params.total_files_in_dir =
+              rand(Params.upper_limit_4_files_in_dir -
+                       Params.lower_limit_4_files_in_dir) +
+                  Params.lower_limit_4_files_in_dir
+        end
+
+        #When total_files_in_dir < 1 it will be treated as unlimited files creation in directory
+        if Params.total_files_in_dir < 1 ||
+            file_counter < Params.total_files_in_dir then
+          return true
+        else
+          return false
+        end
+      end
+
+      #Generates files with random content with random file size according to the given Params
+      def run
+        dir_counter = 0
+        while is_generate_dir dir_counter
+          new_dir_name = File.join Params.target_path, get_new_directory_name
+          ::FileUtils.mkdir_p new_dir_name unless File.directory?(new_dir_name)
+          dir_counter += 1
+          file_counter = 0
+
+          while is_generate_file file_counter
+            new_file_name = get_new_file_name
+            File.open(File.join(new_dir_name, new_file_name), "w") do |f|
+              f.write (one_mb_string * get_file_mb_size)
+              f.write new_file_name #To make file content unique
+            end
+            file_counter += 1
+
+            sleep Params.sleep_time_in_seconds if Params.sleep_time_in_seconds > 0
+          end
+        end
       end
     end
-  end
-end
+  end # module FileGenerator
+end # module BBFS
+
+
+
+
+
+
 
