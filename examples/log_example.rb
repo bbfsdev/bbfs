@@ -5,77 +5,94 @@
 # Solution: use: 'log module' to log info\warning\error\debug messages to
 #           file\console\other consumers.
 
-#How to use Log module from your code?
-# 1. add the following requires:
+###############################################################################################
+# HOW TO READ THIS DOCUMENT ?
+# Read sections 1 till 10 carefully.
+# The document will actually setup a configuration for the logger and
+# also will issue few log messages (see the uncommented lines).
+# Note: The configuration used in this document is the recommended configuration for tests.
+#       The default configuration is used for the BBFS production execution.
+#       Read more about configuration in section 3.
+# This document will elaborate on the following log setup and usage phases:
+#   1. require - This will setup default configuration
+#   2. change configuration if needed.
+#   3. call the init method - MUST call init or else an exception is raised.
+#   4. call log messages methods
+# The document will also discuss debug levels and log expected format.
+##################################################################################################
+
+# 1. require phase
+# Add the following requires:
 # require 'params'
 # require 'log'
-# note: at this time the log default parameters are defined (see section 6 ahead
-#       regarding how and when to change the default behavior).
+# Note: after those lines execute, the log default parameters are defined (see section 6 ahead
+#       regarding how and when to change the default configuration).
 require 'params'
 require 'log'
 
-# 2. messages destination.
-# The default log messages destination:
-#   1. stdout (usually the console).
-#   2. file - default file path: '~/.bbfs/log/<executable_name>.log'
-
-# 3. Change default configuration (if needed).
-# In order to change the log default behaviour use the
-# following parameters (after require, before init).
-# 3.1 To enable\disable the stdout destination (default is disabled):
-BBFS::Params.log_write_to_console = 'true'
-# 3.2 To enable\disable the stdout destination (default is enabled):
-#     BBFS::Params.log_write_to_file = 'false'
-# 3.3 Default file path is ~/.bbfs/log/<executable_name>.log
-#     To change it:
-#     BBFS::Params.log_file_name = '<file path>'
-# 3.4 More file related parameters:
-#     Log data can be accumulated in a buffer before
-#     it is written (flushed) to the file.
-#     2 parameters control the buffer size and time limits.
-# 3.4.1 Buffer size limit in mega bytes (default is 1 mega byte).
-#       BBFS::Params.log_param_number_of_mega_bytes_stored_before_flush = 2
-# 3.4.2 Buffer time limit in seconds between 2 flushes. default is 1 second.
-#       BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 2
+# 2. Log configuration.
+#    The default configuration is used for the BBFS production execution.
+#    The default configuration is set automatically after require 'log' has been called
+#    The parameters and their default values:
+#    2.1 Enable\disable the stdout destination:
+#        Params.log_write_to_console = 'false'
+#    2.2 Enable\disable the file destination:
+#        Params.log_write_to_file = 'true'
+#    2.3 Default log file path
+#        Params.log_file_name = '~/.bbfs/log/<executable_name>.log'
+#        More file related parameters:
+#        2.3.1 Log data can be accumulated in a buffer before
+#              it is written (flushed) to the file.
+#              2 parameters control the buffer size and time limits.
+#        2.3.2 Buffer size limit in mega bytes.
+#              Params.log_param_number_of_mega_bytes_stored_before_flush = 1
+#        2.3.3 Buffer time limit in seconds between 2 flushes.
+#              Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 1
+#
+#   The default configuration will flush the log messages only to the file and not to the console.
+#   Also, size limit is 1 megabyte and time limit is 1 second.
+#   When either the size limit or time limits are exceeded, the data will be flushed to the file.
+#   If your messages size is less then 1 mega byte and\or your execution time is less then 1 second
+#   Then you are recommended to set those values to 0 as in the following setup:
+BBFS::Params.log_write_to_console = 'true' # We will also enable the console for this example run.
 BBFS::Params.log_param_number_of_mega_bytes_stored_before_flush = 0
 BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 0
-# Note: The above configuration will set the size and time limits to 0.
-#       This means that the data will be written to the file
-#       immediately when the logging methods are called.
+#   Also, if your execution time is less then 1 second it is recommended to add a sleep 0.1
+#   to avoid loosing the flush action
 
-# 4. Call BBFS::Log.init
-# This method should be called from the project executable init sequence.
-# if you do not use the project init sequence in an executable, such as
-# when you run tests, then call the init method from your own code.
+# 3. Log.init
+# User *MUST* Call init or else an exception will be raised.
+# This method MUST be called from the BBFS project executable init sequence.
+# if user does not use the project init sequence in an executable, such as
+# when user run tests, then user MUST call the init method from his own code.
 BBFS::Log.init
 
-# 5. use one of the following log messages methods.
-# BBFS::Log.info 'this is an info msg example'
-# BBFS::Log.warning 'this is a warning msg example'
-# BBFS::Log.error 'this is a error msg example'
-# BBFS::Log.debug1 'this is a debug1 msg example'  # depends on debug level (see ahead)
-# BBFS::Log.debug2 'this is a debug2 msg example'  # depends on debug level (see ahead)
-# BBFS::Log.debug3 'this is a debug3 msg example'  # depends on debug level (see ahead)
+# 4. use one of the following log messages methods.
+# Log.info 'this is an info msg example'
+# Log.warning 'this is a warning msg example'
+# Log.error 'this is a error msg example'
+# Log.debug1 'this is a debug1 msg example'  # depends on debug level (see ahead)
+# Log.debug2 'this is a debug2 msg example'  # depends on debug level (see ahead)
+# Log.debug3 'this is a debug3 msg example'  # depends on debug level (see ahead)
 BBFS::Log.info 'this is an info msg example'
 
-# 6. log debug level.
-# Will BBFS::Log.debug1 \ debug2 \ debug3 methods will log?
-# if BBFS::Params.log_debug_level is set to 0 (default value)
-# then no debug method will log.
-# if BBFS::Params.log_debug_level is set to 1 then only BBFS::Log.debug1 will log
-# if BBFS::Params.log_debug_level is set to 2 then debug1 and debug2 will log
-# if BBFS::Params.log_debug_level is set to 3 or greater then all debug methods will log
+# 5. log debug levels.
+# Will Log.debug1 , Log.debug2 and Log.debug3 methods will actual log ?
+# if Params.log_debug_level is set to 0 (default value) then no debug method will log.
+# if Params.log_debug_level is set to 1 then only Log.debug1 will log.
+# if Params.log_debug_level is set to 2 then Log.debug1 and Log.debug2 will log.
+# if Params.log_debug_level is set to 3 or greater then all debug methods will log.
 BBFS::Log.debug1 'this debug1 msg will not be logged since debug level default is 0'
 BBFS::Params.log_debug_level = 1  # set new debug level from now on.
 BBFS::Log.debug1 'this debug1 msg will be logged since debug level is 1'
 BBFS::Log.debug2 'this debug2 msg will not be logged since debug level is 1'
 
-# wait a bit opr else the program will terminate
-# quickly before the log writes the messages
+# 6. When to use Sleep ?
+# When your execution time is less then 1 second it is recommended to add a sleep 0.1
+# to avoid loosing the flush action due to quick program termination.
 sleep 0.1
 
-# 7. Log format
-# log should be printed both to the stdout (console) and to default log file:'~/.bbfs/log/log_example.rb.log`'
+# 7. Log expected format.
 #   [BBFS LOG] [TIME] [INFO] [File:Line] [log message]  # for INFO messages.
 #   [BBFS LOG] [TIME] [WARNING] [File:Line] [log message]  # for WARNING messages.
 #   [BBFS LOG] [TIME] [ERROR] [File:Line] [log message]  # for ERROR messages.
@@ -83,10 +100,21 @@ sleep 0.1
 #   [BBFS LOG] [TIME] [DEBUG-2] [File:Line] [log message]  # for DEBUG-2 messages.
 #   [BBFS LOG] [TIME] [DEBUG-3] [File:Line] [log message]  # for DEBUG-3 messages.
 
-# 8. Example
+# 8. Example output
+#    Since both stdout (console) and file are enabled in our example, the log messages
+#    will be printed both to the stdout (console) and to default log
+#    file:'~/.bbfs/log/log_example.rb.log`' in the following format:
+#
 #     [BBFS LOG] [2012-06-08 10:06:14 +0300] [INFO] [log.rb:56] [BBFS Log initialized. Log file
 #       path:'C:/Users/ydror1/.bbfs/log/log_example.rb.log']
 #     [BBFS LOG] [2012-06-08 10:06:14 +0300] [INFO] [log_example.rb:59] [this is
 #       an info msg example]
 #     [BBFS LOG] [2012-06-08 10:06:14 +0300] [DEBUG-1] [log_example.rb:70] [this debug1
 #       msg will be logged since debug level is 1]
+
+# 9. Extensibility
+#    Log can easily be extended to flush the log messages to more consumers such as files,
+#    remote computers, archives, mail etc. For more info regarding this pls contact Yaron (Author).
+
+# 10. General limitations of Log that user should be informed
+#     pls see sections 3 and 6.
