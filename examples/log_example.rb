@@ -12,7 +12,7 @@
 # also will issue few log messages (see the uncommented lines).
 # Note: The configuration used in this document is the recommended configuration for tests.
 #       The default configuration is used for the BBFS production execution.
-#       Read more about configuration in section 3.
+#       Read more about configuration in section 2.
 # This document will elaborate on the following log setup and usage phases:
 #   1. require - This will setup default configuration
 #   2. change configuration if needed.
@@ -23,12 +23,9 @@
 
 # 1. require phase
 # Add the following requires:
-# require 'params'
-# require 'log'
-# Note: after those lines execute, the log default parameters are defined (see section 6 ahead
-#       regarding how and when to change the default configuration).
 require 'params'
 require 'log'
+# Note: after those lines execute, the log default parameters are defined (see section 2 ahead)
 
 # 2. Log configuration.
 #    The default configuration is used for the BBFS production execution.
