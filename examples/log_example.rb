@@ -58,7 +58,7 @@ BBFS::Params.log_write_to_console = 'true' # We will also enable the console for
 BBFS::Params.log_param_number_of_mega_bytes_stored_before_flush = 0
 BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 0
 #   Also, if your execution time is less then 1 second it is recommended to add a sleep 0.1
-#   to avoid loosing the flush action
+#   to avoid loosing the flush action due to program termination.
 
 # 3. Log.init
 # User *MUST* Call init or else an exception will be raised.
