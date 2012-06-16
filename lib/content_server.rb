@@ -1,13 +1,16 @@
-require 'content_data'
-require 'file_copy'
-require 'file_indexing'
-require 'file_monitoring'
-require 'params'
 require 'set'
 require 'thread'
 
+require 'content_data'
 require 'content_server/content_receiver'
+require 'file_copy'
+require 'file_indexing'
+require 'file_monitoring'
+require 'log'
+require 'params'
 require 'content_server/queue_indexer'
+
+
 
 # Content server. Monitors files, index local files, listen to backup server content,
 # copy changes and new files to backup server.
