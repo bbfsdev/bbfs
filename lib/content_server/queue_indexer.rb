@@ -1,5 +1,6 @@
 require 'file_indexing/index_agent'
 require 'file_indexing/indexer_patterns'
+requrie 'log'
 
 module BBFS
   module ContentServer
