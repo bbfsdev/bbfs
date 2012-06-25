@@ -1,3 +1,5 @@
+require 'log'
+
 module BBFS
   module FileIndexing
 
