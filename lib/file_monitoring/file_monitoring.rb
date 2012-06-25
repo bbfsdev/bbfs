@@ -1,5 +1,6 @@
 require 'algorithms'
 require 'fileutils'
+require 'log'
 require 'params'
 require 'yaml'
 
