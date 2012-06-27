@@ -34,7 +34,9 @@
 
 require 'rubygems'
 require 'daemons'
+
 require 'file_monitoring/file_monitoring.rb'
+require 'log'
 
 conf_file_path = File.expand_path('~/.bbfs/etc/file_monitoring.yml')
 if ARGV.length > 1

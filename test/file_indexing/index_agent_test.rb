@@ -1,6 +1,8 @@
 require 'test/unit'
 
 require_relative '../../lib/file_indexing/index_agent'
+require 'log'
+require 'params'
 
 module BBFS
   module FileIndexing

@@ -1,3 +1,6 @@
+require 'log'
+require 'params'
+
 module BBFS
   module FileMonitoring
     #  Path monitoring.

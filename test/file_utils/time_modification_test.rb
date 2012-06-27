@@ -5,6 +5,8 @@ require 'test/unit'
 require 'content_data'
 require 'file_indexing'
 require 'file_utils'
+require 'log'
+require 'params'
 
 module BBFS
   module FileUtils

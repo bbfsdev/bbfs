@@ -4,6 +4,14 @@
 module BBFS
   # This library provides a basic cross-platform functionality to run arbitrary ruby scripts
   # in background and control them. <br>Supported platforms: Windows, Linux, Mac
+  #   NOTE UAC (User Account Control) should be disabled to use library on Windows 7:
+  #   * Click on the Windows Icon
+  #   * Click on the Control Panel
+  #   * Type in UAC in the search box (up-right corner of your window)
+  #   * Click on "Change User Account Control settings"
+  #   * Drag the slider down to either "Notify me when programs try to make changes to my computer"
+  #     or to disable it completely
+  #   * Reboot your computer when you're ready
   # == General Limitations:
   # *  Only ruby scripts can be run in background.
   # *  No multiple instances with the same name.

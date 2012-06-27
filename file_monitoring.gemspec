@@ -15,5 +15,6 @@ Gem::Specification.new do |s|
   s.executables << 'file_monitoring'
   s.add_dependency('algorithms')
   s.add_dependency('daemons')
+  s.add_dependency('log')
   s.add_dependency('params')
 end
