@@ -11,6 +11,8 @@ Gem::Specification.new do |s|
                    "lib/file_monitoring/daemon_win32.rb"]
   s.executables << 'file_monitoring_win32'
   s.add_dependency("algorithms")
+  s.add_dependency('log')
+  s.add_dependency('params')
   s.add_dependency('win32-service')
   s.require_paths << 'lib'
 end
