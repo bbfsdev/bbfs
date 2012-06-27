@@ -15,6 +15,8 @@ EOF
   s.files       = ['lib/run_in_background.rb', 'bin/run_in_background/daemon_wrapper']
   s.test_files  = ['test/run_in_background/run_in_background_test.rb', 
                    'test/run_in_background/test_app']
+  s.add_dependency('log')
+  s.add_dependency('params')
   # Shouldn't be run from comman line
   # #s.executables << 'run_in_background/daemon_wrapper'  
 end

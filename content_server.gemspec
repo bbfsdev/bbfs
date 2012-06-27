@@ -20,5 +20,6 @@ Gem::Specification.new do |s|
   s.add_dependency('file_copy')
   s.add_dependency('file_indexing')
   s.add_dependency('file_monitoring')
+  s.add_dependency('log')
   s.add_dependency('params')
 end

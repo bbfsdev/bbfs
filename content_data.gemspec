@@ -12,4 +12,6 @@ Gem::Specification.new do |s|
   s.files       = ['lib/content_data.rb',
                    'lib/content_data/content_data.rb']
   s.test_files  = ['test/content_data/content_data_test.rb']
+  s.add_dependency('log')
+  s.add_dependency('params')
 end
