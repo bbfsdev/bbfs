@@ -1,4 +1,5 @@
 require 'log'
+require 'params'
 require 'time'
 
 module BBFS
