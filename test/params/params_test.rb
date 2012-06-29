@@ -10,39 +10,14 @@ require_relative '../../lib/params.rb'
 module BBFS
 
   class TestLog < Test::Unit::TestCase
-    def test_override_predefined_param_with_loaded_yml_param
-      # Test set phase
-      code_param_name =  'param_1'
-      code_param_value = 'value_1_code'
-      yml_string = 'param_1: value_1_yml'
-      yml_param_value = 'value_1_yml'
-      #define a new param
-      Params.parameter code_param_name, code_param_value , 'Defined at test code'
-
-      # Test check phase
-      # 1. Check that param_1 was defined correctly at Params
-      assert_equal code_param_value, Params.param_1 , 'Abnormal behaviour. "Params" module does not work'
-      #read params from yml file. This should override the param value
-      Params.read_yml_params(yml_string)
-      # 2. Check that param_1 value was overridden by the yml param
-      assert_equal yml_param_value, Params.param_1 , "parameter:[#{code_param_name}] " + \
-        "was defined both at the test code with value:[#{code_param_value}], " + \
-        "and at the yml string [#{yml_string}] with value:[#{yml_param_value}]. " \
-        "The test expected the yml file value to overwrite the code value but it did not."
-    end
-
-    def test_yml_loads_an_undefined_param
-      assert_equal false, Params.read_yml_params('param_2: value_2_yml') , \
-        'Error. yml param should not have been defined in Params'
-    end
 
     def test_parsing_of_the_defined_parameters
       #  Define options
       Params.parameter('remote_server', 'localhost', 'IP or DNS of backup server.')
       Params.parameter('remote_server', 3333,
                        'Listening port for backup server content data.')
-      Params.parameter('backup_username', nil, 'Backup server username.')
-      Params.parameter('backup_password', nil, 'Backup server password.')
+      Params.parameter('backup_username', 'tmp', 'Backup server username.')
+      Params.parameter('backup_password', 'tmp', 'Backup server password.')
       Params.parameter('backup_destination_folder', '',
                        'Backup server destination folder, default is the relative local folder.')
       Params.parameter('content_data_path', File.expand_path('~/.bbfs/var/content.data'),
@@ -57,7 +32,7 @@ module BBFS
              '--content_data_path=C:\Users\Alexey\Content',
              '--monitoring_config_path=C:\Users\Alexey\Config',
              '--time_to_start=1.5']
-      x = Params.parse(cmd)
+      Params.parse_command_line_arguments(cmd)
       assert_equal(2222,Params.instance_variable_get('@remote_server'))
       assert_equal('rami',Params.instance_variable_get("@backup_username"))
       assert_equal('kavana',Params.instance_variable_get("@backup_password"))
@@ -65,9 +40,6 @@ module BBFS
       assert_equal('C:\Users\Alexey\Content',Params.instance_variable_get("@content_data_path"))
       assert_equal('C:\Users\Alexey\Config',Params.instance_variable_get("@monitoring_config_path"))
       assert_equal(1.5,Params.instance_variable_get("@time_to_start"))
-      puts x
-      puts Params.instance_variables
-
     end
   end
 end
