@@ -2,10 +2,37 @@ require 'optparse'
 require 'yaml'
 
 # A project parameters module.
-# Parameters should not be defined with 'nil'
+# 1. Parameter definition - requires phases
+#    e.g. Params.parameter('<param_name>', <param value>, '<description>')
+#    <param value> must not be nil.
+#    <param value> supported types are String, Integer(Fixnum), Float, true\false.
+#    <param value> type will define the type of the parameter throughout execution life time.
+# 2. Params.Init - override defined parameters values
+#    It implements the init sequence which allows override of
+#    defined parameters with new values through input file and\or command line args.
+#
+
+#    Any attempt to override a parameter (either through the config file or command line)
+#    with a different type will result with an error.
+#    There is one exception to this rule, and that is, when the defined parameter
+#    is a Float e.g. 3.2 and the user overrides with an integer e.g. 5 (either
+#    through file or command line), than there will be a casting
+#    to 5.0 (original types do not change at any case).
+# 3. Override through input file
 # Parameters supported types are: String, Integer(Fixnum), Float, True\False.
 # Precedence order from low to high: Defined parameters, file, command line.
-# Note: init method should be called to override defined parameters with file and command line.
+# Notes:
+#   1. Parameters should not be defined with 'nil'.
+#   2. 'Params.init' method should be called to override defined parameters with file
+#      and command line.
+#   3. parameters types are set when defining the parameter using 'Params.parameter'.
+#   4. Any attempt to override a parameter (either through the config file or command line)
+#      with a different type will result with an error.
+#      There is one exception to this rule, and that is, when the defined parameter
+#      is a Float e.g. 3.2 and the user overrides with an integer e.g. 5 (either
+#      through file or command line), than there will be a casting
+#      to 5.0 (original types do not change at any case).
+#   5.
 module BBFS
   module Params
 
