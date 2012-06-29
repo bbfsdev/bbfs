@@ -2,43 +2,42 @@ require 'optparse'
 require 'yaml'
 
 # A project parameters module.
-# 1. Parameter definition - requires phases
-#    e.g. Params.parameter('<param_name>', <param value>, '<description>')
-#    <param value> must not be nil.
+# 1. Parameter definition (lowest precedence) - requires phases:
+#    e.g. Params.parameter '<param_name>', <param value>, '<description>'
+#    <param value> must not be nil (since it sets teh type of the parameter).
 #    <param value> supported types are String, Integer(Fixnum), Float, true\false.
-#    <param value> type will define the type of the parameter throughout execution life time.
-# 2. Params.Init - override defined parameters values
-#    It implements the init sequence which allows override of
+#    <param value> type will define the type of the parameter throughout the entire
+#    execution life time.
+# 2. Params.Init
+#    implementation of the init sequence which allows override of
 #    defined parameters with new values through input file and\or command line args.
-#
-
-#    Any attempt to override a parameter (either through the config file or command line)
-#    with a different type will result with an error.
-#    There is one exception to this rule, and that is, when the defined parameter
-#    is a Float e.g. 3.2 and the user overrides with an integer e.g. 5 (either
-#    through file or command line), than there will be a casting
-#    to 5.0 (original types do not change at any case).
-# 3. Override through input file
-# Parameters supported types are: String, Integer(Fixnum), Float, True\False.
-# Precedence order from low to high: Defined parameters, file, command line.
-# Notes:
-#   1. Parameters should not be defined with 'nil'.
-#   2. 'Params.init' method should be called to override defined parameters with file
-#      and command line.
-#   3. parameters types are set when defining the parameter using 'Params.parameter'.
-#   4. Any attempt to override a parameter (either through the config file or command line)
-#      with a different type will result with an error.
-#      There is one exception to this rule, and that is, when the defined parameter
-#      is a Float e.g. 3.2 and the user overrides with an integer e.g. 5 (either
-#      through file or command line), than there will be a casting
-#      to 5.0 (original types do not change at any case).
-#   5.
+#    Note that only defined parameters can be overridden. If new parameters are passed
+#    through file\command line, then an error will be raised.
+#    2.1 Input config file (medium precedence).
+#        Default configuration input file path is: '~/.bbfs/conf/<executable name>.conf'
+#        This path can be overridden by the command line arguments (see 2.2)
+#        If file path exists then the parameters in the file
+#        will override the defined parameters.
+#        Parameters format per line:<param_name>: <param value>
+#        Note: Space char after the colon is mandatory
+#    2.2 Command line arguments (highest precedence):
+#        General format per argument is:--<param_name>=<param_value>
+#        those params will override the defined and file values
+#        2.2.1 Override input config file
+#              User can override the input file by using:--conf_file=<new filepath>
+#    3.4 Type check:
+#        As mentioned before, types are set at the definition phase (nil is not acceptable).
+#        Therefore, file and command line params should be of the same type as the defined
+#        type, or else an error will be raised.
+#        There is one exception to this rule, and that is, when the defined parameter
+#        is a Float e.g. 3.2 and the user overrides with an integer e.g. 5 (either
+#        through file or command line), than there will be a casting
+#        to 5.0 (original types do not change at any case).
 module BBFS
   module Params
-
     @params_initialized = false
 
-    # setter for params_initialized. Mainly for testing
+    # setter. Mainly for testing.
     def Params.params_initialized= flag
       @params_initialized = flag
     end
@@ -49,14 +48,8 @@ module BBFS
       return $1
     end
 
-    # Initializes the project parameters
-    # Precedence of parameters loading is:
-    #   1. Code definitions (no null value accepted)
-    #   2. file - will be used if command line has --conf=<file_path>
-    #   3. Command line - if params are provided through --<parameter>=<value>
-    def Params.init args
-      Params.parameter 'conf_file', File.expand_path("~/.bbfs/conf/#{Params.executable_name}.conf"), 'Default configuration file.'
-      # 1. Check if file has been provided thorough command line
+    #Auxiliary method to check if config file has been provided thorough command line.
+    def Params.override_config_file_path args
       args.each do |argument|
         # check parameter format: '--conf_file=<file_path>'
         /--conf_file=([a-zA-Z0-9\-_\.]+)/ =~ argument
@@ -65,20 +58,10 @@ module BBFS
           break
         end
       end
-      if not Params.conf_file.empty?
-        # load yml params from file if exist
-        if  File.exist? Params.conf_file
-          Params.read_yml_params File.open(Params.conf_file, 'r')
-        end
-      end
+    end
 
-      # 2. Parse command line arguments
-      Params.parse_command_line_arguments args
 
-      # 3. set initialization flag
-      @params_initialized = true
-
-      # 4. print all project parameters
+    def Params.print_all_project_parameters
       puts "\nProject initialized parameters:"
       puts "---------------------------------"
       names = Params.instance_variables  # Define all available parameters
@@ -90,6 +73,21 @@ module BBFS
         puts "#{counter}: #{tmp_name}=#{Params.instance_variable_get name}"
       end
       puts "---------------------------------\n\n"
+    end
+
+    # Initializes the project parameters
+    def Params.init args
+      Params.parameter 'conf_file', \
+                       File.expand_path("~/.bbfs/conf/#{Params.executable_name}.conf"), \
+                       'Default configuration file.'
+      Params.override_config_file_path args
+      #load yml params
+      if (not Params.conf_file.empty?) and File.exist? Params.conf_file
+        Params.read_yml_params File.open(Params.conf_file, 'r')
+      end
+      Params.parse_command_line_arguments args
+      @params_initialized = true
+      Params.print_all_project_parameters
     end
 
     # Define new project parameters.
