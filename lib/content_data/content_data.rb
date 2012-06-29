@@ -1,3 +1,5 @@
+require 'log'
+require 'params'
 require 'time'
 
 module BBFS
@@ -199,13 +201,13 @@ module BBFS
 
       def add_instance(instance)
         if (not @contents.key?(instance.checksum))
-          printf("Warning: Adding instance while it's" +
+          Log.warning sprintf("Adding instance while it's" +
                      " checksum %s does not exists.\n", instance.checksum)
-          printf("%s\n", instance.to_s)
+          Log.warning sprintf("%s\n", instance.to_s)
           return false
         elsif (@contents[instance.checksum].size != instance.size)
-          print("Warning: File size different from content size while same checksum.\n")
-          printf("%s\n", instance.to_s)
+          Log.warning 'File size different from content size while same checksum'
+          Log.warning instance.to_s
           return false
         end
 
@@ -245,9 +247,9 @@ module BBFS
           if (@contents[key] != other.contents[key])
             #print "%s-" % @contents[key].to_s
             #print other.contents[key].to_s
-            #puts " compare - false"
-            puts @contents[key].first_appearance_time.to_i
-            puts other.contents[key].first_appearance_time.to_i
+            #Log.info " compare - false"
+            Log.info @contents[key].first_appearance_time.to_i
+            Log.info other.contents[key].first_appearance_time.to_i
             return false
           end
         }
@@ -256,11 +258,11 @@ module BBFS
           if (@instances[key] != other.instances[key])
             #print "%s-" % @instances[key].to_s
             #print other.instances[key].to_s
-            #puts " compare - false"
+            #Log.info " compare - false"
             return false
           end
         }
-        #puts "compare - true"
+        #Log.info "compare - true"
         return true
       end
 
@@ -357,7 +359,7 @@ module BBFS
           ret.add_content(content) unless a.content_exists(content.checksum)
         }
 
-        #puts "kaka"
+        #Log.info "kaka"
 
         b.instances.values.each { |instance|
           #print "%s - %s\n" % [instance.checksum, a.content_exists(instance.checksum).to_s]

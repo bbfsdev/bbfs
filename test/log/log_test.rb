@@ -14,24 +14,23 @@ module BBFS
     # Creating a test consumer class to be able to read the data pushed
     # to the consumer by the logger
     class TestConsumer < Consumer
+      attr_reader :test_queue
+
       def initialize
         super
-        @data_list = []
+        @test_queue = Queue.new()
       end
 
       def consume data
-        @data_list.push data
-      end
-
-      def get_data_list
-          return @data_list
-      end
-      def init
-        @data_list.clear
+        @test_queue.push data
       end
     end
 
     class TestLog < Test::Unit::TestCase
+
+      LOG_TEST_FILE_NAME = 'log_test.rb:'
+      LOG_PREFIX = 'BBFS LOG'
+
       def initialize name
         super
         Params.log_write_to_console = false
@@ -39,221 +38,127 @@ module BBFS
         Log.init
         @test_consumer = TestConsumer.new
         Log.add_consumer @test_consumer
+        @line_regexp = Regexp.new(/\[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\]/)
+      end
+
+      #check expected format: [LOG_PREFIX] [Time] [INFO] [FILE_NAME:LINE] [MESSAGE]
+      def assert_message line, time, type, file_line, msg
+        format_containers = @line_regexp.match(line)
+        assert_equal format_containers.captures.size, 5
+        if format_containers.captures.size == 5 then
+          assert_equal format_containers.captures[0], LOG_PREFIX
+          assert_equal format_containers.captures[1], time.to_s
+          assert_equal format_containers.captures[2], type
+          assert_equal format_containers.captures[3], file_line
+          assert_equal format_containers.captures[4], msg
+        end
       end
 
       def test_check_info_format
         #set test phase
+        test_message = 'This is a test INFO message.'
         testTime = Time.now
-        Log.info 'This is a test INFO message.'
+        Log.info test_message
         line = __LINE__ - 1
         #check test phase
-        messages = []
-        while messages.empty? do
-          messages = @test_consumer.get_data_list
-        end
-        assert_equal messages.size, 1, \
-          "1 line should be found. Test found:#{messages.size}"
-        #check expected format: [BBFS LOG] [Time] [INFO] [log_test.rb:11]
-        # [This is a test INFO message.]
-        format_containers = /\[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\]/.match(messages[0])
-        assert_equal format_containers.captures.size, 5
-        if format_containers.captures.size == 5 then
-          assert_equal format_containers.captures[0], 'BBFS LOG'
-          assert_equal format_containers.captures[1], testTime.to_s
-          assert_equal format_containers.captures[2], 'INFO'
-          assert_equal format_containers.captures[3], "log_test.rb:#{line}"
-          assert_equal format_containers.captures[4], 'This is a test INFO message.'
-        end
+        pop_message = @test_consumer.test_queue.pop
+        assert_message pop_message, testTime, 'INFO', LOG_TEST_FILE_NAME + line.to_s, test_message
       end
 
       def test_check_warning_format
         #set test phase
+        test_message = 'This is a test WARNING message.'
         testTime = Time.now
-        Log.warning 'This is a test WARNING message.'
+        Log.warning test_message
         line = __LINE__ - 1
 
         #check test phase
-        messages = []
-        while messages.empty? do
-          messages = @test_consumer.get_data_list
-        end
-        assert_equal messages.size, 1, "1 line should be found. Test found:#{messages.size}"
-        #check expected format: [BBFS LOG] [Time] [WARNING] [log_test.rb:35] \
-        # [This is a test WARNING message.]
-        format_containers = /\[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\]/.match(messages[0])
-        assert_equal format_containers.captures.size, 5
-        if format_containers.captures.size == 5 then
-          assert_equal format_containers.captures[0], 'BBFS LOG'
-          assert_equal format_containers.captures[1], testTime.to_s
-          assert_equal format_containers.captures[2], 'WARNING'
-          assert_equal format_containers.captures[3], "log_test.rb:#{line}"
-          assert_equal format_containers.captures[4], 'This is a test WARNING message.'
-        end
+        pop_message = @test_consumer.test_queue.pop
+        assert_message pop_message, testTime, 'WARNING', LOG_TEST_FILE_NAME + line.to_s, test_message
       end
 
       def test_check_error_format
         #set test phase
+        test_message = 'This is a test ERROR message.'
         testTime = Time.now
-        Log.error 'This is a test ERROR message.'
+        Log.error test_message
         line = __LINE__ - 1
 
         #check test phase
-        messages = []
-        while messages.empty? do
-          messages = @test_consumer.get_data_list
-        end
-        assert_equal messages.size, 1, "1 line should be found. Test found:#{messages.size}"
-        #check expected format: [BBFS LOG] [Time] [ERROR] [log_test.rb:35] \
-        # [This is a test ERROR message.]
-        format_containers = /\[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\]/.match(messages[0])
-        assert_equal format_containers.captures.size, 5
-        if format_containers.captures.size == 5 then
-          assert_equal format_containers.captures[0], 'BBFS LOG'
-          assert_equal format_containers.captures[1], testTime.to_s
-          assert_equal format_containers.captures[2], 'ERROR'
-          assert_equal format_containers.captures[3], "log_test.rb:#{line}"
-          assert_equal format_containers.captures[4], 'This is a test ERROR message.'
-        end
+        pop_message = @test_consumer.test_queue.pop
+        assert_message pop_message, testTime, 'ERROR', LOG_TEST_FILE_NAME + line.to_s, test_message
       end
 
       def test_check_debug_level_0
         #set test phase
         Params.log_debug_level = 0
-        #@test_consumer = TestConsumer.new
-        #Log.add_consumer @test_consumer
         Log.debug1 'This is a test debug-1 message.'
         Log.debug2 'This is a test debug-2 message.'
         Log.debug3 'This is a test debug-3 message.'
         #check test phase
-        messages = @test_consumer.get_data_list
-        assert_equal messages.size, 0 , \
-          "At debug level 0, no debug messages should be found.Test found:#{messages.size} messages."
+        queue_size = @test_consumer.test_queue.size
+        assert_equal queue_size, 0 , \
+          "At debug level 0, no debug messages should be found.Test found:#{queue_size} messages."
       end
 
       def test_check_debug_level_1
         #set test phase
-        testTime = Time.now
         Params.log_debug_level = 1
-        #@test_consumer = TestConsumer.new
-        #Log.add_consumer @test_consumer
-        Log.debug1 'This is a test DEBUG-1 message.'
+        test_message_1 = 'This is a test DEBUG-1 message.'
+        test_message_2 = 'This is a test DEBUG-2 message.'
+        test_message_3 = 'This is a test DEBUG-3 message.'
+        testTime = Time.now
+        Log.debug1 test_message_1
         line = __LINE__ - 1
-        Log.debug2 'This is a test DEBUG-2 message.'
-        Log.debug3 'This is a test DEBUG-3 message.'
+        Log.debug2 test_message_2
+        Log.debug3 test_message_3
 
         #check test phase
-        messages = []
-        while messages.empty? do
-          messages = @test_consumer.get_data_list
-        end
-        assert_equal messages.size, 1, \
-          "At debug level 1, 1 line should be found. Test found:#{messages.size} messages."
-        #check expected format: [BBFS LOG] [Time] [DEBUG-1] [log_test.rb:35] \
-        # [This is a test ERROR message.]
-        format_containers = /\[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\]/.match(messages[0])
-        assert_equal format_containers.captures.size, 5
-        if format_containers.captures.size == 5 then
-          assert_equal format_containers.captures[0], 'BBFS LOG'
-          assert_equal format_containers.captures[1], testTime.to_s
-          assert_equal format_containers.captures[2], 'DEBUG-1'
-          assert_equal format_containers.captures[3],"log_test.rb:#{line}"
-          assert_equal format_containers.captures[4], 'This is a test DEBUG-1 message.'
-        end
+        pop_message = @test_consumer.test_queue.pop
+        assert_message pop_message, testTime, 'DEBUG-1', LOG_TEST_FILE_NAME + line.to_s, test_message_1
       end
 
       def test_check_debug_level_2
         #set test phase
-        testTime = Time.now
         Params.log_debug_level = 2
-        #@test_consumer = TestConsumer.new
-        #Log.add_consumer @test_consumer
-        Log.debug1 'This is a test DEBUG-1 message.'
-        line1 = __LINE__ - 1
-        Log.debug2 'This is a test DEBUG-2 message.'
-        line2 = __LINE__ - 1
-        Log.debug3 'This is a test DEBUG-3 message.'
+        test_message_1 = 'This is a test DEBUG-1 message.'
+        test_message_2 = 'This is a test DEBUG-2 message.'
+        test_message_3 = 'This is a test DEBUG-3 message.'
+        testTime = Time.now
+        Log.debug1 test_message_1
+        line_1 = __LINE__ - 1
+        Log.debug2 test_message_2
+        line_2 = __LINE__ - 1
+        Log.debug3 test_message_3
 
         #check test phase
-        messages = []
-        while messages.empty? do
-          messages = @test_consumer.get_data_list
-        end
-        assert_equal messages.size, 2, \
-          "At debug level 2, 2 lines should be found. Test found:#{messages.size} messages."
-        #check expected format: [BBFS LOG] [Time] [DEBUG-1] [log_test.rb:35] \
-        # [This is a test ERROR message.]
-        format_containers = /\[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\]/.match(messages[0])
-        assert_equal format_containers.captures.size, 5
-        if format_containers.captures.size == 5 then
-          assert_equal format_containers.captures[0], 'BBFS LOG'
-          assert_equal format_containers.captures[1], testTime.to_s
-          assert_equal format_containers.captures[2], 'DEBUG-1'
-          assert_equal format_containers.captures[3], "log_test.rb:#{line1}"
-          assert_equal format_containers.captures[4], 'This is a test DEBUG-1 message.'
-        end
-
-        format_containers = /\[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\]/.match(messages[1])
-        assert_equal format_containers.captures.size, 5
-        if format_containers.captures.size == 5 then
-          assert_equal format_containers.captures[0], 'BBFS LOG'
-          assert_equal format_containers.captures[1], testTime.to_s
-          assert_equal format_containers.captures[2], 'DEBUG-2'
-          assert_equal format_containers.captures[3], "log_test.rb:#{line2}"
-          assert_equal format_containers.captures[4], 'This is a test DEBUG-2 message.'
-        end
+        pop_message = @test_consumer.test_queue.pop
+        assert_message pop_message, testTime, 'DEBUG-1', LOG_TEST_FILE_NAME + line_1.to_s, test_message_1
+        pop_message = @test_consumer.test_queue.pop
+        assert_message pop_message, testTime, 'DEBUG-2', LOG_TEST_FILE_NAME + line_2.to_s, test_message_2
       end
 
       def test_check_debug_level_3
         #set test phase
-        testTime = Time.now
         Params.log_debug_level = 3
-        #@test_consumer = TestConsumer.new
-        #Log.add_consumer @test_consumer
+        test_message_1 = 'This is a test DEBUG-1 message.'
+        test_message_2 = 'This is a test DEBUG-2 message.'
+        test_message_3 = 'This is a test DEBUG-3 message.'
+        testTime = Time.now
         Log.debug1 'This is a test DEBUG-1 message.'
-        line1 = __LINE__ - 1
+        line_1 = __LINE__ - 1
         Log.debug2 'This is a test DEBUG-2 message.'
-        line2 = __LINE__ - 1
+        line_2 = __LINE__ - 1
         Log.debug3 'This is a test DEBUG-3 message.'
-        line3 = __LINE__ - 1
+        line_3 = __LINE__ - 1
 
         #check test phase
-        messages = []
-        while messages.empty? do
-          messages = @test_consumer.get_data_list
-        end
-        assert_equal messages.size, 3, \
-          "At debug level 3, 3 lines should be found. Test found:#{messages.size} messages."
-        #check expected format: [BBFS LOG] [Time] [DEBUG-1] [log_test.rb:35] \
-        # [This is a test ERROR message.]
-        format_containers = /\[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\]/.match(messages[0])
-        assert_equal format_containers.captures.size, 5
-        if format_containers.captures.size == 5 then
-          assert_equal format_containers.captures[0], 'BBFS LOG'
-          assert_equal format_containers.captures[1], testTime.to_s
-          assert_equal format_containers.captures[2], 'DEBUG-1'
-          assert_equal format_containers.captures[3], "log_test.rb:#{line1}"
-          assert_equal format_containers.captures[4], 'This is a test DEBUG-1 message.'
-        end
-
-        format_containers = /\[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\]/.match(messages[1])
-        assert_equal format_containers.captures.size, 5
-        if format_containers.captures.size == 5 then
-          assert_equal format_containers.captures[0], 'BBFS LOG'
-          assert_equal format_containers.captures[1], testTime.to_s
-          assert_equal format_containers.captures[2], 'DEBUG-2'
-          assert_equal format_containers.captures[3], "log_test.rb:#{line2}"
-          assert_equal format_containers.captures[4], 'This is a test DEBUG-2 message.'
-        end
-
-        format_containers = /\[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\] \[(.*)\]/.match(messages[2])
-        assert_equal format_containers.captures.size, 5
-        if format_containers.captures.size == 5 then
-          assert_equal format_containers.captures[0], 'BBFS LOG'
-          assert_equal format_containers.captures[1], testTime.to_s
-          assert_equal format_containers.captures[2], 'DEBUG-3'
-          assert_equal format_containers.captures[3], "log_test.rb:#{line3}"
-          assert_equal format_containers.captures[4], 'This is a test DEBUG-3 message.'
-        end
+        pop_message = @test_consumer.test_queue.pop
+        assert_message pop_message, testTime, 'DEBUG-1', LOG_TEST_FILE_NAME + line_1.to_s, test_message_1
+        pop_message = @test_consumer.test_queue.pop
+        assert_message pop_message, testTime, 'DEBUG-2', LOG_TEST_FILE_NAME + line_2.to_s, test_message_2
+        pop_message = @test_consumer.test_queue.pop
+        assert_message pop_message, testTime, 'DEBUG-3', LOG_TEST_FILE_NAME + line_3.to_s, test_message_3
       end
     end
   end

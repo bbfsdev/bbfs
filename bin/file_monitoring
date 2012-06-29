@@ -34,18 +34,20 @@
 
 require 'rubygems'
 require 'daemons'
+
 require 'file_monitoring/file_monitoring.rb'
+require 'log'
 
 conf_file_path = File.expand_path('~/.bbfs/etc/file_monitoring.yml')
 if ARGV.length > 1
   conf_file_path = File.expand_path(ARGV[1])
 end
 
-puts "Taking config from:" + conf_file_path
+Log.info "Taking config from:" + conf_file_path
 YAML::load_file(conf_file_path) rescue abort("Can't load %s" % conf_file_path)
 pid_dir = File.expand_path('~/.bbfs/run/')
 FileUtils.mkdir_p(pid_dir)
-puts "pid dir:" + pid_dir
+Log.info "pid dir:" + pid_dir
 
 Daemons.run_proc(
   'file_monitoring', # name of daemon

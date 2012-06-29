@@ -1,12 +1,13 @@
 # This file is the basic file manipulation tool for the distributed system.
 # All the basic commands should reside here.
 
-require 'file_utils'
-
 require 'content_data'
 require 'file_indexing'
+require 'file_utils'
+require 'file_utils/file_generator/file_generator'
+
+require 'log'
 require 'params'
-require_relative 'file_generator/file_generator'
 
 module BBFS
   module FileUtils
@@ -15,29 +16,29 @@ module BBFS
       def initialize(arguments)
         if arguments["command"] == "mksymlink"
           begin
-            puts "--ref_cd is not set"
+            Log.info "--ref_cd is not set"
             return
           end unless not arguments["ref_cd"].nil?
           ref_cd = ContentData.new()
           ref_cd.from_file(arguments["ref_cd"])
           begin
-            puts "Error loading content data ref_cd=%s" % arguments["ref_cd"]
+            Log.info "Error loading content data ref_cd=%s" % arguments["ref_cd"]
             return
           end unless not ref_cd.nil?
 
           begin
-            puts "--base_cd is not set"
+            Log.info "--base_cd is not set"
             return
           end unless not arguments["base_cd"].nil?
           base_cd = ContentData.new()
           base_cd.from_file(arguments["base_cd"])
           begin
-            puts "Error loading content data base_cd=%s" % arguments["base_cd"]
+            Log.info "Error loading content data base_cd=%s" % arguments["base_cd"]
             return
           end unless not base_cd.nil?
 
           begin
-            puts "--dest is not set"
+            Log.info "--dest is not set"
             return
           end unless not arguments["dest"].nil?
 
@@ -45,7 +46,7 @@ module BBFS
           begin
             not_found = FileUtil.mksymlink(ref_cd, base_cd, arguments["dest"])
           rescue NotImplementedError
-            puts "symlinks are unimplemented on this machine"
+            Log.info "symlinks are unimplemented on this machine"
             return nil
           end
           return not_found
@@ -54,64 +55,64 @@ module BBFS
             arguments["command"] == "minus")
 
           begin
-            puts "--cd_a is not set"
+            Log.info "--cd_a is not set"
             return
           end unless not arguments["cd_a"].nil?
           cd_a = ContentData.new()
           cd_a.from_file(arguments["cd_a"])
           begin
-            puts "Error loading content data cd_a=%s" % arguments["cd_a"]
+            Log.info "Error loading content data cd_a=%s" % arguments["cd_a"]
             return
           end unless not cd_a.nil?
 
           begin
-            puts "--cd_b is not set"
+            Log.info "--cd_b is not set"
             return
           end unless not arguments["cd_b"].nil?
           cd_b = ContentData.new()
           cd_b.from_file(arguments["cd_b"])
           begin
-            puts "Error loading content data cd_b=%s" % arguments["cd_b"]
+            Log.info "Error loading content data cd_b=%s" % arguments["cd_b"]
             return
           end unless not cd_b.nil?
 
           begin
-            puts "--dest is not set"
+            Log.info "--dest is not set"
             return
           end unless not arguments["dest"].nil?
 
           output = FileUtil.contet_data_command(arguments["command"], cd_a, cd_b, arguments["dest"])
           #elsif arguments["command"] == "copy"
           #  begin
-          #    puts "--conf is not set"
+          #    Log.info "--conf is not set"
           #    return
           #  end unless not arguments["conf"].nil?
           #  conf = Configuration.new(arguments["conf"])
           #
           #  begin
-          #    puts "Error loading content data conf=%s" % arguments["conf"]
+          #    Log.info "Error loading content data conf=%s" % arguments["conf"]
           #    return
           #  end unless not conf.nil?
           #
           #  begin
-          #    puts "--cd is not set"
+          #    Log.info "--cd is not set"
           #    return
           #  end unless not arguments["cd"].nil?
           #  cd = ContentData.new()
           #  cd.from_file(arguments["cd"])
           #  begin
-          #    puts "Error loading content data cd=%s" % arguments["cd"]
+          #    Log.info "Error loading content data cd=%s" % arguments["cd"]
           #    return
           #  end unless not cd.nil?
           #
           #  begin
-          #    puts "--dest_server is not set"
+          #    Log.info "--dest_server is not set"
           #    return
           #  end unless not arguments["dest_server"].nil?
           #  dest_server = arguments["dest_server"]
           #
           #  begin
-          #    puts "--dest_path is not set"
+          #    Log.info "--dest_path is not set"
           #    return
           #  end unless not arguments["dest_path"].nil?
           #  dest_path = arguments["dest_path"]
@@ -119,31 +120,31 @@ module BBFS
           #  Copy.new(conf, cd, dest_server, dest_path)
         elsif arguments["command"] == "unify_time"
           begin
-            puts "--cd is not set"
+            Log.info "--cd is not set"
             return
           end unless not arguments["cd"].nil?
           cd = ContentData.new()
           cd.from_file(arguments["cd"])
           begin
-            puts "Error loading content data cd=%s" % arguments["cd"]
+            Log.info "Error loading content data cd=%s" % arguments["cd"]
             return
           end unless not cd.nil?
           output = unify_time(cd)
           # indexer
         elsif arguments["command"] == "indexer"
           begin
-            puts "--patterns is not set"
+            Log.info "--patterns is not set"
             return
           end unless not arguments["patterns"].nil?
 
           patterns = BBFS::FileIndexing::IndexerPatterns.new
           arguments["patterns"].split(':').each { |pattern|
-            p "Pattern: #{pattern}"
+            Log.info "Pattern: #{pattern}"
             patterns.add_pattern File.expand_path(pattern)
           }
 
           unless patterns.size > 0
-            puts "Error loading patterns=%s (empty file)" % arguments["patterns"]
+            Log.info "Error loading patterns=%s (empty file)" % arguments["patterns"]
             return
           end
 
@@ -152,21 +153,21 @@ module BBFS
             exist_cd = BBFS::ContentData::ContentData.new()
             exist_cd.from_file(arguments["exist_cd"])
             begin
-              puts "Error loading content data exist_cd=%s" % arguments["exist_cd"]
+              Log.info "Error loading content data exist_cd=%s" % arguments["exist_cd"]
               return
             end unless not exist_cd.nil?
           end
           indexer = BBFS::FileIndexing::IndexAgent.new
           indexer.index(patterns, exist_cd)
-          puts indexer.indexed_content.to_s
+          Log.info indexer.indexed_content.to_s
           # crawler
         elsif arguments["command"] == "crawler"
           begin
-            puts "--conf_file is not set"
+            Log.info "--conf_file is not set"
             return
           end unless not arguments["conf_file"].nil?
           begin
-            puts "config file doesn't exist conf_file=%s" % arguments["conf_file"]
+            Log.info "config file doesn't exist conf_file=%s" % arguments["conf_file"]
             return
           end unless not File.exists?(arguments["conf_file"])
 
@@ -176,7 +177,7 @@ module BBFS
           end
           unless (arguments["cd_in"].nil?)
             begin
-              puts "input data file doesn't exist cd_in=%s" % arguments["cd_in"]
+              Log.info "input data file doesn't exist cd_in=%s" % arguments["cd_in"]
               return
             end unless not File.exists?(arguments["conf_file"])
           end
@@ -190,7 +191,7 @@ module BBFS
           threads.each { |a| a.join }
           join_servers_results(conf.server_conf_vec, arguments["cd_out"])
         elsif arguments["command"] == "generate_files"
-          fg = FileGenerator.new()
+          fg = BBFS::FileGenerator::FileGenerator.new()
           fg.run()
         end
       end
@@ -225,20 +226,20 @@ module BBFS
           next unless db.instances.has_key? instance.global_path
           if (File.exists?(instance.full_path))
             file_mtime, file_size = File.open(instance.full_path) { |f| [f.mtime, f.size] }
-            p "file:#{instance.full_path} file_mtime:#{file_mtime}."
-            p "update mtime:#{instance.modification_time}"
-            p "original instance mtime:#{db.instances[instance.global_path].modification_time}."
-            p "unify instance mtime:#{instance.modification_time}."
-            p "unify instance mtime:#{instance.modification_time.to_i}."
-            p "Comparison: #{file_mtime <=> instance.modification_time}"
+            Log.info "file:#{instance.full_path} file_mtime:#{file_mtime}."
+            Log.info "update mtime:#{instance.modification_time}"
+            Log.info "original instance mtime:#{db.instances[instance.global_path].modification_time}."
+            Log.info "unify instance mtime:#{instance.modification_time}."
+            Log.info "unify instance mtime:#{instance.modification_time.to_i}."
+            Log.info "Comparison: #{file_mtime <=> instance.modification_time}"
             if (file_mtime == db.instances[instance.global_path].modification_time \
                 and file_size == instance.size \
                 and (file_mtime <=> instance.modification_time) > 0)
-              p "Comparison success."
+              Log.info "Comparison success."
               File.utime File.atime(instance.full_path), instance.modification_time, instance.full_path
               file_mtime = File.open(instance.full_path) { |f| f.mtime }
-              p "file mtime:#{file_mtime}."
-              p "file mtime:#{file_mtime.to_i}."
+              Log.info "file mtime:#{file_mtime}."
+              Log.info "file mtime:#{file_mtime.to_i}."
             end
           end
         end
@@ -275,7 +276,7 @@ module BBFS
             warnings << "Warning: base content does not contains:'%s'" % instance.checksum
           end
         }
-        puts warnings
+        Log.info warnings
         return not_found
       end
     end
@@ -292,10 +293,10 @@ module BBFS
     COMMANDS["generate_files"] = "  generate_files"
 
     def self.print_usage
-      puts "Usage: fileutil <command> params..."
-      puts "Commands:"
+      Log.info "Usage: fileutil <command> params..."
+      Log.info "Commands:"
       COMMANDS.each { |name, description|
-        puts description
+        Log.info description
       }
     end
 

@@ -5,6 +5,8 @@ require 'test/unit'
 require 'content_data'
 require 'file_indexing'
 require 'file_utils'
+require 'log'
+require 'params'
 
 module BBFS
   module FileUtils
@@ -65,23 +67,23 @@ module BBFS
             file.puts("kuku")
           end
           file_stats = File.stat(file_path)
-          p "MOD_TIME_CONTENTS: #{MOD_TIME_CONTENTS}."
-          p "MOD_TIME_CONTENTS: #{MOD_TIME_CONTENTS.to_i}."
-          p "file_stat.mtime: #{file_stats.mtime}."
-          p "file_stat.mtime: #{file_stats.mtime.to_i}."
-          p "File.mtime: #{File.mtime(file_path)}."
-          p "File.mtime: #{File.mtime(file_path).to_i}."
+          Log.info "MOD_TIME_CONTENTS: #{MOD_TIME_CONTENTS}."
+          Log.info "MOD_TIME_CONTENTS: #{MOD_TIME_CONTENTS.to_i}."
+          Log.info "file_stat.mtime: #{file_stats.mtime}."
+          Log.info "file_stat.mtime: #{file_stats.mtime.to_i}."
+          Log.info "File.mtime: #{File.mtime(file_path)}."
+          Log.info "File.mtime: #{File.mtime(file_path).to_i}."
           File.utime File.atime(file_path), MOD_TIME_CONTENTS, file_path
           file_stats = File.stat(file_path)
-          p "file_stat.mtime: #{file_stats.mtime}."
-          p "file_stat.mtime: #{file_stats.mtime.to_i}."
-          p "File.mtime: #{File.mtime(file_path)}."
-          p "File.mtime: #{File.mtime(file_path).to_i}."
+          Log.info "file_stat.mtime: #{file_stats.mtime}."
+          Log.info "file_stat.mtime: #{file_stats.mtime.to_i}."
+          Log.info "File.mtime: #{File.mtime(file_path)}."
+          Log.info "File.mtime: #{File.mtime(file_path).to_i}."
 
           file_mtime = nil
           file = File.open(file_path, "r") do |file|
-            p "file.open.mtime = #{file.mtime}"
-            p "file.open.mtime = #{file.mtime.to_i}"
+            Log.info "file.open.mtime = #{file.mtime}"
+            Log.info "file.open.mtime = #{file.mtime.to_i}"
             file_mtime = file.mtime
           end
 
@@ -95,9 +97,9 @@ module BBFS
           # modified ContentData. Test files also were modified.
           mod_db = FileUtils.unify_time @input_db
 
-          puts "==============="
-          puts @input_db.to_s
-          puts "==============="
+          Log.info "==============="
+          Log.info @input_db.to_s
+          Log.info "==============="
 
           # checking that content was modified according to the instance with minimal time
           mod_db.contents.each_value do |content|

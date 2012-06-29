@@ -33,6 +33,9 @@
 require 'rubygems'
 require 'win32/service'
 require 'win32/daemon'
+
+require 'log'
+
 include Win32
 
 class String; def to_dos() self.tr('/','\\') end end
@@ -79,6 +82,6 @@ begin
 
   Service.start(service_name)
 rescue Exception => err
-  puts " ***Daemon failure #{Time.now} err=#{err}"
+  Log.info " ***Daemon failure #{Time.now} err=#{err}"
   raise
 end
