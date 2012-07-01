@@ -4,6 +4,7 @@
 
 require 'socket'
 require 'thread'
+
 require 'log'
 
 
@@ -11,9 +12,11 @@ module BBFS
   module FileCopy
     # host that send data and files(using file names)
     class Sender
-      # name - initialize
-      # inputs: addr -address of server, port_num - port of server
-      # description: initialize class Sender and open socket to server
+      # initialize class Sender and open socket to server
+      # ==== Arguments:
+      #
+      # *<tt>addr</tt> - address of server
+      # * <tt>port_num</tt> - port of server
       def initialize(addr, port_num)
         @LOG = Log
         @socket = TCPSocket.open addr, port_num
@@ -25,10 +28,11 @@ module BBFS
         @LOG.info("connected to peer: #{peer_addr.join(":")}")
       end
 
-      # name - send
-      # inputs: data - any type of data, classes expect from instances of class IO,
-      #                or singleton objects
-      # description: marshaling received data and send it through socket
+      # marshaling received data and send it through socket
+      # ==== Arguments:
+      #
+      # *<tt>data</tt> - any type of data, classes expect from instances of class IO,
+      #              or singleton objects
       def send(data)
         @LOG.debug3("data to send is (#{data}).")
         marshal_data = Marshal.dump(data)
@@ -37,9 +41,10 @@ module BBFS
         @socket.write(marshal_data)
       end
 
-      # name - send_file
-      # inputs: file_name - name of file (string)
-      # description: send data readed from file
+      # send data readed from file
+      # ==== Arguments:
+      #
+      # *<tt>file_name</tt> - name of file (string)
       def send_file(file_name)
         #check if source file is exist
         if (File.exists?(file_name) == false)
@@ -53,8 +58,7 @@ module BBFS
         send(content)
       end
 
-      # name - close
-      # description: close the socket to server
+      # close the socket to server
       def close
         @socket.close
       end
@@ -62,9 +66,10 @@ module BBFS
 
     # multiclient server that receive data
     class Receiver
-      # name - initialize
-      # inputs: addr port_num - port to accept connections
-      # description: initialize class Receiver and open socket to server
+      # initialize class Receiver and open socket to server
+      # ==== Arguments:
+      #
+      # *<tt>port_num</tt> - port to accept connections
       def initialize(port_num)
         @LOG = Log
         @port_num = port_num
@@ -74,11 +79,14 @@ module BBFS
         @LOG.info("server is on #{addr.join(":")}")
       end
 
-      # name - run
-      # inputs: queue - received data pushed to queue
-      # description: 1) Listening on port for connections
-      #              2) When connections opened received the marshaled data
-      #              3) Load marshaled data and push it to queue
+      # running server for accepting sended data
+      # ==== Arguments:
+      #
+      # *<tt>queue</tt> - received data pushed to queue
+      #
+      # Algorithm: 1) Listening on port and waiting for connections
+      #            2) When connections opened received the marshaled data
+      #            3) Load marshaled data and push it to queue
       def run(queue)
         loop do
           @LOG.debug1 "waiting on #{@port_num}"
