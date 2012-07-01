@@ -140,6 +140,14 @@ module BBFS
         it 'should raise error when command line parameter type is different then definition' do
           Params.params_initialized = false
 
+          # from str to other types.
+          Params::parameter('tmp6str', 'dummy', 'tmp6str def')
+          expect { Params::parse_command_line_arguments ['--tmp6str=9'] }.should_not raise_error
+          expect { Params::parse_command_line_arguments ['--tmp6str=8.1'] }.should_not raise_error
+          expect { Params::parse_command_line_arguments ['--tmp6str=ff'] }.should_not raise_error
+          expect { Params::parse_command_line_arguments ['--tmp6str=true'] }.should_not raise_error
+          expect { Params::parse_command_line_arguments ['--tmp6str=false'] }.should_not raise_error
+
           # from fixnum to other types.
           Params::parameter('tmp6', 8, 'tmp6 def')
           expect { Params::parse_command_line_arguments ['--tmp6=9'] }.should_not raise_error

@@ -70,7 +70,8 @@ module BBFS
         tmp_name = name.to_s
         tmp_name.slice!(0)
         counter += 1
-        puts "#{counter}: #{tmp_name}=#{Params.instance_variable_get name}"
+        value = Params.instance_variable_get name
+        puts "#{counter}: #{tmp_name}=#{value}"
       end
       puts "---------------------------------\n\n"
     end
@@ -137,6 +138,7 @@ module BBFS
         if value.nil?
           raise "loaded yml param:'#{param_name}' which does not exist in Params module."
         end
+        puts "yml param:'#{param_name}'  Value:'#{value}'  Type:'#{value.class}'"
         if value.class.eql? proj_params[param_name].class
           # Type match. Override parameter value
           Params.parameter param_name, proj_params[param_name], ''
