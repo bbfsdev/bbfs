@@ -9,11 +9,11 @@ module BBFS
       describe 'FileCopy::ssh_connect' do
         it 'should raise error when username not specified' do
           ENV.stub(:[]).with(any_args()).and_return(nil)
-          expect { FileCopy::ssh_connect(nil, nil, 'a server') }.should raise_error "Undefined username"
+          expect { FileCopy::ssh_connect(nil, nil, 'a server') }.to raise_error "Undefined username"
         end
 
         it 'should raise error when server not specified' do
-          expect { FileCopy::ssh_connect('kuku', nil, nil) }.should raise_error "Undefined server"
+          expect { FileCopy::ssh_connect('kuku', nil, nil) }.to raise_error "Undefined server"
         end
 
         it 'should try to connect if username is set explicitly' do
