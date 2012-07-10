@@ -1,3 +1,17 @@
-class PersistentQueue
-  # To change this template use File | Settings | File Templates.
+require 'log'
+
+module BBFS
+  module Networking
+
+    class PQueueSender
+
+      def initialize(host, port)
+        @host = host
+        @port = port
+      end
+
+    end
+
+  end
 end
+

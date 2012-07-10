@@ -1,3 +1,8 @@
-class Networking
-  # To change this template use File | Settings | File Templates.
+require 'networking/tcp'
+require 'networking/persistent_queue'
+
+module BBFS
+  module Networking
+
+  end
 end
