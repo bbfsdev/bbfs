@@ -1,4 +1,5 @@
 require 'log'
+require 'socket'
 
 module BBFS
   module Networking
@@ -18,7 +19,7 @@ module BBFS
             Log.debug1 "Data received: #{data}"
             unmarshaled_data = Marshal.load(data)
             Log.debug1 "Unmarshaled data: #{unmarshaled_data}"
-            @callback(unmarshaled_data)
+            @callback.call(unmarshaled_data)
             Log.debug1 "Socket closed? #{sock.closed?}."
             break if sock.closed?
             Log.debug1 'Waiting on sock.read'
