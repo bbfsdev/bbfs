@@ -1,14 +1,16 @@
-require 'content_data'
-require 'file_copy'
-require 'file_indexing'
-require 'file_monitoring'
-require 'params'
-require 'log'
 require 'set'
 require 'thread'
 
+require 'content_data'
 require 'content_server/content_receiver'
+require 'file_copy'
+require 'file_indexing'
+require 'file_monitoring'
+require 'log'
+require 'params'
 require 'content_server/queue_indexer'
+
+
 
 # Content server. Monitors files, index local files, listen to backup server content,
 # copy changes and new files to backup server.
@@ -25,6 +27,7 @@ module BBFS
                      'ContentData file path.')
     Params.parameter('monitoring_config_path', File.expand_path('~/.bbfs/etc/file_monitoring.yml'),
                      'Configuration file for monitoring.')
+
     def run
       all_threads = []
 
@@ -176,11 +179,10 @@ module BBFS
 
       all_threads.each { |t| t.abort_on_exception = true }
       all_threads.each { |t| t.join }
-
       # Should never reach this line.
     end
-
     module_function :run_backup_server
 
   end # module ContentServer
 end # module BBFS
+
