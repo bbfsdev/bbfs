@@ -5,13 +5,14 @@ module BBFS
   module Networking
 
     class TCPCallbackReceiver
-      def initialize callback, port
+      def initialize(callback, port)
         @callback = callback
         @port = port
       end
 
       def run
         Socket.tcp_server_loop(@port) do |sock, client_addrinfo|
+          Log.debug1('sock content:"%s"' % sock.string)
           while size_of_data = sock.read(4)
             size_of_data = size_of_data.unpack("l")[0]
             Log.debug1 "Size of data: #{size_of_data}"
@@ -33,7 +34,7 @@ module BBFS
       def initialize host, port
         @host = host
         @port = port
-        open_socket
+        @tcp_socket = nil
       end
 
       def open_socket
@@ -41,8 +42,16 @@ module BBFS
         @tcp_socket = TCPSocket.new(@host, @port)
       end
 
+      def socket_good?
+        return @tcp_socket && !@tcp_socket.closed?
+      end
+
       def send_content_data content_data
-        open_socket if @tcp_socket.closed?
+        open_socket unless socket_good?
+        if !socket_good?
+          Log.warning('Socket not opened for writing, skipping send.')
+          return false
+        end
         Log.debug1 "Data to send: #{content_data}"
         marshal_data = Marshal.dump(content_data)
         Log.debug1 "Marshaled size: #{marshal_data.length}."
@@ -51,8 +60,9 @@ module BBFS
         if data_size.nil? || marshal_data.nil?
           Log.debug1 'Send data is nil!'
         end
-        @tcp_socket.write data_size
-        @tcp_socket.write marshal_data
+        bytes_written = @tcp_socket.write data_size
+        bytes_written += @tcp_socket.write marshal_data
+        return bytes_written > 0
       end
     end
 
