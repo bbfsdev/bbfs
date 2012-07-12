@@ -124,6 +124,8 @@ module BBFS
                               Params.backup_password,
                               Params.remote_server,
                               files_map)
+          tcpip_hand = Receiver.new(12346) # Itzhak
+          tcpip_hand.run # Itzhak
         end
       end
 
@@ -169,11 +171,13 @@ module BBFS
       content_data_sender = ContentDataSender.new(
           Params.remote_server,
           Params.remote_listening_port)
+      tcpip_data_sender = Sender.new( Params.remote_server, Params.remote_listening_port) # Itzhak
       # Start sending to backup server
       all_threads << Thread.new do
         while true do
           Log.info 'Waiting on local server content data queue.'
           content_data_sender.send_content_data(local_server_content_data_queue.pop)
+          tcpip_data_sender.send(local_server_content_data_queue.pop) # Itzhak          
         end
       end
 

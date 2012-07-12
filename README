@@ -73,7 +73,10 @@ E) Note that for now parameter parsing is not yet available so just hard-code th
   ...
   # Replace value to suite your local configuration
   BBFS::Params.monitoring_config_path = File.expand_path('~/.bbfs/etc/backup_file_monitoring.yml')
+  BBFS::Params.default_log_path = File.expand_path('~/.bbfs/log/backup_file_monitoring.log')
   ...
+  
+  
 
 F) Run content server:
   bbfs> ruby -Ilib bin/content_server

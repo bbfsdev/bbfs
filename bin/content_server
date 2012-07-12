@@ -11,4 +11,9 @@ rescue LoadError
   require 'content_server'
 end
 
+BBFS::Params.remote_server = '127.0.0.1'
+BBFS::Params.backup_username = 'test'
+BBFS::Params.backup_password = 'test'
+BBFS::Params.content_data_path = File.expand_path('~/.bbfs/var/server_content.data')
+
 BBFS::ContentServer.run

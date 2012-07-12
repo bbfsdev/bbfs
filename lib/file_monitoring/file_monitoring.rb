@@ -48,9 +48,9 @@ module BBFS
 
         while true do
           time, conf, dir_stat = pq.pop
-          #Log.info 'time:' + time.to_s()
-          #Log.info 'now:' + Time.now.to_i.to_s()
-          #Log.info conf
+          Log.info 'time:' + time.to_s()
+          Log.info 'now:' + Time.now.to_i.to_s()
+          Log.info conf
 
           time_span = time - Time.now.to_i
           if (time_span > 0)
@@ -58,8 +58,8 @@ module BBFS
           end
           dir_stat.monitor
 
-          #Log.info conf['path']
-          #Log.info conf['scan_period']
+          Log.info conf['path']
+          Log.info conf['scan_period']
           priority = (Time.now + conf['scan_period']).to_i
           pq.push([priority, conf, dir_stat], -priority)
         end

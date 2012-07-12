@@ -12,4 +12,6 @@ rescue LoadError
   require 'content_server'
 end
 
+BBFS::Params.monitoring_config_path = File.expand_path('~/.bbfs/etc/backup_file_monitoring.yml')
+BBFS::Params.default_log_path = File.expand_path('~/.bbfs/log/backup_file_monitoring.log')
 BBFS::ContentServer.run_backup_server

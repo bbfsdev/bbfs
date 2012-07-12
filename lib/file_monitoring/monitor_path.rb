@@ -188,24 +188,29 @@ module BBFS
       #  Checks that directory structure (i.e. files and directories located directly under this directory)
       #  wasn't changed since the last iteration.
       def monitor
+        Log.warning "monitor"
         was_changed = false
         new_state = nil
         self_stat = File.lstat(@path) rescue nil
         if self_stat == nil
+          Log.warning "monitor0"
           new_state = FileStatEnum::NON_EXISTING
           @files = nil
           @dirs = nil
           @cycles = 0
         elsif @files == nil
+          Log.warning "monitor1"
           new_state = FileStatEnum::NEW
           @files = Hash.new
           @dirs = Hash.new
           @cycles = 0
           update_dir
         elsif update_dir
+          Log.warning "monitor2"
           new_state = FileStatEnum::CHANGED
           @cycles = 0
         else
+          Log.warning "monitor3"
           new_state = FileStatEnum::UNCHANGED
           @cycles += 1
           if @cycles >= @stable_state
@@ -220,7 +225,7 @@ module BBFS
       # Updates the files and directories hashes and globs the directory for changes.
       def update_dir
         was_changed = false
-
+        Log.warning "update_dir"
         # monitor existing and absent files
         @files.each_value do |file|
           file.monitor
