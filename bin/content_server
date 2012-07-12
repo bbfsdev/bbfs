@@ -18,38 +18,122 @@ rescue LoadError
 end
 include BBFS
 
-# TODO add command line parsing when it will be completed
-
-# service configuration
+#--------------------------
+#  Parameters
+# service configuration parameters
 Params.parameter 'content_server_background', false, 'Whether server should be run in background'
 Params.parameter 'content_server_command', 'start',
-                 'Servers command. Commands are: start, delete'
+                 'Server\'s command. Commands are: start, delete'
 Params.parameter 'content_server_servicename', File.basename(__FILE__),
                        'Background service name'
-Params.parameter 'content_server_config', 
-                 File.join(Dir.home, '.bbfs', 'etc', 'config', Params.servicename),
-                 'Path to servers config file'
+Params.parameter 'content_server_config',
+                 File.join(Dir.home, '.bbfs', 'etc', 'config',\
+                           "#{Params.content_server_servicename}.yml"),
+                 'Path to server\'s config file'
 Params.content_server_config = File.expand_path Params.content_server_config
 
-# server configuration
-Params.remote_server = '127.0.0.1'
-Params.backup_username = 'test'
-Params.backup_password = 'test'
-Params.content_data_path = File.expand_path('~/.bbfs/var/server_content.data')
+Params.instance_variables.each do |var|
+  puts var
+end
+#exit
+
+# server configuration parameters
+#Params.remote_server = '127.0.0.1'
+#Params.backup_username = 'test'
+#Params.backup_password = 'test'
+#Params.content_data_path = File.expand_path('~/.bbfs/var/server_content.data')
+
+#--------------------------
+# Initialization
+Params.parse ARGV
 
 if File.exists? Params.content_server_config
   File.open(Params.content_server_config, 'r') do |file|
     Params.read_yml_params file
-  end 
+  end
+end
+Params.log_param_number_of_mega_bytes_stored_before_flush = 0
+Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 0
+#Params.log_file_name = "c:\\content_server_#{Process.pid}.log"
+
+#exit
+
+#--------------------------
+# Functions
+def update_argv_with_config_file config_file_path
+  if File.exists? Params.content_server_config
+    config = YAML.load_file config_file_path
+    config.each do |key, value|
+      # format taken from the commnad line parsing of Params
+      ARGV.unshift ['--', key, '=', "\"#{value}\""].join 
+    end
+  end
 end
 
-Log.init
+def prepare_argv
+  new_argv = Array.new
+  ARGV.each do |arg|
+    arg_arr = arg.split '='
+    if arg_arr.size == 1
+      arg = "\"#{arg}\"" if arg =~ / /
+      new_argv << arg
+    elsif arg_arr.size == 2
+      arg_arr[1] = "\"#{arg_arr[1]}\"" if arg_arr[1] =~ / /
+      new_argv << arg_arr.join('=')
+    else
+      Log::warning "ARGV argument #{arg} wasn't processed"
+      new_argv << arg
+    end
+  end
+  ARGV.clear
+  ARGV.concat new_argv
+end
 
+#require 'signal'
+File.open([Params.log_file_name, '_test'].join, 'a+') {|f| f.puts(Signal.list) }
+#Signal.trap("INT") {File.open([Params.log_file_name, '_test'].join, 'a+') {|f| f.puts("signal HUP traped") }}
+#Signal.trap("INT") { puts 'Signal traped' }
+Signal.trap(1) do
+  File.open([Params.log_file_name, '_test'].join, 'a+') {|f| f.puts("signal HUP traped")}
+end
+Signal.trap(2) do 
+  File.open([Params.log_file_name, '_test'].join, 'a+') {|f| f.puts("signal HUP traped")} 
+end
+Signal.trap(6) do 
+  File.open([Params.log_file_name, '_test'].join, 'a+') {|f| f.puts("signal HUP traped")} 
+end
+at_exit do 
+  File.open([Params.log_file_name, '_test'].join, 'a+') {|f| f.puts("signal HUP traped")} 
+end
+#Signal.trap(2) { puts 'Signal traped' }
+#puts Process.pid
+#- -------------------------
+# Main
 case Params.content_server_command
 when 'start'
   if Params.content_server_background
-    # TODO
+    prepare_argv
+    update_argv_with_config_file Params.content_server_config
+    # to prevent service enter loop cause of background parameter
+    # (for more information see documentation for RunInBackground.start!)
+    ARGV.delete_if {|arg| arg =~ /content_server_config/ || arg =~ /content_server_background/ }
+    begin
+      #RunInBackground.start! Params.content_server_servicename
+      File.open([Params.log_file_name, '_test'].join, 'a+') {|f| f.puts 'run daemon'}
+      File.open([Params.log_file_name, '_test'].join, 'a+') {|f| f.puts Params.content_data_path}
+      File.open([Params.log_file_name, '_test'].join, 'a+') {|f| f.puts "#{Params.backup_username} : #{Params.backup_username.class} : #{Params.backup_username.size}"}
+      File.open([Params.log_file_name, '_test'].join, 'a+') {|f| f.puts "#{Params.backup_password} : #{Params.backup_password.class} : #{Params.backup_password.size}"}
+      #RunInBackground.start File.expand_path(__FILE__), ARGV, Params.content_server_servicename
+      RunInBackground.start! Params.content_server_servicename
+    rescue Exception => e
+      Log.error "Start command failed: #{e.message}"
+      raise
+    end
   else
+    File.open([Params.log_file_name, '_test'].join, 'a+') {|f| f.puts 'run'}
+    File.open([Params.log_file_name, '_test'].join, 'a+') {|f| f.puts Params.content_data_path}
+    File.open([Params.log_file_name, '_test'].join, 'a+') {|f| f.puts "PID: #{Process.pid}"}
+    File.open([Params.log_file_name, '_test'].join, 'a+') {|f| f.puts "PPID: #{Process.ppid}"}
     ContentServer.run
   end
 when 'delete'
@@ -57,6 +141,7 @@ when 'delete'
     RunInBackground.delete Params.content_server_servicename
   else
     Log.warning "Can't delete. Service #{Params.content_server_servicename} already deleted"
+    sleep Params.log_param_max_elapsed_time_in_seconds_from_last_flush + 0.5
   end
 end
 

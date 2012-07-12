@@ -161,8 +161,13 @@ module BBFS
 
     def RunInBackground.start_windows binary_path, binary_args, name, opts = {}
       raise ArgumentError.new("#{binary_path} doesn't exist'") unless File.exists? binary_path
+      binary_path = %Q{"#{binary_path}"} if binary_path =~ / /
       binary_path.tr!('/','\\')
-      opts[:binary_path_name] = "#{RUBY_INTERPRETER_PATH} #{binary_path} #{binary_args.join(' ')}"
+      load_path = get_load_path
+      binary_args_str = binary_args.join ' '
+
+      opts[:binary_path_name] = \
+        "#{RUBY_INTERPRETER_PATH} #{load_path} #{binary_path} #{binary_args_str}"
       opts[:service_name] = name
       opts[:description] = name unless opts.has_key? :description
       opts[:display_name] = name unless opts.has_key? :display_name
@@ -173,7 +178,9 @@ module BBFS
       opts[:dependencies] = ['W32Time','Schedule'] unless opts.has_key? :dependencies
       # NOTE most of examples uses this option as defined beneath. The default is nil.
       #opts[:load_order_group] = 'Network' unless opts.has_key? :load_order_group
-
+opts[:binary_path_name] = opts[:binary_path_name].gsub '"', '"\\"'
+puts "opts[:binary_path_name]\n=========="
+puts opts[:binary_path_name]
       Service.create(opts)
       begin
         Service.start(opts[:service_name])
@@ -220,7 +227,11 @@ module BBFS
     #  NOTE binary_path and binary_args contents will be change
     def RunInBackground.wrap_windows binary_path, binary_args
       raise ArgumentError.new("#{binary_path} doesn't exists") unless File.exists? binary_path
-      binary_args.insert(0, RUBY_INTERPRETER_PATH, binary_path.tr('/','\\'))
+      load_path = get_load_path
+      binary_path = %Q{"#{binary_path}"} if binary_path =~ / /
+      binary_args.insert(0, RUBY_INTERPRETER_PATH, load_path, binary_path.tr('/','\\'))
+puts "WRAP\n======"
+puts binary_args.join ' '
       binary_path.replace(WRAPPER_SCRIPT)
     end
 
@@ -297,6 +308,19 @@ module BBFS
       else  # OS == :LINUX
         Daemons::Pid.running? name
       end
+    end
+
+    def RunInBackground.get_abs_std_path path
+      path = File.expand_path path
+      path = path.tr('/','\\') if OS == :WINDOWS
+    end
+
+    def RunInBackground.get_load_path
+      load_path = Array.new
+      $:.each do |location|
+        load_path << %Q{-I"#{get_abs_std_path(location)}"}
+      end
+      load_path.join ' '
     end
 
     private_class_method :start_linux, :start_windows, :wrap_windows, :stop

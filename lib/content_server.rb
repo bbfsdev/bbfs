@@ -25,7 +25,6 @@ module BBFS
                      'ContentData file path.')
     Params.parameter('monitoring_config_path', File.expand_path('~/.bbfs/etc/file_monitoring.yml'),
                      'Configuration file for monitoring.')
-
     def run
       all_threads = []
 
@@ -177,8 +176,10 @@ module BBFS
 
       all_threads.each { |t| t.abort_on_exception = true }
       all_threads.each { |t| t.join }
+
       # Should never reach this line.
     end
+
     module_function :run_backup_server
 
   end # module ContentServer
