@@ -5,6 +5,8 @@ require 'content_data'
 require 'file_indexing'
 require 'file_utils'
 require 'file_utils/file_generator/file_generator'
+
+require 'log'
 require 'params'
 
 module BBFS
@@ -189,7 +191,7 @@ module BBFS
           threads.each { |a| a.join }
           join_servers_results(conf.server_conf_vec, arguments["cd_out"])
         elsif arguments["command"] == "generate_files"
-          fg = FileGenerator.new()
+          fg = BBFS::FileGenerator::FileGenerator.new()
           fg.run()
         end
       end

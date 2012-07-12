@@ -30,7 +30,7 @@ defaults:
   is_tot_files_in_dir_random: true
 #Indicates that file size will be calculated randomly.
   is_use_random_size: true
-#Indicates that file size will be calculated randomly.
+#Indicated if target path for creation files will taken from content server config file.
   is_use_content_server_conf: true
 
 Note that these are defaults parameter.
@@ -40,7 +40,8 @@ You can change the default YAML file file_generator_parameters.yml.
 This file located in: BBFS/lib/file_generator
 
 The File Generator utility is integrated to general file utility.
-You have to install file_utils as follow:
+You have to install file_utils and log
+Install file_utils as follow:
 bbfs> gem build file_utils.gemspec
   Successfully built RubyGem
   Name: file_utils
@@ -52,7 +53,33 @@ bbfs> gem install file_utils-0.0.1.gem
     Installing ri documentation for file_utils-0.0.1...
     Installing RDoc documentation for file_utils-0.0.1...
 
+Install log as follow:
+bbfs> gem build log.gemspec
+      Successfully built RubyGem
+      Name: log
+      Version: 0.0.1
+      File: log-0.0.1.gem
+bbfs> gem install log-0.0.1.gem
+    Successfully installed log-0.0.1
+    1 gem installed
+    Installing ri documentation for log-0.0.1...
+    Installing RDoc documentation for log-0.0.1...
+
+
+
 The examples to run File Generator utility
 ---------------------------------------------------------------
 To start File Generator utility by file_utils:
 $ file_utils generate_files
+
+To start File Generator utility from any place:
+fg = BBFS::FileGenerator::FileGenerator.new()
+fg.run()
+
+To start File Generator utility from any place with FileGeneratorParameters:
+fp = BBFS::FileGenerator::FileGeneratorParameters.new()
+fp.target_path = "./test_files333"
+fp.file_name_template = "agf_4_bs_s"
+fg = BBFS::FileGenerator::FileGenerator.new(fp)
+fg.run()
+

@@ -7,13 +7,13 @@ DBG = false  # NOTE be sure to disable it in production
 
 begin
   begin
-    require 'params'
     require 'log'
+    require 'params'
   rescue LoadError
     $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..', 'lib'))
     $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..'))
-    require 'params'
     require 'log'
+    require 'params'
   end
 
   # On WindowsXP log can be found under:

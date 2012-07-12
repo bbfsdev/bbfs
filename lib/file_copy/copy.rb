@@ -1,6 +1,9 @@
 require 'net/ssh'
 require 'net/sftp'
 
+require 'log'
+require 'params'
+
 module BBFS
   module FileCopy
 
