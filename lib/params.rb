@@ -119,7 +119,7 @@ module BBFS
         @type = type
         @desc = desc
         @value = value_type_check value
-        puts "initialize new param:  name=#{name}  value=#{value}  type=#{type}  desc=#{desc}"
+        puts "Defined new param:  name=#{name}  value=#{value}  type=#{type}  desc=#{desc}"
       end
     end
 
@@ -298,7 +298,7 @@ module BBFS
       puts "---------------------------------"
     end
 
-    #define 'conf_file' param once.
+    #define default configuration file - parameter:'conf_file' once.
     Params.string 'conf_file', \
                    File.expand_path("~/.bbfs/conf/#{Params.executable_name}.conf"), \
                    'Default configuration file.'
