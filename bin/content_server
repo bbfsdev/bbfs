@@ -38,10 +38,10 @@ end
 #exit
 
 #server configuration parameters
-Params.remote_server = '127.0.0.1'
-Params.backup_username = 'test'
-Params.backup_password = 'test'
-Params.content_data_path = File.expand_path('~/.bbfs/var/server_content.data')
+#Params.remote_server = '127.0.0.1'
+#Params.backup_username = 'test'
+#Params.backup_password = 'test'
+#Params.content_data_path = File.expand_path('~/.bbfs/var/server_content.data')
 #--------------------------
 # Initialization
 Params.parse ARGV

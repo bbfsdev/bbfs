@@ -166,8 +166,6 @@ module BBFS
 
       # # # # # # # # # # # # # # # # # # # # # # # # # # #
       # Initialize/Start backup server content data sender
-puts Params.remote_server
-puts Params.remote_listening_port
       content_data_sender = ContentDataSender.new(
           Params.remote_server,
           Params.remote_listening_port)
