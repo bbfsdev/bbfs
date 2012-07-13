@@ -1,72 +1,282 @@
+# Author: Yaron Dror (yaron.dror.bb@gmail.com)
+# Description: The file contains 'Params' module implementation.
+# Notes:
+#   module.init should be called if user wants to override defined parameters by file or command line.
+#   Parameter can be defined only once.
+#   Parameters have to be defined before they are accessed. see examples below.
+#
+# Examples of definitions:
+#   Params.string 'parameter_str', 'this is a string' ,'description_for_string'
+#   Params.integer 'parameter_int',1 , 'description_for_integer'
+#   Params.float 'parameter_float',2.6 , 'description_for_float'
+#   Params.boolean 'parameter_true', true, 'description_for_true'
+#   Params.boolean 'parameter_false',false , 'description_for_false'
+#   Note. Parameters have to be defined before they are accessed.
+#
+# Examples of usages (get\set access is through the [] operator).
+#   local_var_of_type_string = Params['parameter_str']
+#   puts local_var_of_type_string  # Will produce --> this is a string
+#   Params['parameter_float'] = 3.8
+#   puts Params['parameter_float']  # Will produce --> 3.8
+#   Params['parameter_float'] = 3
+#   puts Params['parameter_float']  # Will produce --> 3.0 (note the casting)
+#   Note. only after definition, the [] operator will work. Else an error is raised.
+#     Params['new_param'] = true  # will raise an error, since the param was not defined yet.
+#     Params.boolean 'new_param', true, 'this is correct'  # this is the definition.
+#     Params['new_param'] = false  # Will set new value.
+#     puts Params['new_param']  # Will produce --> false
+#
+# Type check.
+#   A type check is forced both when overriding with file or command line and in [] usage.
+#   if parameter was defined as a Float using Params.float method (e.g. 2.6) and user
+#   provided an integer when overriding or when using [] operator then the integer will
+#   be casted to float.
+#
+# Params.Init - override parameters.
+#   implementation of the init sequence allows the override of
+#   defined parameters with new values through input file and\or command line args.
+#   Note that only defined parameters can be overridden. If new parameter is parsed
+#   through file\command line, then an error will be raised.
+#   Input config file override:
+#     Default configuration input file path is: '~/.bbfs/conf/<executable name>.conf'
+#     This path can be overridden by the command line arguments (see ahead).
+#     If path and file exist then the parameters in the file will override the defined
+#     parameters. File parameters format per line:<param_name>: <param value>
+#     Note: Space char after the colon is mandatory
+#   Command line arguments override:
+#     General format per argument is:--<param_name>=<param_value>
+#     those parameters will override the defined parameters and the file parameters.
+#   Override input config file:
+#     User can override the input file by using:--conf_file=<new_file_path>
+#
+# More examples in bbfs/examples/params/rb
+
 require 'optparse'
 require 'yaml'
-# A simple params module.
+
 module BBFS
   module Params
-    def Params.parameter(name, default_value, description)
-      self.instance_variable_set '@' + name, default_value
-      self.class.send('attr_accessor', name)
+
+    # Represents a parameter.
+    class Param
+      attr_accessor :name
+      attr_accessor :value
+      attr_accessor :desc
+      attr_accessor :type
+
+      # value_type_check method:
+      # 1. Check if member:'type' is one of:Integer, Float, String or Boolean.
+      # 2. input parameter:'value' class type is valid to override this parameter.
+      # 3. Return value. The value to override with correct type. A cast from integer to Float will
+      #    be made for Float parameters which are set with integer values.
+      # 4. Check will be skipped for nil value.
+      def value_type_check value
+        case( @type )
+          when 'Integer' then
+            if not @value.nil?
+              if not ((value.class.eql? Integer) or
+                  (value.class.eql? Fixnum))
+                raise "Parameter:'#{@name}' type:'Integer' but value type to override " \
+                      "is:'#{value.class}'."
+              end
+            end
+          when 'Float' then
+            if not @value.nil?
+              if not value.class.eql? Float
+                if not ((value.class.eql? Integer) or
+                    (value.class.eql? Fixnum))
+                  raise "Parameter:'#{@name}' type:'Float' but value type to override " \
+                        "is:'#{value.class}'."
+                else
+                  return value.to_f
+                end
+              end
+            end
+          when 'String' then
+            if not @value.nil?
+              if not value.class.eql? String
+                raise "Parameter:'#{@name}' type:'String' but value type to override " \
+                      "is:'#{value.class}'."
+              end
+            end
+          when 'Boolean' then
+            if not @value.nil?
+              if not((value.class.eql? TrueClass) or (value.class.eql? FalseClass))
+                raise "Parameter:'#{@name}' type:'Boolean' but value type to override " \
+                      "is:'#{value.class}'."
+              end
+            end
+          else raise "Parameter:'#{@name}' type:'#{@value.class}' but parameter " \
+                       "type to override:'#{value.class}' is not supported. " + \
+                       "Supported types are:Integer, Float, String or Boolean."
+        end
+        return value
+      end
+
+      # supported types are: String, Integer, Float and Boolean
+      def initialize name, value, type, desc
+        @name = name
+        @type = type
+        @desc = desc
+        @value = value_type_check value
+        puts "Defined new param:  name=#{name}  value=#{value}  type=#{type}  desc=#{desc}"
+      end
+    end
+
+    # The globals data structure.
+    @globals_db = Hash.new
+
+    def Params.raise_error_if_param_does_not_exist name
+      if not @globals_db[name]
+        raise "before using parameter:'#{name}', it should first be defined through Param module methods:" \
+               "Params.string, Params.integer, Params.float or Params.boolean."
+      end
+    end
+
+    def Params.raise_error_if_param_exists name
+      if @globals_db[name]
+        raise "Parameter:'#{name}', can only be defined once."
+      end
+    end
+
+    # Read global param value by other modules.
+    # Note that this operator should only be used, after parameter has been defined through
+    # one of Param module methods: Params.string, Params.integer,
+    # Params.float or Params.boolean."
+    def Params.[] name
+      Params.raise_error_if_param_does_not_exist name
+      @globals_db[name].value
+    end
+
+    # Write global param value by other modules.
+    # Note that this operator should only be used, after parameter has been defined through
+    # one of Param module methods: Params.string, Params.integer,
+    # Params.float or Params.boolean."
+    def Params.[]= name, value
+      Params.raise_error_if_param_does_not_exist name
+      set_value = @globals_db[name].value_type_check value
+      @globals_db[name].value = set_value
+    end
+
+    #override parameter should only be called by Params module methods.
+    def Params.override_param name, value
+      existing_param = @globals_db[name]
+      if not existing_param
+        raise "Parameter:'#{name}' has not been defined and can not be overridden. " \
+              "It should first be defined through Param module methods:" \
+              "Params.string, Params.integer, Params.float or Params.boolean."
+      end
+      if value.nil?
+        existing_param.value = nil
+      elsif existing_param.type.eql? 'String'
+        existing_param.value = value.to_s
+      else
+        set_value = existing_param.value_type_check value
+        existing_param.value = set_value
+      end
+    end
+
+    # Define new global parameter of type Integer.
+    def Params.integer name, value, description
+      Params.raise_error_if_param_exists name
+      @globals_db[name] = Param.new name, value, 'Integer', description
+      end
+
+    # Define new global parameter of type Float.
+    def Params.float name, value, description
+      Params.raise_error_if_param_exists name
+      @globals_db[name] = Param.new name, value, 'Float', description
+    end
+
+    # Define new global parameter of type String.
+    def Params.string name, value, description
+      Params.raise_error_if_param_exists name
+      @globals_db[name] = Param.new name, value, 'String', description
+    end
+
+    # Define new global parameter of type Boolean.
+    def Params.boolean name, value, description
+      Params.raise_error_if_param_exists name
+      @globals_db[name] = Param.new name, value, 'Boolean', description
+    end
+
+    #Auxiliary method to retrieve the executable name
+    def Params.executable_name
+      /([a-zA-Z0-9\-_\.]+):\d+/ =~ caller[caller.size-1]
+      return $1
+    end
+
+    # Initializes the project parameters.
+    # Precedence is: Defined params, file and command line is highest.
+    def Params.init args
+      puts "\nStart global parameter init sequence"
+      results = Params.parse_command_line_arguments args
+      if not results['conf_file'].nil?
+        puts "Configuration file was overridden. New path:'#{results['conf_file']}'"
+        Params['conf_file'] = results['conf_file']
+      end
+
+      #load yml params
+      if (not Params['conf_file'].nil?) and (File.exist? (File.expand_path Params['conf_file']))
+        puts "Configuration file path exists. Loading file parameters."
+        Params.read_yml_params File.open(Params['conf_file'], 'r')
+      else
+        puts "Configuration file path does not exist. Skipping loading file parameters."
+      end
+
+      #override command line argument
+      results.keys.each do |result_name|
+        Params.override_param result_name, results[result_name]
+      end
+
+      Params.print_global_parameters
+      puts "End global parameter init sequence\n\n"
     end
 
     # Load yml params and override default values.
-    # Return true, if all yml params loaded successfully.
-    # Return false, if a loaded yml param does not exist.
+    # raise exception if a loaded yml param does not exist. or if types mismatch occurs.
     def Params.read_yml_params yml_input_io
       proj_params = YAML::load(yml_input_io)
       proj_params.keys.each do |param_name|
-        if not self.instance_variable_get '@' + param_name
-          puts "loaded yml param:'#{param_name}' which does not exist in Params module."
-          return false
-        end
-        self.instance_variable_set '@' + param_name, proj_params[param_name]
+        Params.override_param param_name, proj_params[param_name]
       end
-      return true
     end
-    #  Parse command line
-    #  ==== Arguments:
-    #  Pre defined in lib/params.rb as instance variables of Params module
-    def self.parse(args)
-      parsing_result = Hash.new  # Define parsing Results Hash
-      options = Hash.new  # Hash of parsing options from Params
-      names = Params.instance_variables  # Define all available parameters
 
-      names.each do  |name|
-        value = Params.instance_variable_get(name)  # Get names values
-        tmp_name= name.to_s
-        tmp_name.slice!(0)  # Remove @ from instance variables
-        options[tmp_name] = value  # Create list of option arguments from Params
-      end
+    #  Parse command line arguments
+    def Params.parse_command_line_arguments args
+      results = Hash.new  # Hash to store parsing results.
+      options = Hash.new  # Hash of parsing options from Params.
 
       # Define options switch for parsing
       # Define List of options see example on
       # http://ruby.about.com/od/advancedruby/a/optionparser2.htm
       opts = OptionParser.new do |opts|
-        options.each do |name,value|
-          tmp_name = name.to_s  # cast name to string to use it with OptionParser switch
-          tmp_name_long = "--" + tmp_name + "=MANDATORY"  # Define a command with single mandatory parameter
-          tmp_value = "Default value:" + value.to_s  #  Description and Default value
+        @globals_db.values.each do |param|
+          tmp_name_long = "--" + param.name + "=MANDATORY"  # Define a command with single mandatory parameter
+          tmp_value = "Default value:" + param.value.to_s  #  Description and Default value
 
           # Define type of the mandatory value
-          # It can be string, integer or float
-          value_type = String
-          if value.is_a?(Integer)
-            value_type = Integer
-          elsif value.is_a?(Float)
-            value_type = Float
+          # It can be integer, float or String(for all other types).
+          case( param.type )
+            when 'Integer' then value_type = Integer
+            when 'Float' then value_type = Float
+            else value_type = String
           end
-
           # Switches definition - according to what
           # was pre-defined in the Params
-          parsing_result[name] = "Parsing Failed"
-          opts.on(tmp_name_long,value_type, tmp_value) do |result|
-            parsing_result[name] = result
-            Params.instance_variable_set'@' + name,result
+          opts.on(tmp_name_long, value_type, tmp_value) do |result|
+            if (result.to_s.upcase.eql? 'TRUE')
+              results[param.name] = true
+            elsif (result.to_s.upcase.eql? 'FALSE')
+              results[param.name] = false
+            else
+              results[param.name] = result
+            end
           end
         end
 
         # Define help command for available options
-        # executing --help will printout all pre-defined
-        # switch options
+        # executing --help will printout all pre-defined switch options
         opts.on_tail("-h", "--help", "Show this message") do
           puts opts
           exit
@@ -74,9 +284,24 @@ module BBFS
 
         opts.parse(args)  # Parse command line
       end
-      return parsing_result
+      return results
     end # end of Parse function
 
+    def Params.print_global_parameters
+      puts "\nInitialized global parameters:"
+      puts "---------------------------------"
+      counter=0
+      @globals_db.values.each do |param|
+        counter += 1
+        puts "#{counter}: #{param.name}=#{param.value}"
+      end
+      puts "---------------------------------"
+    end
+
+    #define default configuration file - parameter:'conf_file' once.
+    Params.string 'conf_file', \
+                   File.expand_path("~/.bbfs/conf/#{Params.executable_name}.conf"), \
+                   'Default configuration file.'
   end
 end
 

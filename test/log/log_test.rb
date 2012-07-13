@@ -33,8 +33,8 @@ module BBFS
 
       def initialize name
         super
-        Params.log_write_to_console = false
-        Params.log_write_to_file = false
+        Params['log_write_to_console'] = false
+        Params['log_write_to_file'] = false
         Log.init
         @test_consumer = TestConsumer.new
         Log.add_consumer @test_consumer
@@ -91,7 +91,7 @@ module BBFS
 
       def test_check_debug_level_0
         #set test phase
-        Params.log_debug_level = 0
+        Params['log_debug_level'] = 0
         Log.debug1 'This is a test debug-1 message.'
         Log.debug2 'This is a test debug-2 message.'
         Log.debug3 'This is a test debug-3 message.'
@@ -103,7 +103,7 @@ module BBFS
 
       def test_check_debug_level_1
         #set test phase
-        Params.log_debug_level = 1
+        Params['log_debug_level'] = 1
         test_message_1 = 'This is a test DEBUG-1 message.'
         test_message_2 = 'This is a test DEBUG-2 message.'
         test_message_3 = 'This is a test DEBUG-3 message.'
@@ -120,7 +120,7 @@ module BBFS
 
       def test_check_debug_level_2
         #set test phase
-        Params.log_debug_level = 2
+        Params['log_debug_level'] = 2
         test_message_1 = 'This is a test DEBUG-1 message.'
         test_message_2 = 'This is a test DEBUG-2 message.'
         test_message_3 = 'This is a test DEBUG-3 message.'
@@ -140,7 +140,7 @@ module BBFS
 
       def test_check_debug_level_3
         #set test phase
-        Params.log_debug_level = 3
+        Params['log_debug_level'] = 3
         test_message_1 = 'This is a test DEBUG-1 message.'
         test_message_2 = 'This is a test DEBUG-2 message.'
         test_message_3 = 'This is a test DEBUG-3 message.'
