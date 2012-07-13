@@ -9,7 +9,6 @@
 
 require 'win32/daemon'
 #require 'win32/process'
-#require 'sys/proctable'
 
 include Win32
 
@@ -23,13 +22,13 @@ rescue LoadError
   require 'log'
 end
 
-BBFS::Params.log_write_to_console = false
+BBFS::Params['log_write_to_console'] = false
 # On WindowsXP log can be found under:
 # C:/Documents and Settings/NetworkService/.bbfs/daemon_wrapper_<pid>.log
-BBFS::Params.log_file_name = File.join(Dir.home, '.bbfs', "#{File.basename(__FILE__)}_#{Process.pid}.log")
-BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 1
+BBFS::Params['log_file_name'] = File.join(Dir.home, '.bbfs', "#{File.basename(__FILE__)}_#{Process.pid}.log")
+BBFS::Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] = 1
 # NOTE change it to receive more debug info
-BBFS::Params.log_debug_level = 1
+BBFS::Params['log_debug_level'] = 1
 BBFS::Log.init
 
 class WrapperDaemon < Daemon

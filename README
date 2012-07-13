@@ -62,17 +62,17 @@ E) Note that for now parameter parsing is not yet available so just hard-code th
   run command (BBFS::ContentServer.run):
   ...
   # Replace values to suite your local configuration
-  BBFS::Params.remote_server = '127.0.0.1'
-  BBFS::Params.backup_username = 'test'
-  BBFS::Params.backup_password = 'test'
-  BBFS::Params.content_data_path = File.expand_path('~/.bbfs/var/server_content.data')
+  BBFS::Params['remote_server'] = '127.0.0.1'
+  BBFS::Params['backup_username'] = 'test'
+  BBFS::Params['backup_password'] = 'test'
+  BBFS::Params['content_data_path'] = File.expand_path('~/.bbfs/var/server_content.data')
   ...
 
   For backup server edit the executable bin/backup_server and add the parameter just before the
   run command (BBFS::ContentServer.run_backup_server):
   ...
   # Replace value to suite your local configuration
-  BBFS::Params.monitoring_config_path = File.expand_path('~/.bbfs/etc/backup_file_monitoring.yml')
+  BBFS::Params['monitoring_config_path'] = File.expand_path('~/.bbfs/etc/backup_file_monitoring.yml')
   ...
 
 F) Run content server:
