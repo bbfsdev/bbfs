@@ -9,7 +9,7 @@ require 'params'
 module BBFS
 
   module Log
-    Params.parameter 'log_param_thread_sleep_time_in_seconds', 0.5 , \
+    Params.float 'log_param_thread_sleep_time_in_seconds', 0.5 , \
     'log param. Thread sleep time in seconds'
 
     # Base class for all consumers
@@ -48,7 +48,7 @@ module BBFS
           while (true)
             if @consumer_queue.empty? then
               @consumer_queue.push nil
-              sleep Params.log_param_thread_sleep_time_in_seconds
+              sleep Params['log_param_thread_sleep_time_in_seconds']
             end
           end
         end

@@ -23,27 +23,27 @@ module BBFS
     end
 
     # Global params
-    Params.parameter 'log_param_auto_start',false, \
+    Params.boolean 'log_param_auto_start',false, \
       'log param. If true, log will start automatically. ' + \
       'Else, init should be called. ' + \
       'Else Init will be called automatically on the first attempt to log.'
-    Params.parameter 'log_debug_level', 0 , 'Log level.'
-    Params.parameter 'log_param_number_of_mega_bytes_stored_before_flush', 1 , \
+    Params.integer 'log_debug_level', 0 , 'Log level.'
+    Params.integer 'log_param_number_of_mega_bytes_stored_before_flush', 1 , \
       'log param. Number of mega bytes stored before they are flushed.'
-    Params.parameter 'log_param_max_elapsed_time_in_seconds_from_last_flush',1, \
+    Params.float 'log_param_max_elapsed_time_in_seconds_from_last_flush',1, \
       'log param. Max elapsed time in seconds from last flush'
-    Params.parameter 'log_write_to_file', true , \
+    Params.boolean 'log_write_to_file', true , \
       'If true then the logger will write the messages to a file.'
-    Params.parameter 'log_write_to_console', false , \
+    Params.boolean 'log_write_to_console', false , \
       'If true then the logger will write the messages to the console.'
-    Params.parameter 'log_file_name', File.expand_path("~/.bbfs/log/#{Log.executable_name}.log") , \
+    Params.string 'log_file_name', File.expand_path("~/.bbfs/log/#{Log.executable_name}.log") , \
       'Default log file name: ~/.bbfs/log/<executable_name>.log'
 
     @consumers = []
     @log_initialized = false
 
     #Note that the logger will be automatically initialized if log_param_auto_start is true
-    if Params.log_param_auto_start then
+    if Params['log_param_auto_start'] then
       Log.init
     end
 
@@ -51,22 +51,22 @@ module BBFS
     def Log.init
       Log.clear_consumers
       # Console - If enabled, will flush the log immediately to the console
-      if Params.log_write_to_console then
+      if Params['log_write_to_console'] then
         console_consumer = ConsoleConsumer.new
         @consumers.push console_consumer
       end
       # BufferConsumerProducer - If enabled, will use the file consumer to flush a buffer to a file
-      if Params.log_write_to_file then
-        file_consumer = FileConsumer.new Params.log_file_name
+      if Params['log_write_to_file'] then
+        file_consumer = FileConsumer.new Params['log_file_name']
         buffer_consumer_producer = BufferConsumerProducer.new \
-          Params.log_param_number_of_mega_bytes_stored_before_flush, \
-          Params.log_param_max_elapsed_time_in_seconds_from_last_flush
+          Params['log_param_number_of_mega_bytes_stored_before_flush'], \
+          Params['log_param_max_elapsed_time_in_seconds_from_last_flush']
         buffer_consumer_producer.add_consumer file_consumer
         @consumers.push buffer_consumer_producer
       end
       @log_initialized = true
       Log.info 'BBFS Log initialized.'  # log first data
-      Log.info "Log file path:'#{Params.log_file_name}'" if Params.log_write_to_file
+      Log.info "Log file path:'#{Params['log_file_name']}'" if Params['log_write_to_file']
     end
 
     # Clears consumers
@@ -104,21 +104,21 @@ module BBFS
 
     # Log debug level 1 massages
     def Log.debug1 msg
-      if Params.log_debug_level > 0 then
+      if Params['log_debug_level'] > 0 then
         Log.basic msg, 'DEBUG-1'
       end
     end
 
     # Log debug level 2 massages
     def Log.debug2 msg
-      if Params.log_debug_level > 1 then
+      if Params['log_debug_level'] > 1 then
         Log.basic msg, 'DEBUG-2'
       end
     end
 
     # Log debug level 3 massages
     def Log.debug3 msg
-      if Params.log_debug_level > 2 then
+      if Params['log_debug_level'] > 2 then
         Log.basic msg, 'DEBUG-3'
       end
     end
