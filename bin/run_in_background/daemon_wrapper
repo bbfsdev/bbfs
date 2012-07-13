@@ -24,6 +24,7 @@ rescue LoadError
   require 'log'
 end
 
+BBFS::Params.init ARGV
 BBFS::Params['log_write_to_console'] = false
 # On WindowsXP log can be found under:
 # C:/Documents and Settings/NetworkService/.bbfs/daemon_wrapper_<pid>.log

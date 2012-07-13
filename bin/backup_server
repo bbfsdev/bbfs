@@ -7,9 +7,11 @@
 
 begin
   require 'content_server'
+  require 'params'
 rescue LoadError
   require 'rubygems'
   require 'content_server'
 end
 
+BBFS::Params.init ARGV
 BBFS::ContentServer.run_backup_server
