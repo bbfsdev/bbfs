@@ -6,8 +6,15 @@ module BBFS
   module Networking
 
     class PQueueSender < Queue
-      def initialize(host, port)
-        @tcp_sender = TCPSender.new(host, port)
+      def initialize(remote_host, remote_port, local_port)
+        super()
+        @tcp_sender = TCPSender.new(remote_host, remote_port)
+        @tcp_receiver = TCPCallbackReceiver.new(method(:register), local_port)
+        @tcp_receiver.run
+      end
+
+      def register(queue_names)
+
       end
 
       def push(obj)
@@ -20,9 +27,10 @@ module BBFS
     end
 
     class PQueueReceiver < Queue
-      def initialize(port)
-        super
+      def initialize(port, listening_queue_names=[])
+        super()
         @tcp_receiver = TCPCallbackReceiver.new(method(:push), port)
+        @tcp_receiver.run
       end
     end
 

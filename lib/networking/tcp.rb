@@ -4,67 +4,108 @@ require 'socket'
 module BBFS
   module Networking
 
-    class TCPCallbackReceiver
-      def initialize(callback, port)
-        @callback = callback
-        @port = port
+    def write_to_stream(stream, obj)
+      marshal_data = Marshal.dump(obj)
+      data_size = [marshal_data.length].pack("l")
+      if data_size.nil? || marshal_data.nil?
+        Log.debug1 'Send data size is nil!'
       end
-
-      def run
-        Socket.tcp_server_loop(@port) do |sock, client_addrinfo|
-          Log.debug1('sock content:"%s"' % sock.string)
-          while size_of_data = sock.read(4)
-            size_of_data = size_of_data.unpack("l")[0]
-            Log.debug1 "Size of data: #{size_of_data}"
-            data = sock.read(size_of_data)
-            Log.debug1 "Data received: #{data}"
-            unmarshaled_data = Marshal.load(data)
-            Log.debug1 "Unmarshaled data: #{unmarshaled_data}"
-            @callback.call(unmarshaled_data)
-            Log.debug1 "Socket closed? #{sock.closed?}."
-            break if sock.closed?
-            Log.debug1 'Waiting on sock.read'
-          end
-          Log.debug1 'Exited, socket closed or read returned nil.'
-        end
-      end
+      bytes_written = sock.write data_size
+      bytes_written += sock.write marshal_data
     end
 
-    class TCPSender
-      def initialize host, port
+    def read_from_stream(stream)
+      size_of_data = stream.read(4)
+      return nil unless size_of_data
+      size_of_data = size_of_data.unpack("l")[0]
+      data = stream.read(size_of_data)
+      unmarshalled_data = Marshal.load(data)
+      return unmarshalled_data
+    end
+
+    # Limit on number of concurrent connections?
+    # The TCP server is not responsible for reconnection.
+    class TCPServer
+      def initialize(port, obj_clb, new_clb=nil, closed_clb=nil, max_parallel=1)
+        @port = port
+        @obj_clb = obj_clb
+        @new_clb = new_clb
+        @closed_clb = closed_clb
+        # Max parallel connections is not implemented yet.
+        @max_parallel = max_parallel
+        @sockets = {}
+        run_server
+      end
+
+      def send(obj, addr_info=nil)
+        if addr_info
+          write_to_stream(@sockets[addr_info], obj)
+        else
+          @sockets.values.each { |sock| write_to_stream(sock, obj) }
+        end
+      end
+
+      private
+      # Creates new thread/pool
+      def run_server
+        Thread.new do
+          Socket.tcp_server_loop(@port) do |sock, addr_info|
+            @sockets[addr_info] = sock
+            @new_clb.call(addr_info)
+            loop do
+              # Blocking read.
+              obj = read_from_stream(sock)
+              @obj_clb.call(addr_info, obj)
+            end
+          end
+        end
+      end
+    end  # TCPServer
+
+    class TCPClient
+      def initialize(host, port, obj_clb=nil, reconnected_clb=nil)
         @host = host
         @port = port
         @tcp_socket = nil
+        @obj_clb = obj_clb
+        @reconnected_clb = reconnected_clb
+        run_server unless @obj_clb
       end
 
       def open_socket
         Log.debug1 "Connecting to content server #{@host}:#{@port}."
         @tcp_socket = TCPSocket.new(@host, @port)
+        @reconnected_clb.call if @reconnected_clb && socket_good?
       end
 
       def socket_good?
         return @tcp_socket && !@tcp_socket.closed?
       end
 
-      def send_content_data content_data
+      def send_data obj
         open_socket unless socket_good?
         if !socket_good?
           Log.warning('Socket not opened for writing, skipping send.')
           return false
         end
-        Log.debug1 "Data to send: #{content_data}"
-        marshal_data = Marshal.dump(content_data)
-        Log.debug1 "Marshaled size: #{marshal_data.length}."
-        data_size = [marshal_data.length].pack("l")
-        Log.debug1 "Marshaled data: #{marshal_data}."
-        if data_size.nil? || marshal_data.nil?
-          Log.debug1 'Send data is nil!'
-        end
-        bytes_written = @tcp_socket.write data_size
-        bytes_written += @tcp_socket.write marshal_data
+        bytes_written = write_to_stream(@socket, obj)
         return bytes_written > 0
       end
-    end
+
+      private
+      def run_server
+        Thread.new do
+          loop do
+            # Blocking read.
+            open_socket unless socket_good?
+            obj = read_from_stream(@tcp_socket)
+            # Handle case when socket is closed in middle.
+            # In that case we should not call obj_clb.
+            @obj_clb.call(obj)
+          end
+        end
+      end
+    end  # TCPClient
 
   end
 end

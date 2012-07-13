@@ -15,6 +15,7 @@ module BBFS
     module Spec
 
       describe 'PQueueSender' do
+        pq_receiver = PQueueReceiver.new(['a', 'b'], 5555)
       end
 
       describe 'PQueueReceiver' do
