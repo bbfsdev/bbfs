@@ -8,7 +8,7 @@
 # example: C:\ruby.exe c:\dev\daemon_wrapper c:\ruby.exe c:\dev\test_app 1000 -dbg=true
 
 require 'win32/daemon'
-require 'win32/process'
+#require 'win32/process'
 #require 'sys/proctable'
 
 include Win32

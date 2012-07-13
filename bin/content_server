@@ -37,12 +37,11 @@ Params.instance_variables.each do |var|
 end
 #exit
 
-# server configuration parameters
-#Params.remote_server = '127.0.0.1'
-#Params.backup_username = 'test'
-#Params.backup_password = 'test'
-#Params.content_data_path = File.expand_path('~/.bbfs/var/server_content.data')
-
+#server configuration parameters
+Params.remote_server = '127.0.0.1'
+Params.backup_username = 'test'
+Params.backup_password = 'test'
+Params.content_data_path = File.expand_path('~/.bbfs/var/server_content.data')
 #--------------------------
 # Initialization
 Params.parse ARGV
@@ -65,11 +64,14 @@ def update_argv_with_config_file config_file_path
     config = YAML.load_file config_file_path
     config.each do |key, value|
       # format taken from the commnad line parsing of Params
-      ARGV.unshift ['--', key, '=', "\"#{value}\""].join 
+      # values are escaped for the case that they contain spaces
+      value = %Q{"#{value}"} if value =~ / /
+      ARGV.unshift ['--', key, '=', value].join 
     end
   end
 end
 
+# prepare ARGV so it can be provided as a command line arguments
 def prepare_argv
   new_argv = Array.new
   ARGV.each do |arg|
@@ -144,4 +146,3 @@ when 'delete'
     sleep Params.log_param_max_elapsed_time_in_seconds_from_last_flush + 0.5
   end
 end
-

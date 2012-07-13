@@ -19,8 +19,8 @@ module BBFS
     Params.parameter('remote_server', 'localhost', 'IP or DNS of backup server.')
     Params.parameter('remote_listening_port', 3333,
                      'Listening port for backup server content data.')
-    Params.parameter('backup_username', nil, 'Backup server username.')
-    Params.parameter('backup_password', nil, 'Backup server password.')
+    Params.parameter('backup_username', '', 'Backup server username.')
+    Params.parameter('backup_password', '', 'Backup server password.')
     Params.parameter('backup_destination_folder', '',
                      'Backup server destination folder, default is the relative local folder.')
     Params.parameter('content_data_path', File.expand_path('~/.bbfs/var/content.data'),
@@ -166,6 +166,8 @@ module BBFS
 
       # # # # # # # # # # # # # # # # # # # # # # # # # # #
       # Initialize/Start backup server content data sender
+puts Params.remote_server
+puts Params.remote_listening_port
       content_data_sender = ContentDataSender.new(
           Params.remote_server,
           Params.remote_listening_port)

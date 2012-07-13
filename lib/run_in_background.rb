@@ -38,14 +38,6 @@ module BBFS
   module RunInBackground
     require 'params'
 
-    Params.parameter 'pid_dir', File.expand_path(File.join(Dir.home, '.bbfs', 'pids')),
-      'Absolute path to directory, where pid files will be stored. ' + \
-      'User should have a read/write permissions to this location. ' + \
-      'If absent then it will be created. ' + \
-      'It\'s actual only for Linux/Mac. ' + \
-      'For more information see documentation on daemons module. ' +\
-      'Default location is: $HOME/.bbfs/pids'
-
     # maximal time to wait untill OS will finish a requested operation
     # e.g. daemon start/delete
     TIMEOUT = 20
@@ -61,6 +53,14 @@ module BBFS
       end
 
       OS = :LINUX
+      Params.parameter 'pid_dir', File.expand_path(File.join(Dir.home, '.bbfs', 'pids')),
+        'Absolute path to directory, where pid files will be stored. ' + \
+        'User should have a read/write permissions to this location. ' + \
+        'If absent then it will be created. ' + \
+        'It\'s actual only for Linux/Mac. ' + \
+        'For more information see documentation on daemons module. ' +\
+        'Default location is: $HOME/.bbfs/pids'
+
       # directory used to store pid files
       PID_DIR = File.expand_path(Params.pid_dir)
       if Dir.exists? PID_DIR
@@ -161,13 +161,18 @@ module BBFS
 
     def RunInBackground.start_windows binary_path, binary_args, name, opts = {}
       raise ArgumentError.new("#{binary_path} doesn't exist'") unless File.exists? binary_path
+
+      # path that contains spaces must be escaped to be interpreted correctly
       binary_path = %Q{"#{binary_path}"} if binary_path =~ / /
       binary_path.tr!('/','\\')
+      # service should be run with the same load path as a current application
       load_path = get_load_path
       binary_args_str = binary_args.join ' '
 
       opts[:binary_path_name] = \
         "#{RUBY_INTERPRETER_PATH} #{load_path} #{binary_path} #{binary_args_str}"
+      # quotation marks must be escaped cause of ARGV parsing
+      opts[:binary_path_name] = opts[:binary_path_name].gsub '"', '"\\"'
       opts[:service_name] = name
       opts[:description] = name unless opts.has_key? :description
       opts[:display_name] = name unless opts.has_key? :display_name
@@ -178,9 +183,6 @@ module BBFS
       opts[:dependencies] = ['W32Time','Schedule'] unless opts.has_key? :dependencies
       # NOTE most of examples uses this option as defined beneath. The default is nil.
       #opts[:load_order_group] = 'Network' unless opts.has_key? :load_order_group
-opts[:binary_path_name] = opts[:binary_path_name].gsub '"', '"\\"'
-puts "opts[:binary_path_name]\n=========="
-puts opts[:binary_path_name]
       Service.create(opts)
       begin
         Service.start(opts[:service_name])
@@ -227,11 +229,12 @@ puts opts[:binary_path_name]
     #  NOTE binary_path and binary_args contents will be change
     def RunInBackground.wrap_windows binary_path, binary_args
       raise ArgumentError.new("#{binary_path} doesn't exists") unless File.exists? binary_path
+
+      # service should be run with the same load path as a current application
       load_path = get_load_path
+      # path that contains spaces must be escaped to be interpreted correctly
       binary_path = %Q{"#{binary_path}"} if binary_path =~ / /
       binary_args.insert(0, RUBY_INTERPRETER_PATH, load_path, binary_path.tr('/','\\'))
-puts "WRAP\n======"
-puts binary_args.join ' '
       binary_path.replace(WRAPPER_SCRIPT)
     end
 
@@ -323,6 +326,7 @@ puts binary_args.join ' '
       load_path.join ' '
     end
 
-    private_class_method :start_linux, :start_windows, :wrap_windows, :stop
+    private_class_method :start_linux, :start_windows, :wrap_windows, :stop, :get_abs_std_path,\
+      :get_load_path
   end
 end
