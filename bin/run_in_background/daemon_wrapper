@@ -34,9 +34,7 @@ BBFS::Log.init
 class WrapperDaemon < Daemon
   def service_main
     BBFS::Log.info "Wrapper starts: #{ARGV.join(' ')}"
-    #@pid = Process.spawn ARGV.join(" ")
-    @inner_app = IO.popen ARGV.join(" ")
-    @pid = @inner_app.pid
+    @pid = Process.spawn ARGV.join(" ")
     BBFS::Log.debug1 "Wrapper inner app pid: #{@pid}"
 
     while running?
@@ -99,11 +97,11 @@ class WrapperDaemon < Daemon
       end
       BBFS::Log.debug1 'Wrapper was stopped'
       # let log be written
-      sleep BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush + 0.5
+      sleep BBFS::Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5
       exit!
     end
     BBFS::Log.error 'Failed to stop service'
-    sleep BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush + 0.5
+    sleep BBFS::Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5
     #exit! 
     raise 'Failed to stop service'
   end
