@@ -8,7 +8,7 @@ require 'yaml'
 
 module BBFS
   module FileGenerator
-    Params.parameter('target_path', 'C:/Users/Slava/test_files', 'Represents the target path for files generation')
+    Params.parameter('target_path', '~/.bbfs/test_files', 'Represents the target path for files generation')
     Params.parameter('file_name_prefix', 'auto_generated_file_4_backup_server',
                      'Represents the file name template for generated file')
     Params.parameter('dir_name_prefix', 'test_dir_4_backup_server',
@@ -113,7 +113,7 @@ module BBFS
       def run
         dir_counter = 0
         while is_generate_dir dir_counter
-          new_dir_name = File.join Params.target_path, get_new_directory_name
+          new_dir_name = File.expand_path(File.join Params.target_path, get_new_directory_name)
           ::FileUtils.mkdir_p new_dir_name unless File.directory?(new_dir_name)
           dir_counter += 1
           file_counter = 0
@@ -135,6 +135,8 @@ module BBFS
 end # module BBFS
 
 
+fg = BBFS::FileGenerator::FileGenerator.new()
+fg.run()
 
 
 

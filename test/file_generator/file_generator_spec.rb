@@ -1,7 +1,7 @@
 # Author: Slava Pasechnik (slavapas13@gmail.com)
 # Run from bbfs> ruby -Ilib test/file_generator/file_generator_spec.rb
 
-require_relative '../../lib/file_utils/file_generator/file_generator'
+require 'file_utils/file_generator/file_generator'
 require 'rspec'
 
 module BBFS
