@@ -6,15 +6,15 @@ require 'stringio'
 require_relative '../../lib/networking/tcp'
 
 # Uncomment to debug spec.
-#BBFS::Params.log_write_to_console = 'true'
-#BBFS::Params.log_debug_level = 3
-#BBFS::Log.init
+BBFS::Params.log_write_to_console = 'true'
+BBFS::Params.log_debug_level = 3
+BBFS::Log.init
 
 module BBFS
   module Networking
     module Spec
 
-      describe 'TCPSend' do
+      describe 'TCPClient' do
         it 'should warn when destination host+port are bad' do
           data = 'kuku!!!'
           stream = StringIO.new
@@ -23,34 +23,63 @@ module BBFS
           BBFS::Log.should_receive(:warning).with('Socket not opened for writing, skipping send.')
 
           # Send data first.
-          tcp_sender = TCPSender.new('kuku', 5555)
+          tcp_sender = TCPClient.new('kuku', 5555)
           # Send has to fail.
-          tcp_sender.send_content_data(data).should be(false)
+          tcp_sender.send(data).should be(false)
         end
-      end
 
-      describe 'TCPCallbackReceiver' do
-        it 'should get data and call callback function' do
+        it 'should send data and server should receive callback function' do
+          info = 'info'
           data = 'kuku!!!'
           stream = StringIO.new
-          ::Socket.stub(:tcp_server_loop).and_yield(stream, nil)
+          ::Socket.stub(:tcp_server_loop).and_yield(stream, info)
           ::TCPSocket.stub(:new).and_return(stream)
 
           # Send data first.
-          tcp_sender = TCPSender.new('kuku', 5555)
+          tcp_sender = TCPClient.new('kuku', 5555)
           # Send has to be successful.
-          tcp_sender.send_content_data(data).should be(true)
+          tcp_sender.send(data).should be(true)
 
           # Note this is very important so that reading the stream from beginning.
           stream.rewind
 
-          func = lambda {|data| print data}
+          func = lambda { |info, data| Log.info("info, data: #{info}, #{data}") }
           # Check data is received.
-          func.should_receive(:call).with(data)
+          func.should_receive(:call).with(info, data)
 
-          tcp_receiver = TCPCallbackReceiver.new(func, 5555)
-          tcp_receiver.run()
+          tcp_server = TCPServer.new(5555, func)
+          # Wait on server thread.
+          tcp_server.server_thread.join
         end
+
+        it 'should connect and receive callback from server' do
+          info = 'info'
+          data = 'kuku!!!'
+          stream = StringIO.new
+          ::Socket.stub(:tcp_server_loop).and_yield(stream, info)
+          ::TCPSocket.stub(:new).and_return(stream)
+
+          func = lambda { |info, data| Log.info("info, data: #{info}, #{data}") }
+          # Check data is received.
+          func.should_receive(:call).with(info, data)
+
+          # Send data first.
+          tcp_sender = TCPClient.new('kuku', 5555, func)
+          # Send has to be successful.
+          tcp_sender.send(data).should be(true)
+
+          # Note this is very important so that reading the stream from beginning.
+          stream.rewind
+
+
+          tcp_server = TCPServer.new(5555, )
+          # Wait on server thread.
+          tcp_server.server_thread.join
+
+        end
+      end
+
+      describe 'TCPServer' do
 
       end
     end
