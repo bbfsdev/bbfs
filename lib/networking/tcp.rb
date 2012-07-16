@@ -14,6 +14,7 @@ module BBFS
       end
       bytes_written = stream.write data_size
       bytes_written += stream.write marshal_data
+      return bytes_written
     end
 
     # Returns pair [status(true/false), obj]
@@ -44,11 +45,14 @@ module BBFS
         @server_thread = run_server
       end
 
-      def send(obj, addr_info=nil)
+      def send_obj(obj, addr_info=nil)
+        Log.debug1("addr_info=#{addr_info}")
         if addr_info
-          write_to_stream(@sockets[addr_info], obj)
+          Networking.write_to_stream(@sockets[addr_info], obj) > 0
         else
-          @sockets.values.each { |sock| write_to_stream(sock, obj) }
+          out = {}
+          @sockets.each { |key, sock| out[key] = Networking.write_to_stream(sock, obj) > 0 }
+          return out
         end
       end
 
@@ -84,10 +88,10 @@ module BBFS
         @tcp_socket = nil
         @obj_clb = obj_clb
         @reconnected_clb = reconnected_clb
-        run_server if @obj_clb
+        start_reading if @obj_clb
       end
 
-      def send obj
+      def send_obj(obj)
         open_socket unless socket_good?
         if !socket_good?
           Log.warning('Socket not opened for writing, skipping send.')
@@ -110,19 +114,18 @@ module BBFS
       end
 
       private
-      def run_server
+      def start_reading
         Thread.new do
           loop do
             # Blocking read.
             open_socket unless socket_good?
-            obj = read_from_stream(@tcp_socket)
+            status, obj = read_from_stream(@tcp_socket)
             # Handle case when socket is closed in middle.
             # In that case we should not call obj_clb.
-            @obj_clb.call(obj)
+            @obj_clb.call(obj) if status
           end
         end
       end
     end  # TCPClient
-
   end
 end

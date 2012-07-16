@@ -23,9 +23,9 @@ module BBFS
           BBFS::Log.should_receive(:warning).with('Socket not opened for writing, skipping send.')
 
           # Send data first.
-          tcp_sender = TCPClient.new('kuku', 5555)
+          tcp_client = TCPClient.new('kuku', 5555)
           # Send has to fail.
-          tcp_sender.send(data).should be(false)
+          tcp_client.send_obj(data).should be(false)
         end
 
         it 'should send data and server should receive callback function' do
@@ -36,9 +36,9 @@ module BBFS
           ::TCPSocket.stub(:new).and_return(stream)
 
           # Send data first.
-          tcp_sender = TCPClient.new('kuku', 5555)
+          tcp_client = TCPClient.new('kuku', 5555)
           # Send has to be successful.
-          tcp_sender.send(data).should be(true)
+          tcp_client.send_obj(data).should be(true)
 
           # Note this is very important so that reading the stream from beginning.
           stream.rewind
@@ -64,18 +64,17 @@ module BBFS
           func.should_receive(:call).with(info, data)
 
           # Send data first.
-          tcp_sender = TCPClient.new('kuku', 5555, func)
+          tcp_client = TCPClient.new('kuku', 5555, func)
           # Send has to be successful.
-          tcp_sender.send(data).should be(true)
 
           # Note this is very important so that reading the stream from beginning.
           stream.rewind
 
-
-          tcp_server = TCPServer.new(5555, )
+          tcp_server = TCPServer.new(5555, nil)
           # Wait on server thread.
+          sleep(1)
+          tcp_server.send_obj(data).should eq({info => true})
           tcp_server.server_thread.join
-
         end
       end
 
