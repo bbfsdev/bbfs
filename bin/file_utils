@@ -4,9 +4,11 @@
 
 begin
   require 'file_utils'
+  require 'params'
 rescue LoadError
   require 'rubygems'
   require 'file_utils'
 end
 
+BBFS::Params.init ARGV
 BBFS::FileUtils::run

@@ -9,14 +9,14 @@ module BBFS
     module Spec
       describe 'FileGenerator::run' do
         before(:each) do
-          Params.file_size_in_mb = 50
-          Params.total_created_directories = 1
-          Params.total_files_in_dir = 1
-          Params.is_tot_files_in_dir_random = false
-          Params.is_use_random_size = false
-          Params.sleep_time_in_seconds = 0
-          Params.dir_name_prefix = "td4bs"
-          Params.file_name_prefix = "agf4bs_"
+          Params['file_size_in_mb'] = 50
+          Params['total_created_directories'] = 1
+          Params['total_files_in_dir'] = 1
+          Params['is_tot_files_in_dir_random'] = false
+          Params['is_use_random_size'] = false
+          Params['sleep_time_in_seconds'] = 0
+          Params['dir_name_prefix'] = "td4bs"
+          Params['file_name_prefix'] = "agf4bs_"
         end
 
         it 'should reach File.open 1 files' do
@@ -41,7 +41,7 @@ module BBFS
           File.stub(:open).and_return(file_open)
           File.should_receive(:open).exactly(3).times
 
-          Params.total_files_in_dir = 3
+          Params['total_files_in_dir'] = 3
           fg = BBFS::FileGenerator::FileGenerator.new()
           fg.run()
         end
@@ -68,7 +68,7 @@ module BBFS
           File.stub(:open).and_return(file_open)
           File.should_receive(:open).exactly(3).times
 
-          Params.total_files_in_dir = 3
+          Params['total_files_in_dir'] = 3
           fg = BBFS::FileGenerator::FileGenerator.new()
           fg.run()
         end
