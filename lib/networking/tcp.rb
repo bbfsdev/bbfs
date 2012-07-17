@@ -88,6 +88,7 @@ module BBFS
         @tcp_socket = nil
         @obj_clb = obj_clb
         @reconnected_clb = reconnected_clb
+        Log.debug1('TCPClient init.')
         start_reading if @obj_clb
       end
 
@@ -115,8 +116,10 @@ module BBFS
 
       private
       def start_reading
+        Log.debug1('start_reading (TCPClient).')
         Thread.new do
           loop do
+            Log.debug1('Start blocking read (TCPClient).')
             # Blocking read.
             open_socket unless socket_good?
             status, obj = read_from_stream(@tcp_socket)

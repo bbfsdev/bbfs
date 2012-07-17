@@ -56,24 +56,25 @@ module BBFS
           info = 'info'
           data = 'kuku!!!'
           stream = StringIO.new
-          ::Socket.stub(:tcp_server_loop).and_yield(stream, info)
+          stream_back = StringIO.new
+          ::Socket.stub(:tcp_server_loop).once.and_yield(stream, info)
           ::TCPSocket.stub(:new).and_return(stream)
+          Networking.stub(:read_from_stream).and_return(false, 'adasd')
 
-          func = lambda { |info, data| Log.info("info, data: #{info}, #{data}") }
+          func = lambda { |data| Log.info("data: #{data}") }
           # Check data is received.
           func.should_receive(:call).with(info, data)
 
-          # Send data first.
-          tcp_client = TCPClient.new('kuku', 5555, func)
-          # Send has to be successful.
+          tcp_server = TCPServer.new(5555, nil)
+          #tcp_server.send_obj(data).should eq({info => true})
 
           # Note this is very important so that reading the stream from beginning.
           stream.rewind
 
-          tcp_server = TCPServer.new(5555, nil)
-          # Wait on server thread.
-          sleep(1)
-          tcp_server.send_obj(data).should eq({info => true})
+          # Send data first.
+          #tcp_client = TCPClient.new('kuku', 5555, func)
+          # Send has to be successful.
+
           tcp_server.server_thread.join
         end
       end
