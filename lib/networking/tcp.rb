@@ -42,7 +42,7 @@ module BBFS
         # Max parallel connections is not implemented yet.
         @max_parallel = max_parallel
         @sockets = {}
-        @server_thread = run_server
+        @tcp_thread = run_server
       end
 
       def send_obj(obj, addr_info=nil)
@@ -60,7 +60,7 @@ module BBFS
       # Creates new thread/pool
       def run_server
         Log.debug1('run_server')
-        Thread.new do
+        return Thread.new do
           Log.debug1('run_server2')
           Socket.tcp_server_loop(@port) do |sock, addr_info|
             Log.debug1('tcp_server_loop ' + sock.string + ' ' + addr_info)
@@ -89,7 +89,7 @@ module BBFS
         @obj_clb = obj_clb
         @reconnected_clb = reconnected_clb
         Log.debug1('TCPClient init.')
-        start_reading if @obj_clb
+        @tcp_thread = start_reading if @obj_clb
       end
 
       def send_obj(obj)
@@ -117,7 +117,7 @@ module BBFS
       private
       def start_reading
         Log.debug1('start_reading (TCPClient).')
-        Thread.new do
+        return Thread.new do
           loop do
             Log.debug1('Start blocking read (TCPClient).')
             # Blocking read.

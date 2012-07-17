@@ -66,15 +66,16 @@ module BBFS
           func.should_receive(:call).with(info, data)
 
           tcp_server = TCPServer.new(5555, nil)
-          #tcp_server.send_obj(data).should eq({info => true})
+          tcp_server.send_obj(data).should eq({info => true})
 
           # Note this is very important so that reading the stream from beginning.
           stream.rewind
 
           # Send data first.
-          #tcp_client = TCPClient.new('kuku', 5555, func)
+          tcp_client = TCPClient.new('kuku', 5555, func)
           # Send has to be successful.
 
+          tcp_client.thread.join
           tcp_server.server_thread.join
         end
       end
