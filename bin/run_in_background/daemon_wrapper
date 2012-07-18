@@ -50,9 +50,20 @@ class WrapperDaemon < Daemon
     end
   end
 
-  def kill_inner_app sig
+  # checking whether process with given pid exists
+  def alive? pid
     begin
-      Process.kill 0, @pid  # checking whether inner application is alive
+      Process.kill 0, pid
+    rescue Errno::ESRCH
+      return false
+    end
+    true
+  end
+
+  # kill inner application with given signal
+  # default signal is 9 - mercilessly kill the application
+  def kill_inner_app sig = 9
+    if alive? @pid  # checking whether inner application is alive
       begin
         Process.kill sig, @pid  # kill the inner application
       rescue Exception => e
@@ -60,26 +71,23 @@ class WrapperDaemon < Daemon
         sleep 1
         Process.kill sig, @pid  # second try to kill the inner application
       end 
-      begin
-        # checking whether inner application is alive
-        Process.kill 0, @pid  
+      if alive? @pid
         BBFS::Log.debug1 'inner app still alive after kill. wait till exit...'
         # may be redundant. children processes on Windows look be detached.
         # also can be rather dangerous to use here.
         pid_exit_stat = Process.waitpid2 @pid
         BBFS::Log.debug1 "inner application exit status: #{pid_exit_stat}"
-        begin
-          # checking whether inner application is alive
-          Process.kill 0, @pid  
+        if alive? @pid
           BBFS::Log.debug1 'inner app still alive after wait'
+          # this exception can be raised when using win32/process
           raise 'inner app still alive after wait'
-        rescue Errno::ESRCH
+        else
           BBFS::Log.debug1 'inner app deleted after wait'
         end
-      rescue Errno::ESRCH
+      else
         BBFS::Log.debug1 'inner app was killed'
       end
-    rescue Errno::ESRCH
+    else 
       # if got here then inner application is already exit. do nothing.
       BBFS::Log.debug1 'inner app already deleted'
     end 
