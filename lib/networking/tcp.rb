@@ -32,7 +32,7 @@ module BBFS
     # Limit on number of concurrent connections?
     # The TCP server is not responsible for reconnection.
     class TCPServer
-      attr_reader :server_thread
+      attr_reader :tcp_thread
 
       def initialize(port, obj_clb, new_clb=nil, closed_clb=nil, max_parallel=1)
         @port = port
@@ -82,6 +82,8 @@ module BBFS
     end  # TCPServer
 
     class TCPClient
+      attr_reader :tcp_thread
+
       def initialize(host, port, obj_clb=nil, reconnected_clb=nil)
         @host = host
         @port = port
@@ -122,7 +124,7 @@ module BBFS
             Log.debug1('Start blocking read (TCPClient).')
             # Blocking read.
             open_socket unless socket_good?
-            status, obj = read_from_stream(@tcp_socket)
+            status, obj = Networking.read_from_stream(@tcp_socket)
             # Handle case when socket is closed in middle.
             # In that case we should not call obj_clb.
             @obj_clb.call(obj) if status
