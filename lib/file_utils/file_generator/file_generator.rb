@@ -8,7 +8,7 @@ require 'yaml'
 
 module BBFS
   module FileGenerator
-    Params.string('target_path', 'C:/Users/Slava/test_files', 'Represents the target path for files generation')
+    Params.string('target_path', '~/.bbfs/test_files', 'Represents the target path for files generation')
     Params.string('file_name_prefix', 'auto_generated_file_4_backup_server',
                      'Represents the file name template for generated file')
     Params.string('dir_name_prefix', 'test_dir_4_backup_server',
@@ -101,7 +101,7 @@ module BBFS
         end
 
         #When total_files_in_dir < 1 it will be treated as unlimited files creation in directory
-        if Params['total_files_in_dir < 1'] ||
+        if Params['total_files_in_dir'] < 1 ||
             file_counter < Params['total_files_in_dir'] then
           return true
         else
@@ -113,7 +113,7 @@ module BBFS
       def run
         dir_counter = 0
         while is_generate_dir dir_counter
-          new_dir_name = File.join Params['target_path'], get_new_directory_name
+          new_dir_name = File.expand_path(File.join Params['target_path'], get_new_directory_name)
           ::FileUtils.mkdir_p new_dir_name unless File.directory?(new_dir_name)
           dir_counter += 1
           file_counter = 0
@@ -133,9 +133,6 @@ module BBFS
     end
   end # module FileGenerator
 end # module BBFS
-
-
-
 
 
 
