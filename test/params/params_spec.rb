@@ -31,7 +31,7 @@ module BBFS
         it 'should raise an error when trying to define twice the same parameter' do
           Params.string 'only_once', '1st' ,''
           expect { Params.string 'only_once', '2nd' ,'' }.should raise_error \
-              "Parameter:'only_once', can only be defined oncet."
+              "Parameter:'only_once', can only be defined once."
         end
       end
 
