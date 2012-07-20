@@ -2,11 +2,12 @@
 # Description: copy data and files by tcpip protocol
 # Run: ruby -Ilib examples/file_copy/receiver.rb, ruby -Ilib examples/file_copy/sender.rb
 
+# TODO add spec
+
 require 'socket'
 require 'thread'
 
 require 'log'
-
 
 module BBFS
   module FileCopy
@@ -41,6 +42,7 @@ module BBFS
       # name - send_file
       # inputs: file_name - name of file (string)
       # description: send data readed from file
+      # TODO need to think if to remove this method
       def send_file(file_name)
         #check if source file is exist
         if (File.exists?(file_name) == false)
