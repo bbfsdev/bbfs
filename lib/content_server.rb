@@ -19,6 +19,8 @@ module BBFS
     Params.parameter('remote_server', 'localhost', 'IP or DNS of backup server.')
     Params.parameter('remote_listening_port', 3333,
                      'Listening port for backup server content data.')
+    Params.parameter('backup_file_listening_port', 24172,
+                     'Listening port for sending files to backup server.')
     Params.parameter('backup_username', nil, 'Backup server username.')
     Params.parameter('backup_password', nil, 'Backup server password.')
     Params.parameter('backup_destination_folder', '',
@@ -97,6 +99,7 @@ module BBFS
       # # # # # # # # # # # # # # # #
       # Start copying files on demand
       all_threads << Thread.new do
+        backup_tcp = TCPClient.new(Params.remote_server, Params.backup_file_listening_port)
         while true do
           Log.info 'Waiting on copy files events.'
           copy_event = copy_files_events.pop
@@ -120,10 +123,17 @@ module BBFS
 
           Log.info "Copying files: #{files_map}."
           # Copy files, waits until files are finished copying.
-          FileCopy::sftp_copy(Params.backup_username,
-                              Params.backup_password,
-                              Params.remote_server,
-                              files_map)
+          uploads = files_map.map { |from, to|
+            if (File.exists?(from) == true)
+              file = File.open(file_name, "r")
+              content = file.read
+              backup_tcp.send_obj(content)
+              Log.debug1 "send content of file #{from}}"  
+            else
+              Log.warning("source file '#{from} ' Does not exist")
+            end
+          }
+          
         end
       end
 
