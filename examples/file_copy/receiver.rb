@@ -11,8 +11,8 @@ module BBFS
       port = 50152
 
       queue = Queue.new # creating queue
-      rs = Receiver.new port # creating instance of class for server (rs)
-      receiver = Thread.new do # creating thread that run the server
+      rs = Receiver.new port  # creating instance of class for server (rs)
+      receiver = Thread.new do  # creating thread that run the server
         # convey to run method of server the queue in order when new message is received
         # it will be pushed to queue
         rs.run queue

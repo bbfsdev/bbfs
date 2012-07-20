@@ -15,7 +15,7 @@ module BBFS
       # Directory of example files.
       FILES_DIR = File.join(LOCAL_PATH, '/files_to_send/file_to_send.txt')
 
-      puts "#{FILES_DIR}"
+      puts "#{FILES_DIR}"  # TODO to remove
 
       # create two clients (h and h2)
       h = Sender.new "localhost", port
