@@ -65,15 +65,14 @@ module BBFS
           Log.debug3('run_server2')
           Socket.tcp_server_loop(@port) do |sock, addr_info|
             Log.debug3('-----')
-            Log.debug3('tcp_server_loop... %s' % addr_info.inspect)
+            Log.debug3("tcp_server_loop... #{sock} #{addr_info.inspect}")
             @sockets[addr_info] = sock
-            Log.debug3('tcp_server_loop')
             @new_clb.call(addr_info) if @new_clb
             loop do
               # Blocking read.
               Log.debug3('read_from_stream')
               status, obj = Networking.read_from_stream(sock)
-              Log.debug3("Returned from read: #{status}, #{obj}")
+              Log.debug3("Server returned from read: #{status}, #{obj}")
               @obj_clb.call(addr_info, obj) if @obj_clb && status
               break unless status
             end
@@ -136,10 +135,12 @@ module BBFS
             # Blocking read.
             open_socket unless socket_good?
             if !socket_good?
-              Log.warning('Socket not closed, breaking client reading thread.')
+              Log.warning('Socket not good, breaking client reading thread.')
               break
             end
+            Log.debug1("socket:#{@tcp_socket.string}")
             status, obj = Networking.read_from_stream(@tcp_socket)
+            Log.debug3("Client returned from read: #{status}, #{obj}")
             # Handle case when socket is closed in middle.
             # In that case we should not call obj_clb.
             @obj_clb.call(obj) if status

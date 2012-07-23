@@ -7,7 +7,9 @@ require_relative '../../lib/networking/tcp'
 
 # Uncomment to debug spec.
 BBFS::Params.log_write_to_console = 'true'
-BBFS::Params.log_debug_level = 3
+BBFS::Params.log_debug_level = 0
+BBFS::Params.log_param_number_of_mega_bytes_stored_before_flush = 0
+BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 0
 BBFS::Log.init
 
 module BBFS
@@ -49,39 +51,32 @@ module BBFS
 
           tcp_server = TCPServer.new(5555, func)
           # Wait on server thread.
-          tcp_server.server_thread.join
-        end
+          tcp_server.tcp_thread.join
+         end
 
         it 'should connect and receive callback from server' do
           info = 'info'
           data = 'kuku!!!'
           stream = StringIO.new
-          stream_back = StringIO.new
           ::Socket.stub(:tcp_server_loop).once.and_yield(stream, info)
           ::TCPSocket.stub(:new).and_return(stream)
-          Networking.stub(:read_from_stream).and_return(false, 'adasd')
-
-          func = lambda { |data| Log.info("data: #{data}") }
-          # Check data is received.
-          func.should_receive(:call).with(info, data)
 
           tcp_server = TCPServer.new(5555, nil)
+          # Wait for @sockets to be filled.
+          sleep 0.1
+          # Send has to be successful.
           tcp_server.send_obj(data).should eq({info => true})
-
-          # Note this is very important so that reading the stream from beginning.
           stream.rewind
 
+          func = lambda { |d| Log.info("data: #{d}") }
+          # Check data is received.
+          func.should_receive(:call).with(data)
           # Send data first.
           tcp_client = TCPClient.new('kuku', 5555, func)
-          # Send has to be successful.
 
-          tcp_client.thread.join
-          tcp_server.server_thread.join
+          # Wait for the read loop to read the stream at least once.
+          sleep 0.1
         end
-      end
-
-      describe 'TCPServer' do
-
       end
     end
   end
