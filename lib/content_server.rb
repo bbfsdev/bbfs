@@ -16,18 +16,16 @@ require 'content_server/queue_indexer'
 # copy changes and new files to backup server.
 module BBFS
   module ContentServer
-    Params.parameter('remote_server', 'localhost', 'IP or DNS of backup server.')
-    Params.parameter('remote_listening_port', 3333,
+    Params.string('remote_server', 'localhost', 'IP or DNS of backup server.')
+    Params.integer('remote_listening_port', 3333,
                      'Listening port for backup server content data.')
-    Params.parameter('backup_file_listening_port', 24172,
-                     'Listening port for sending files to backup server.')
-    Params.parameter('backup_username', nil, 'Backup server username.')
-    Params.parameter('backup_password', nil, 'Backup server password.')
-    Params.parameter('backup_destination_folder', '',
+    Params.string('backup_username', nil, 'Backup server username.')
+    Params.string('backup_password', nil, 'Backup server password.')
+    Params.string('backup_destination_folder', '',
                      'Backup server destination folder, default is the relative local folder.')
-    Params.parameter('content_data_path', File.expand_path('~/.bbfs/var/content.data'),
+    Params.string('content_data_path', File.expand_path('~/.bbfs/var/content.data'),
                      'ContentData file path.')
-    Params.parameter('monitoring_config_path', File.expand_path('~/.bbfs/etc/file_monitoring.yml'),
+    Params.string('monitoring_config_path', File.expand_path('~/.bbfs/etc/file_monitoring.yml'),
                      'Configuration file for monitoring.')
 
     def run
@@ -37,7 +35,7 @@ module BBFS
       # Initialize/Start monitoring
       monitoring_events = Queue.new
       fm = FileMonitoring::FileMonitoring.new
-      fm.set_config_path(Params.monitoring_config_path)
+      fm.set_config_path(Params['monitoring_config_path'])
       fm.set_event_queue(monitoring_events)
       # Start monitoring and writing changes to queue
       all_threads << Thread.new do
@@ -50,7 +48,7 @@ module BBFS
       backup_server_content_data_queue = Queue.new
       content_data_receiver = ContentDataReceiver.new(
           backup_server_content_data_queue,
-          Params.remote_listening_port)
+          Params['remote_listening_port'])
       # Start listening to backup server
       all_threads << Thread.new do
         content_data_receiver.run
@@ -61,7 +59,7 @@ module BBFS
       local_server_content_data_queue = Queue.new
       queue_indexer = QueueIndexer.new(monitoring_events,
                                        local_server_content_data_queue,
-                                       Params.content_data_path)
+                                       Params['content_data_path'])
       # Start indexing on demand and write changes to queue
       all_threads << queue_indexer.run
 
@@ -99,7 +97,6 @@ module BBFS
       # # # # # # # # # # # # # # # #
       # Start copying files on demand
       all_threads << Thread.new do
-        backup_tcp = TCPClient.new(Params.remote_server, Params.backup_file_listening_port)
         while true do
           Log.info 'Waiting on copy files events.'
           copy_event = copy_files_events.pop
@@ -115,7 +112,7 @@ module BBFS
             # Add instance only if such content has not added yet.
             if !used_contents.member?(instance.checksum)
               files_map[instance.full_path] = destination_filename(
-                  Params.backup_destination_folder,
+                  Params['backup_destination_folder'],
                   instance.checksum)
               used_contents.add(instance.checksum)
             end
@@ -123,17 +120,10 @@ module BBFS
 
           Log.info "Copying files: #{files_map}."
           # Copy files, waits until files are finished copying.
-          uploads = files_map.map { |from, to|
-            if (File.exists?(from) == true)
-              file = File.open(file_name, "r")
-              content = file.read
-              backup_tcp.send_obj(content)
-              Log.debug1 "send content of file #{from}}"  
-            else
-              Log.warning("source file '#{from} ' Does not exist")
-            end
-          }
-          
+          FileCopy::sftp_copy(Params['backup_username'],
+                              Params['backup_password'],
+                              Params['remote_server'],
+                              files_map)
         end
       end
 
@@ -158,7 +148,7 @@ module BBFS
       # Initialize/Start monitoring
       monitoring_events = Queue.new
       fm = FileMonitoring::FileMonitoring.new
-      fm.set_config_path(Params.monitoring_config_path)
+      fm.set_config_path(Params['monitoring_config_path'])
       fm.set_event_queue(monitoring_events)
       # Start monitoring and writing changes to queue
       all_threads << Thread.new do
@@ -170,15 +160,15 @@ module BBFS
       local_server_content_data_queue = Queue.new
       queue_indexer = QueueIndexer.new(monitoring_events,
                                        local_server_content_data_queue,
-                                       Params.content_data_path)
+                                       Params['content_data_path'])
       # Start indexing on demand and write changes to queue
       all_threads << queue_indexer.run
 
       # # # # # # # # # # # # # # # # # # # # # # # # # # #
       # Initialize/Start backup server content data sender
       content_data_sender = ContentDataSender.new(
-          Params.remote_server,
-          Params.remote_listening_port)
+          Params['remote_server'],
+          Params['remote_listening_port'])
       # Start sending to backup server
       all_threads << Thread.new do
         while true do

@@ -38,7 +38,7 @@ module BBFS
   module RunInBackground
     require 'params'
 
-    Params.parameter 'pid_dir', File.expand_path(File.join(Dir.home, '.bbfs', 'pids')),
+    Params.string 'pid_dir', File.expand_path(File.join(Dir.home, '.bbfs', 'pids')),
       'Absolute path to directory, where pid files will be stored. ' + \
       'User should have a read/write permissions to this location. ' + \
       'If absent then it will be created. ' + \
@@ -62,7 +62,7 @@ module BBFS
 
       OS = :LINUX
       # directory used to store pid files
-      PID_DIR = File.expand_path(Params.pid_dir)
+      PID_DIR = File.expand_path(Params['pid_dir'])
       if Dir.exists? PID_DIR
         unless File.directory? PID_DIR
          raise IOError.new("pid directory #{PID_DIR} should be a directory")
