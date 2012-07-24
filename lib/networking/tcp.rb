@@ -115,7 +115,11 @@ module BBFS
       private
       def open_socket
         Log.debug1("Connecting to content server #{@host}:#{@port}.")
-        @tcp_socket = TCPSocket.new(@host, @port)
+        begin
+          @tcp_socket = TCPSocket.new(@host, @port)
+        rescue Errno::ECONNREFUSED
+          Log.warning('Connection refused')
+        end
         Log.debug1("Reconnect clb: '#{@reconnected_clb}'")
         #@reconnected_clb.call if @reconnected_clb && socket_good?
       end

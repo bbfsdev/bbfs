@@ -1,3 +1,4 @@
+require 'fileutils'
 require 'set'
 require 'thread'
 
@@ -129,7 +130,7 @@ module BBFS
               content = file.read
               # Send pair (content + checksum).
               bytes_written = backup_tcp.send_obj([content, checksum])
-              Log.debug1 "Sent content of file #{a_file}, bytes written: #{bytes_written}."
+              Log.info "Sent content of file #{a_file}, bytes written: #{bytes_written}."
             else
               Log.warning("File to send '#{a_file}', does not exist")
             end
@@ -188,8 +189,8 @@ module BBFS
         end
       end
       
-      tcp_file_server = TCPServer.new(Params['backup_file_listening_port'],
-                                      method(:on_file_receive))
+      tcp_file_server = Networking::TCPServer.new(Params['backup_file_listening_port'],
+                                                  method(:on_file_receive))
       all_threads << tcp_file_server.tcp_thread
 
       all_threads.each { |t| t.abort_on_exception = true }
@@ -200,16 +201,21 @@ module BBFS
 
     def ContentServer.on_file_receive(addr_info, remote_file)
       content, checksum = remote_file
-      received_checksum = IndexAgent.get_content_checksum(content)
+      received_checksum = FileIndexing::IndexAgent.get_content_checksum(content)
       Log.error("Received checksum: #{checksum} is not equal to received content" \
                 " checksum: #{received_checksum}") \
                 unless checksum == received_checksum
 
       write_to = destination_filename(Params['backup_destination_folder'] ,checksum)
-      if File.exists?(a_file)
+      if File.exists?(write_to)
         Log.warning("File already exists (#{write_to}) not writing.")
       else
-        File.open(write_to, 'w') {|f| f.write(content) }
+        # Make the directory if does not exists.
+        Log.info("Writing to: #{write_to}")
+        Log.info("Creating directory: #{File.dirname(write_to)}")
+        FileUtils.makedirs(File.dirname(write_to))
+        File.open(write_to, 'w') { |f| f.write(content) }
+        Log.info("File #{write_to} was written.")
       end
     end
 
