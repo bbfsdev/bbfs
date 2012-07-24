@@ -57,6 +57,13 @@ module BBFS
         end
       end
 
+      def IndexAgent.get_content_checksum(content)
+        # Calculate checksum.
+        digest = Digest::SHA1.new
+        digest << content
+        digest.hexdigest.downcase
+      end
+
       # get all files
       # satisfying the pattern
       def collect(pattern)
