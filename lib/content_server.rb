@@ -124,18 +124,31 @@ module BBFS
 
           Log.info "Copying files: #{files_map}."
           # Copy files, waits until files are finished copying.
-          uploads = files_map.map { |a_file, checksum|
-            if File.exists?(a_file)
-              file = File.open(a_file, "r")
-              content = file.read
-              # Send pair (content + checksum).
-              bytes_written = backup_tcp.send_obj([content, checksum])
-              Log.info "Sent content of file #{a_file}, bytes written: #{bytes_written}."
-            else
-              Log.warning("File to send '#{a_file}', does not exist")
+          uploads = files_map.map { |file, checksum|
+            begin
+              if File.exists?(file)
+                # TODO(kolman): Not efficient for very large files, maybe send as stream?
+                read_file_checksum = FileIndexing::IndexAgent.get_checksum(file)
+                Log.info("read_file_checksum: #{read_file_checksum}")
+                f = File.new(file, 'rb')
+                content = f.read()
+                f.close()
+                read_content_checksum = FileIndexing::IndexAgent.get_content_checksum(content)
+                Log.info("read_content_checksum: #{read_content_checksum}")
+                if read_content_checksum != checksum
+                  Log.error("Read file content is not equal to file checksum.")
+                end
+                # Send pair (content + checksum).
+                Log.info("Content to send size: #{content.length}")
+                bytes_written = backup_tcp.send_obj([content, checksum])
+                Log.info "Sent content of file #{file}, bytes written: #{bytes_written}."
+              else
+                Log.warning("File to send '#{file}', does not exist")
+              end
+            rescue Errno::EACCES => e
+              Log.warning("Could not open file #{file} for copy. #{e}")
             end
           }
-
         end
       end
 
@@ -201,12 +214,13 @@ module BBFS
 
     def ContentServer.on_file_receive(addr_info, remote_file)
       content, checksum = remote_file
+      #Log.info("Content: #{content} class #{content.class}.")
       received_checksum = FileIndexing::IndexAgent.get_content_checksum(content)
-      Log.error("Received checksum: #{checksum} is not equal to received content" \
-                " checksum: #{received_checksum}") \
-                unless checksum == received_checksum
+      comment = "Calculated received content checksum #{received_checksum}"
+      Log.info(comment) if checksum == received_checksum
+      Log.error(comment) if checksum != received_checksum
 
-      write_to = destination_filename(Params['backup_destination_folder'] ,checksum)
+      write_to = destination_filename(Params['backup_destination_folder'] ,received_checksum)
       if File.exists?(write_to)
         Log.warning("File already exists (#{write_to}) not writing.")
       else
@@ -214,8 +228,27 @@ module BBFS
         Log.info("Writing to: #{write_to}")
         Log.info("Creating directory: #{File.dirname(write_to)}")
         FileUtils.makedirs(File.dirname(write_to))
-        File.open(write_to, 'w') { |f| f.write(content) }
+        f = File.open(write_to, 'wb')
+        count = f.write(content)
+        Log.info("Number of bytes written: #{count}")
+        f.close()
         Log.info("File #{write_to} was written.")
+        # To debug received file.
+        local_file_checksum = FileIndexing::IndexAgent.get_checksum(write_to)
+        Log.info("Local file checksum: #{local_file_checksum}.")
+        f = File.open(write_to, 'rb')
+        new_content = f.read()
+        Log.info("New content class:#{new_content.class}")
+        Log.info("New content length:#{new_content.length}")
+        f.close()
+        #Log.info("Content: #{new_content} class #{new_content.class}.")
+        if new_content != content
+          Log.error('Received content is not equal to read content.')
+        end
+        new_checksum = FileIndexing::IndexAgent.get_content_checksum(new_content)
+        comment = "Local file content checksum: #{new_checksum}."
+        Log.info(comment) if new_checksum == received_checksum
+        Log.error(comment) if new_checksum != received_checksum
       end
     end
 

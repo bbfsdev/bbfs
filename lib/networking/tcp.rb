@@ -7,7 +7,7 @@ module BBFS
     def Networking.write_to_stream(stream, obj)
       Log.debug3('Writing to stream.')
       marshal_data = Marshal.dump(obj)
-      Log.debug3("Writing data size: #{marshal_data.length}")
+      Log.info("Writing data size: #{marshal_data.length}")
       data_size = [marshal_data.length].pack("l")
       if data_size.nil? || marshal_data.nil?
         Log.debug3 'Send data size is nil!'
@@ -22,7 +22,7 @@ module BBFS
       Log.debug3('Read from stream.')
       return [false, nil] unless size_of_data = stream.read(4)
       size_of_data = size_of_data.unpack("l")[0]
-      Log.debug3("size_of_data:#{size_of_data}")
+      Log.info("Reading data size:#{size_of_data}")
       data = stream.read(size_of_data)
       unmarshalled_data = Marshal.load(data)
       Log.debug3("unmarshalled_data:#{unmarshalled_data}")
