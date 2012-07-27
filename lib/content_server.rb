@@ -127,21 +127,18 @@ module BBFS
           uploads = files_map.map { |file, checksum|
             begin
               if File.exists?(file)
-                # TODO(kolman): Not efficient for very large files, maybe send as stream?
-                read_file_checksum = FileIndexing::IndexAgent.get_checksum(file)
-                Log.info("read_file_checksum: #{read_file_checksum}")
-                f = File.new(file, 'rb')
-                content = f.read()
-                f.close()
+                # TODO(kolman): Fails to allocate memory for large files, should send file
+                # as stream.
+                content = File.open(file, 'rb') { |f| f.read() }
                 read_content_checksum = FileIndexing::IndexAgent.get_content_checksum(content)
-                Log.info("read_content_checksum: #{read_content_checksum}")
+                Log.debug1("read_content_checksum: #{read_content_checksum}")
                 if read_content_checksum != checksum
                   Log.error("Read file content is not equal to file checksum.")
                 end
                 # Send pair (content + checksum).
-                Log.info("Content to send size: #{content.length}")
+                Log.debug1("Content to send size: #{content.length}")
                 bytes_written = backup_tcp.send_obj([content, checksum])
-                Log.info "Sent content of file #{file}, bytes written: #{bytes_written}."
+                Log.debug1("Sent content of file #{file}, bytes written: #{bytes_written}.")
               else
                 Log.warning("File to send '#{file}', does not exist")
               end
@@ -225,31 +222,19 @@ module BBFS
         Log.warning("File already exists (#{write_to}) not writing.")
       else
         # Make the directory if does not exists.
-        Log.info("Writing to: #{write_to}")
-        Log.info("Creating directory: #{File.dirname(write_to)}")
+        Log.debug1("Writing to: #{write_to}")
+        Log.debug1("Creating directory: #{File.dirname(write_to)}")
+
         FileUtils.makedirs(File.dirname(write_to))
-        f = File.open(write_to, 'wb')
-        count = f.write(content)
-        Log.info("Number of bytes written: #{count}")
-        f.close()
+        count = File.open(write_to, 'wb') { |f| f.write(content) }
+        Log.debug1("Number of bytes written: #{count}")
         Log.info("File #{write_to} was written.")
-        # To debug received file.
-        local_file_checksum = FileIndexing::IndexAgent.get_checksum(write_to)
-        Log.info("Local file checksum: #{local_file_checksum}.")
-        f = File.open(write_to, 'rb')
-        new_content = f.read()
-        Log.info("New content class:#{new_content.class}")
-        Log.info("New content length:#{new_content.length}")
-        f.close()
-        #Log.info("Content: #{new_content} class #{new_content.class}.")
-        if new_content != content
-          Log.error('Received content is not equal to read content.')
-        end
-        new_checksum = FileIndexing::IndexAgent.get_content_checksum(new_content)
-        comment = "Local file content checksum: #{new_checksum}."
-        Log.info(comment) if new_checksum == received_checksum
-        Log.error(comment) if new_checksum != received_checksum
       end
+
+      # Check written/local file checksum (maybe skip or send to indexer)
+      local_file_checksum = FileIndexing::IndexAgent.get_checksum(write_to)
+      message = "Local checksum (#{local_file_checksum}) received checksum #{received_checksum})"
+      Log.info(message) ? local_file_checksum == received_checksum : Log.error(message)
     end
 
   end # module ContentServer

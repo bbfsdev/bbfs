@@ -32,9 +32,8 @@ module BBFS
               indexer_patterns.add_pattern(event[1])
               index_agent.index(indexer_patterns, server_content_data)
 
-              if index_agent.failed_files
-                Log.info("Failed files: #{index_agent.failed_files.to_a.join(',')}.")
-              end
+              Log.info("Failed files: #{index_agent.failed_files.to_a.join(',')}.") \
+                       if !index_agent.failed_files.empty?
 
               server_content_data.merge index_agent.indexed_content
               # TODO(kolman): Don't write to file each change?
