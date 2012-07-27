@@ -35,6 +35,7 @@ module BBFS
       def initialize(path, stable_state = DEFAULT_STABLE_STATE)
         @path ||= path
         @size = nil
+        @creation_time = nil
         @modification_time = nil
         @cycles = 0  # number of iterations from the last file modification
         @state = FileStatEnum::NON_EXISTING
@@ -62,16 +63,19 @@ module BBFS
         if file_stats == nil
           new_state = FileStatEnum::NON_EXISTING
           @size = nil
+          @creation_time = nil
           @modification_time = nil
           @cycles = 0
         elsif @size == nil
           new_state = FileStatEnum::NEW
           @size = file_stats.size
+          @creation_time = file_stats.ctime.utc
           @modification_time = file_stats.mtime.utc
           @cycles = 0
         elsif changed?(file_stats)
           new_state = FileStatEnum::CHANGED
           @size = file_stats.size
+          @creation_time = file_stats.ctime.utc
           @modification_time = file_stats.mtime.utc
           @cycles = 0
         else
@@ -88,7 +92,9 @@ module BBFS
 
       #  Checks that stored file attributes are the same as file attributes taken from file system.
       def changed?(file_stats)
-        not (file_stats.size == size and file_stats.mtime.utc == modification_time.utc)
+        not (file_stats.size == @size &&
+            file_stats.ctime.utc == @creation_time.utc &&
+            file_stats.mtime.utc == @modification_time.utc)
       end
 
       def set_event_queue(queue)

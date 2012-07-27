@@ -1,14 +1,16 @@
+require 'fileutils'
 require 'set'
 require 'thread'
 
 require 'content_data'
 require 'content_server/content_receiver'
+require 'content_server/queue_indexer'
 require 'file_copy'
 require 'file_indexing'
 require 'file_monitoring'
 require 'log'
+require 'networking/tcp'
 require 'params'
-require 'content_server/queue_indexer'
 
 
 
@@ -21,6 +23,7 @@ module BBFS
                      'Listening port for backup server content data.')
     Params.string('backup_username', nil, 'Backup server username.')
     Params.string('backup_password', nil, 'Backup server password.')
+    Params.integer('backup_file_listening_port', 4444, 'Listening port in backup server for files')
     Params.string('backup_destination_folder', '',
                      'Backup server destination folder, default is the relative local folder.')
     Params.string('content_data_path', File.expand_path('~/.bbfs/var/content.data'),
@@ -97,6 +100,9 @@ module BBFS
       # # # # # # # # # # # # # # # #
       # Start copying files on demand
       all_threads << Thread.new do
+        # Local simple tcp connection.
+        backup_tcp = Networking::TCPClient.new(Params['remote_server'], Params['backup_file_listening_port'])
+
         while true do
           Log.info 'Waiting on copy files events.'
           copy_event = copy_files_events.pop
@@ -111,19 +117,35 @@ module BBFS
             Log.info "Instance: #{instance}"
             # Add instance only if such content has not added yet.
             if !used_contents.member?(instance.checksum)
-              files_map[instance.full_path] = destination_filename(
-                  Params['backup_destination_folder'],
-                  instance.checksum)
+              files_map[instance.full_path] = instance.checksum
               used_contents.add(instance.checksum)
             end
           }
 
           Log.info "Copying files: #{files_map}."
           # Copy files, waits until files are finished copying.
-          FileCopy::sftp_copy(Params['backup_username'],
-                              Params['backup_password'],
-                              Params['remote_server'],
-                              files_map)
+          uploads = files_map.map { |file, checksum|
+            begin
+              if File.exists?(file)
+                # TODO(kolman): Fails to allocate memory for large files, should send file
+                # as stream.
+                content = File.open(file, 'rb') { |f| f.read() }
+                read_content_checksum = FileIndexing::IndexAgent.get_content_checksum(content)
+                Log.debug1("read_content_checksum: #{read_content_checksum}")
+                if read_content_checksum != checksum
+                  Log.error("Read file content is not equal to file checksum.")
+                end
+                # Send pair (content + checksum).
+                Log.debug1("Content to send size: #{content.length}")
+                bytes_written = backup_tcp.send_obj([content, checksum])
+                Log.debug1("Sent content of file #{file}, bytes written: #{bytes_written}.")
+              else
+                Log.warning("File to send '#{file}', does not exist")
+              end
+            rescue Errno::EACCES => e
+              Log.warning("Could not open file #{file} for copy. #{e}")
+            end
+          }
         end
       end
 
@@ -176,12 +198,44 @@ module BBFS
           content_data_sender.send_content_data(local_server_content_data_queue.pop)
         end
       end
+      
+      tcp_file_server = Networking::TCPServer.new(Params['backup_file_listening_port'],
+                                                  method(:on_file_receive))
+      all_threads << tcp_file_server.tcp_thread
 
       all_threads.each { |t| t.abort_on_exception = true }
       all_threads.each { |t| t.join }
       # Should never reach this line.
     end
     module_function :run_backup_server
+
+    def ContentServer.on_file_receive(addr_info, remote_file)
+      content, checksum = remote_file
+      #Log.info("Content: #{content} class #{content.class}.")
+      received_checksum = FileIndexing::IndexAgent.get_content_checksum(content)
+      comment = "Calculated received content checksum #{received_checksum}"
+      Log.info(comment) if checksum == received_checksum
+      Log.error(comment) if checksum != received_checksum
+
+      write_to = destination_filename(Params['backup_destination_folder'] ,received_checksum)
+      if File.exists?(write_to)
+        Log.warning("File already exists (#{write_to}) not writing.")
+      else
+        # Make the directory if does not exists.
+        Log.debug1("Writing to: #{write_to}")
+        Log.debug1("Creating directory: #{File.dirname(write_to)}")
+
+        FileUtils.makedirs(File.dirname(write_to))
+        count = File.open(write_to, 'wb') { |f| f.write(content) }
+        Log.debug1("Number of bytes written: #{count}")
+        Log.info("File #{write_to} was written.")
+      end
+
+      # Check written/local file checksum (maybe skip or send to indexer)
+      local_file_checksum = FileIndexing::IndexAgent.get_checksum(write_to)
+      message = "Local checksum (#{local_file_checksum}) received checksum #{received_checksum})"
+      Log.info(message) ? local_file_checksum == received_checksum : Log.error(message)
+    end
 
   end # module ContentServer
 end # module BBFS
