@@ -39,6 +39,10 @@ module BBFS
     require 'params'
     require 'log'
 
+    Params.string('bg_command', nil, 'Server\'s command. Commands are: start, delete and nil for' \
+                  ' not running in background.')
+    Params.string('service_name', Log.executable_name, 'Background service name.')
+
     # maximal time to wait untill OS will finish a requested operation
     # e.g. daemon start/delete
     TIMEOUT = 20
@@ -363,6 +367,61 @@ module BBFS
         load_path << %Q{-I"#{get_abs_std_path(location)}"}
       end
       load_path.join ' '
+    end
+
+    # prepare ARGV so it can be provided as a command line arguments
+    def RunInBackground.prepare_argv
+      new_argv = Array.new
+      ARGV.each do |arg|
+        arg_arr = arg.split '='
+        if arg_arr.size == 1
+          arg = "\"#{arg}\"" if arg =~ / /
+          new_argv << arg
+        elsif arg_arr.size == 2
+          # Skip bg_command flag!
+          if 'bg_command' != arg_arr[0]
+            arg_arr[1] = "\"#{arg_arr[1]}\"" if arg_arr[1] =~ / /
+            new_argv << arg_arr.join('=')
+          end
+        else
+          Log::warning "ARGV argument #{arg} wasn't processed"
+          new_argv << arg
+        end
+      end
+      ARGV.clear
+      ARGV.concat new_argv
+    end
+
+    def RunInBackground.run &b
+      case Params['bg_command']
+        when nil
+          yield b
+        when 'start'
+          # to prevent service enter loop cause of background parameter
+          # all options that points to run in background must be disabled
+          # (for more information see documentation for RunInBackground::start!)
+          Params['bg_command'] = nil
+          RunInBackground.prepare_argv
+
+          begin
+            RunInBackground.start! Params['service_name']
+          rescue Exception => e
+            Log.error "Start service command failed: #{e.message}"
+            raise
+          end
+        when 'delete'
+          if RunInBackground.exists? Params['service_name']
+            RunInBackground.delete Params['service_name']
+          else
+            msg = "Can't delete. Service #{Params['service_name']} already deleted"
+            puts msg
+            Log.warning msg
+          end
+        else
+          msg = "Unsupported command #{Params['bg_command']}. Supported commands are: start, delete"
+          puts msg
+          Log.error msg
+      end
     end
 
     private_class_method :start_linux, :start_windows, :wrap_windows, :stop, :get_abs_std_path,\
