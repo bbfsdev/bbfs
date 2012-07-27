@@ -155,7 +155,7 @@ module BBFS
 
     def RunInBackground.start_linux binary_path, binary_args, name, opts = {}
       unless File.executable? binary_path
-        raise ArgumentError.new("#{binary_path} can't be executed")
+        raise ArgumentError.new("#{binary_path} is not executable.")
       end
 
       if opts.has_key? :dir
@@ -379,7 +379,7 @@ module BBFS
           new_argv << arg
         elsif arg_arr.size == 2
           # Skip bg_command flag!
-          if 'bg_command' != arg_arr[0]
+          if '--bg_command' != arg_arr[0]
             arg_arr[1] = "\"#{arg_arr[1]}\"" if arg_arr[1] =~ / /
             new_argv << arg_arr.join('=')
           end
