@@ -30,17 +30,16 @@ module BBFS
       def self.get_checksum(filename)
         digest = Digest::SHA1.new
         begin
-          file = File.open(filename, 'rb')
-          buffer = file.read()
-          digest << buffer
-
-          #@log.info { digest.hexdigest.downcase + ' ' + filename }
+          File.open(filename, 'rb') { |f|
+            while buffer = f.read(65536) do
+              digest << buffer
+            end
+          }
+          Log.debug1("#{filename} sha1 #{digest.hexdigest.downcase}")
           digest.hexdigest.downcase
         rescue Errno::EACCES, Errno::ETXTBSY => exp
           Log.warning("#{exp.message}")
           false
-        ensure
-          file.close if file != nil
         end
       end
 

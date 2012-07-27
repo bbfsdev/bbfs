@@ -6,10 +6,10 @@ require 'stringio'
 require_relative '../../lib/networking/tcp'
 
 # Uncomment to debug spec.
-BBFS::Params.log_write_to_console = 'true'
-BBFS::Params.log_debug_level = 0
-BBFS::Params.log_param_number_of_mega_bytes_stored_before_flush = 0
-BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 0
+BBFS::Params['log_write_to_console'] = true
+BBFS::Params['log_debug_level'] = 0
+BBFS::Params['log_param_number_of_mega_bytes_stored_before_flush'] = 0
+BBFS::Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] = 0
 BBFS::Log.init
 
 module BBFS

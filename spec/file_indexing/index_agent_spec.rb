@@ -16,7 +16,7 @@ module BBFS
           content_checksum = FileIndexing::IndexAgent.get_content_checksum(content)
 
           stream = StringIO.new(content)
-          File.stub(:new).and_return(stream)
+          File.stub(:open).and_yield(stream)
           file_checksum = FileIndexing::IndexAgent.get_checksum('kuku')
 
           content_checksum.should == file_checksum
@@ -24,22 +24,28 @@ module BBFS
         end
 
         it 'should generate correct checksum for temp file' do
-          file = Tempfile.new('foo')
-          path = file.path
-          1.times { file.write('abagadavazahatikalamansapazkareshet') }
+          # A hack to get tmp file name
+          tmp_file = Tempfile.new('foo')
+          path = tmp_file .path
+          tmp_file .close()
+
+          # Open file in binary mode.
+          file = File.open(path, 'wb')
+          100000.times { file.write('abagadavazahatikalamansapazkareshet') }
           file.close()
 
           file_checksum = FileIndexing::IndexAgent.get_checksum(path)
-
-          file = Tempfile.open('foo')
-          content = file.read()
-          content_checksum = FileIndexing::IndexAgent.get_content_checksum(content)
-
-          puts "LALALALALAL .#{content}."
-
-          file_checksum.should == content_checksum.should
           file_checksum.should == '381e99eb0e2dfcaf45c9a367a04a4197ef3039a6'
-          content_checksum.should == '381e99eb0e2dfcaf45c9a367a04a4197ef3039a6'
+
+          File.open(path, 'rb') { |f|
+            content = f.read()
+            content_checksum = FileIndexing::IndexAgent.get_content_checksum(content)
+            content_checksum.should == '381e99eb0e2dfcaf45c9a367a04a4197ef3039a6'
+            file_checksum.should == content_checksum
+          }
+
+          # Delete tmp file.
+          tmp_file.unlink
         end
 
       end
