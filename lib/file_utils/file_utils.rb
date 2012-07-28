@@ -11,77 +11,88 @@ require 'params'
 
 module BBFS
   module FileUtils
-
+    Params.string 'command', 'command' ,'path'
+    Params.string 'ref_cd', 'path' ,'reference path'
+    Params.string 'base_cd', 'path' ,'base path'
+    Params.string 'dest', 'path' ,'destination path'
+    Params.string 'dest_server', 'localhost' ,'server name'
+    Params.string 'patterns', 'path' ,'patterns path'
+    Params.string 'cd', 'path' ,'path'
+    Params.string 'cd_a', 'path' ,'a path'
+    Params.string 'cd_b', 'path' ,'b path'
+    Params.string 'cd_out', 'path' ,'output path'
+    Params.string 'cd_in', 'path' ,'input path'
+    #Params.string 'config_file', 'path' ,'configuration file path'
     class FileUtils
-      def initialize(arguments)
-        if arguments["command"] == "mksymlink"
+      def initialize()
+        if Params['command'] == "mksymlink"
           begin
             Log.info "--ref_cd is not set"
             return
-          end unless not arguments["ref_cd"].nil?
+          end unless not Params['ref_cd'].nil?
           ref_cd = ContentData.new()
-          ref_cd.from_file(arguments["ref_cd"])
+          ref_cd.from_file(Params['ref_cd'])
           begin
-            Log.info "Error loading content data ref_cd=%s" % arguments["ref_cd"]
+            Log.info "Error loading content data ref_cd=%s" % Params['ref_cd']
             return
           end unless not ref_cd.nil?
 
           begin
             Log.info "--base_cd is not set"
             return
-          end unless not arguments["base_cd"].nil?
+          end unless not Params['base_cd'].nil?
           base_cd = ContentData.new()
-          base_cd.from_file(arguments["base_cd"])
+          base_cd.from_file(Params['base_cd'])
           begin
-            Log.info "Error loading content data base_cd=%s" % arguments["base_cd"]
+            Log.info "Error loading content data base_cd=%s" % Params['base_cd']
             return
           end unless not base_cd.nil?
 
           begin
             Log.info "--dest is not set"
             return
-          end unless not arguments["dest"].nil?
+          end unless not Params['dest'].nil?
 
           not_found = nil
           begin
-            not_found = FileUtil.mksymlink(ref_cd, base_cd, arguments["dest"])
+            not_found = FileUtil.mksymlink(ref_cd, base_cd, Params['dest'])
           rescue NotImplementedError
             Log.info "symlinks are unimplemented on this machine"
             return nil
           end
           return not_found
-        elsif (arguments["command"] == "merge" or
-            arguments["command"] == "intersect" or
-            arguments["command"] == "minus")
+        elsif (Params['command'] == "merge" or
+            Params['command'] == "intersect" or
+            Params['command'] == "minus")
 
           begin
             Log.info "--cd_a is not set"
             return
-          end unless not arguments["cd_a"].nil?
+          end unless not Params['cd_a'].nil?
           cd_a = ContentData.new()
-          cd_a.from_file(arguments["cd_a"])
+          cd_a.from_file(Params['cd_a'])
           begin
-            Log.info "Error loading content data cd_a=%s" % arguments["cd_a"]
+            Log.info "Error loading content data cd_a=%s" % Params['cd_a']
             return
           end unless not cd_a.nil?
 
           begin
             Log.info "--cd_b is not set"
             return
-          end unless not arguments["cd_b"].nil?
+          end unless not Params['cd_b'].nil?
           cd_b = ContentData.new()
-          cd_b.from_file(arguments["cd_b"])
+          cd_b.from_file(Params['cd_b'])
           begin
-            Log.info "Error loading content data cd_b=%s" % arguments["cd_b"]
+            Log.info "Error loading content data cd_b=%s" % Params['cd_b']
             return
           end unless not cd_b.nil?
 
           begin
             Log.info "--dest is not set"
             return
-          end unless not arguments["dest"].nil?
+          end unless not Params['cd_b'].nil?
 
-          output = FileUtil.contet_data_command(arguments["command"], cd_a, cd_b, arguments["dest"])
+          output = FileUtil.contet_data_command(Params['command'], cd_a, cd_b, Params['dest'])
           #elsif arguments["command"] == "copy"
           #  begin
           #    Log.info "--conf is not set"
@@ -118,42 +129,42 @@ module BBFS
           #  dest_path = arguments["dest_path"]
           #
           #  Copy.new(conf, cd, dest_server, dest_path)
-        elsif arguments["command"] == "unify_time"
+        elsif Params['command'] == "unify_time"
           begin
             Log.info "--cd is not set"
             return
-          end unless not arguments["cd"].nil?
+          end unless not Params['cd'].nil?
           cd = ContentData.new()
-          cd.from_file(arguments["cd"])
+          cd.from_file(Params['cd'])
           begin
-            Log.info "Error loading content data cd=%s" % arguments["cd"]
+            Log.info "Error loading content data cd=%s" % Params['cd']
             return
           end unless not cd.nil?
           output = unify_time(cd)
           # indexer
-        elsif arguments["command"] == "indexer"
+        elsif Params['command'] == "indexer"
           begin
             Log.info "--patterns is not set"
             return
-          end unless not arguments["patterns"].nil?
+          end unless not Params['patterns'].nil?
 
           patterns = BBFS::FileIndexing::IndexerPatterns.new
-          arguments["patterns"].split(':').each { |pattern|
+          Params['patterns'].split(':').each { |pattern|
             Log.info "Pattern: #{pattern}"
             patterns.add_pattern File.expand_path(pattern)
           }
 
           unless patterns.size > 0
-            Log.info "Error loading patterns=%s (empty file)" % arguments["patterns"]
+            Log.info "Error loading patterns=%s (empty file)" % Params['patterns']
             return
           end
 
           exist_cd = nil
-          if (arguments.has_key?"exist_cd")
+          if (Params.has_key?"exist_cd")
             exist_cd = BBFS::ContentData::ContentData.new()
-            exist_cd.from_file(arguments["exist_cd"])
+            exist_cd.from_file(Params['exist_cd'])
             begin
-              Log.info "Error loading content data exist_cd=%s" % arguments["exist_cd"]
+              Log.info "Error loading content data exist_cd=%s" % Params['exist_cd']
               return
             end unless not exist_cd.nil?
           end
@@ -161,36 +172,36 @@ module BBFS
           indexer.index(patterns, exist_cd)
           Log.info indexer.indexed_content.to_s
           # crawler
-        elsif arguments["command"] == "crawler"
+        elsif Params['command'] == "crawler"
           begin
             Log.info "--conf_file is not set"
             return
-          end unless not arguments["conf_file"].nil?
+          end unless not Params['conf_file'].nil?
           begin
-            Log.info "config file doesn't exist conf_file=%s" % arguments["conf_file"]
+            Log.info "config file doesn't exist conf_file=%s" % Params['conf_file']
             return
-          end unless not File.exists?(arguments["conf_file"])
+          end unless not File.exists?(Params['conf_file'])
 
-          if arguments["cd_out"].nil?
+          if Params['cd_out'].nil?
             time = Tme.now.utc
-            arguments["cd_out"] = "crawler.out.#{time.strftime('%Y/%m/%d_%H-%M-%S')}"
+            Params['cd_out'] = "crawler.out.#{time.strftime('%Y/%m/%d_%H-%M-%S')}"
           end
-          unless (arguments["cd_in"].nil?)
+          unless (Params['cd_in'].nil?)
             begin
-              Log.info "input data file doesn't exist cd_in=%s" % arguments["cd_in"]
+              Log.info "input data file doesn't exist cd_in=%s" % Params['cd_in']
               return
-            end unless not File.exists?(arguments["conf_file"])
+            end unless not File.exists?(Params['conf_file'])
           end
 
-          conf = Configuration.new(arguments["conf_file"])
+          conf = Configuration.new(Params['conf_file'])
           threads = Array.new
           conf.server_conf_vec.each do |server|
-            threads.push(Thread.new { Crawler.new(server, arguments["cd_out"], arguments["cd_in"]) })
+            threads.push(Thread.new { Crawler.new(server, Params['cd_out'], Params['cd_in']) })
           end
 
           threads.each { |a| a.join }
-          join_servers_results(conf.server_conf_vec, arguments["cd_out"])
-        elsif arguments["command"] == "generate_files"
+          join_servers_results(conf.server_conf_vec, Params['cd_out'])
+        elsif Params['command'] == "generate_files"
           fg = BBFS::FileGenerator::FileGenerator.new()
           fg.run()
         end
@@ -281,6 +292,8 @@ module BBFS
       end
     end
 
+
+
     COMMANDS = Hash.new
     COMMANDS["mksymlink"] = "  mksymlink --ref_cd=<path> --base_cd=<path> --dest=<path>"
     COMMANDS["merge"] = "  merge --cd_a=<path> --cd_b=<path> --dest=<path>"
@@ -301,13 +314,11 @@ module BBFS
     end
 
     def self.run
-      parsed_arguments = Hash.new
       begin
         print_usage
         return
-      end unless Params::ReadArgs.read_arguments(ARGV, parsed_arguments, COMMANDS)
-      FileUtils.new(parsed_arguments)
+      end #unless Params.init ARGV
+      FileUtils.new
     end
-
   end
 end
