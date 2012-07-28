@@ -24,7 +24,7 @@ module BBFS
     Params.string 'cd_in', 'path' ,'input path'
     #Params.string 'config_file', 'path' ,'configuration file path'
     class FileUtils
-      def initialize()
+      def FileUtils.run
         if Params['command'] == "mksymlink"
           begin
             Log.info "--ref_cd is not set"
@@ -292,33 +292,5 @@ module BBFS
       end
     end
 
-
-
-    COMMANDS = Hash.new
-    COMMANDS["mksymlink"] = "  mksymlink --ref_cd=<path> --base_cd=<path> --dest=<path>"
-    COMMANDS["merge"] = "  merge --cd_a=<path> --cd_b=<path> --dest=<path>"
-    COMMANDS["intersect"] = "  intersect --cd_a=<path> --cd_b=<path> --dest=<path>"
-    COMMANDS["minus"] = "  minus --cd_a=<path> --cd_b=<path> --dest=<path>"
-    COMMANDS["copy"] = "  copy --conf=<path> --cd=<path> --dest_server=<server name> --dest_path=<dir>"
-    COMMANDS["unify_time"] = "  unify_time --cd=<path>"
-    COMMANDS["indexer"] = "  indexer --patterns=<path> [--exist_cd=<path>]"
-    COMMANDS["crawler"] = "  crawler --conf_file=<path> [--cd_out=<path>] [--cd_in=<path>]"
-    COMMANDS["generate_files"] = "  generate_files"
-
-    def self.print_usage
-      Log.info "Usage: fileutil <command> params..."
-      Log.info "Commands:"
-      COMMANDS.each { |name, description|
-        Log.info description
-      }
-    end
-
-    def self.run
-      begin
-        print_usage
-        return
-      end #unless Params.init ARGV
-      FileUtils.new
-    end
   end
 end
