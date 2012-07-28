@@ -11,4 +11,4 @@ rescue LoadError
 end
 
 BBFS::Params.init ARGV
-BBFS::FileUtils::run
+BBFS::FileUtils::FileUtils.run
