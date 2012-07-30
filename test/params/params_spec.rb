@@ -30,14 +30,14 @@ module BBFS
 
         it 'should raise an error when trying to define twice the same parameter' do
           Params.string 'only_once', '1st' ,''
-          expect { Params.string 'only_once', '2nd' ,'' }.should raise_error \
-              "Parameter:'only_once', can only be defined oncet."
+          expect { Params.string 'only_once', '2nd' ,'' }.to raise_error \
+              "Parameter:'only_once', can only be defined once."
         end
       end
 
       describe 'Params::read_yml_params' do
         it 'should raise error when yml parameter is not defined' do
-          expect { Params::read_yml_params StringIO.new 'not_defined: 10' }.should raise_error \
+          expect { Params::read_yml_params StringIO.new 'not_defined: 10' }.to raise_error \
               "Parameter:'not_defined' has not been defined and can not be overridden. " \
               "It should first be defined through Param module methods:" \
               "Params.string, Params.integer, Params.float or Params.boolean."
@@ -46,72 +46,72 @@ module BBFS
         it 'Will test yml parameter loading' do
           # string to other. Will not raise error. Instead a cast is made.
           Params.string('tmp4str', 'string_value', 'tmp4 def')
-          expect { Params::read_yml_params StringIO.new 'tmp4str: strr' }.should_not raise_error
-          expect { Params::read_yml_params StringIO.new 'tmp4str: 4' }.should_not raise_error
-          expect { Params::read_yml_params StringIO.new 'tmp4str: 4.5' }.should_not raise_error
-          expect { Params::read_yml_params StringIO.new 'tmp4str: true' }.should_not raise_error
-          expect { Params::read_yml_params StringIO.new 'tmp4str: false' }.should_not raise_error
+          expect { Params::read_yml_params StringIO.new 'tmp4str: strr' }.to_not raise_error
+          expect { Params::read_yml_params StringIO.new 'tmp4str: 4' }.to_not raise_error
+          expect { Params::read_yml_params StringIO.new 'tmp4str: 4.5' }.to_not raise_error
+          expect { Params::read_yml_params StringIO.new 'tmp4str: true' }.to_not raise_error
+          expect { Params::read_yml_params StringIO.new 'tmp4str: false' }.to_not raise_error
 
           # override integer with other types.
           Params.integer('tmp4int', 1, 'tmp4 def')
-          expect { Params::read_yml_params StringIO.new 'tmp4int: strr' }.should raise_error \
+          expect { Params::read_yml_params StringIO.new 'tmp4int: strr' }.to raise_error \
           "Parameter:'tmp4int' type:'Integer' but value type to override " \
                       "is:'String'."
-          expect { Params::read_yml_params StringIO.new 'tmp4int: 4' }.should_not raise_error
-          expect { Params::read_yml_params StringIO.new 'tmp4int: 4.5' }.should raise_error \
+          expect { Params::read_yml_params StringIO.new 'tmp4int: 4' }.to_not raise_error
+          expect { Params::read_yml_params StringIO.new 'tmp4int: 4.5' }.to raise_error \
               "Parameter:'tmp4int' type:'Integer' but value type to override " \
                       "is:'Float'."
-          expect { Params::read_yml_params StringIO.new 'tmp4int: true' }.should raise_error \
+          expect { Params::read_yml_params StringIO.new 'tmp4int: true' }.to raise_error \
               "Parameter:'tmp4int' type:'Integer' but value type to override " \
                       "is:'TrueClass'."
-          expect { Params::read_yml_params StringIO.new 'tmp4int: false' }.should raise_error \
+          expect { Params::read_yml_params StringIO.new 'tmp4int: false' }.to raise_error \
               "Parameter:'tmp4int' type:'Integer' but value type to override " \
                       "is:'FalseClass'."
 
           # override float with other types.
           Params.float('tmp4float', 1.1, 'tmp4 def')
-          expect { Params::read_yml_params StringIO.new 'tmp4float: strr' }.should raise_error \
+          expect { Params::read_yml_params StringIO.new 'tmp4float: strr' }.to raise_error \
           "Parameter:'tmp4float' type:'Float' but value type to override " \
                       "is:'String'."
-          expect { Params::read_yml_params StringIO.new 'tmp4float: 4' }.should_not raise_error
-          expect { Params::read_yml_params StringIO.new 'tmp4float: 4.5' }.should_not raise_error
-          expect { Params::read_yml_params StringIO.new 'tmp4float: true' }.should raise_error \
+          expect { Params::read_yml_params StringIO.new 'tmp4float: 4' }.to_not raise_error
+          expect { Params::read_yml_params StringIO.new 'tmp4float: 4.5' }.to_not raise_error
+          expect { Params::read_yml_params StringIO.new 'tmp4float: true' }.to raise_error \
               "Parameter:'tmp4float' type:'Float' but value type to override " \
                       "is:'TrueClass'."
-          expect { Params::read_yml_params StringIO.new 'tmp4float: false' }.should raise_error \
+          expect { Params::read_yml_params StringIO.new 'tmp4float: false' }.to raise_error \
               "Parameter:'tmp4float' type:'Float' but value type to override " \
                       "is:'FalseClass'."
           # override boolean with other types.
           Params.boolean('tmp4true', true, 'tmp4 def')
-          expect { Params::read_yml_params StringIO.new 'tmp4true: strr' }.should raise_error \
+          expect { Params::read_yml_params StringIO.new 'tmp4true: strr' }.to raise_error \
               "Parameter:'tmp4true' type:'Boolean' but value type to override " \
                       "is:'String'."
-          expect { Params::read_yml_params StringIO.new 'tmp4true: 4' }.should raise_error \
+          expect { Params::read_yml_params StringIO.new 'tmp4true: 4' }.to raise_error \
               "Parameter:'tmp4true' type:'Boolean' but value type to override " \
                       "is:'Fixnum'."
-          expect { Params::read_yml_params StringIO.new 'tmp4true: 4.5' }.should raise_error \
+          expect { Params::read_yml_params StringIO.new 'tmp4true: 4.5' }.to raise_error \
               "Parameter:'tmp4true' type:'Boolean' but value type to override " \
                       "is:'Float'."
-          expect { Params::read_yml_params StringIO.new 'tmp4true: true' }.should_not raise_error
-          expect { Params.read_yml_params StringIO.new 'tmp4true: false' }.should_not raise_error
+          expect { Params::read_yml_params StringIO.new 'tmp4true: true' }.to_not raise_error
+          expect { Params.read_yml_params StringIO.new 'tmp4true: false' }.to_not raise_error
 
           Params.boolean('tmp4False', true, 'tmp4 def')
-          expect { Params.read_yml_params StringIO.new 'tmp4False: strr' }.should raise_error \
+          expect { Params.read_yml_params StringIO.new 'tmp4False: strr' }.to raise_error \
               "Parameter:'tmp4False' type:'Boolean' but value type to override " \
                       "is:'String'."
-          expect { Params.read_yml_params StringIO.new 'tmp4False: 4' }.should raise_error \
+          expect { Params.read_yml_params StringIO.new 'tmp4False: 4' }.to raise_error \
               "Parameter:'tmp4False' type:'Boolean' but value type to override " \
                       "is:'Fixnum'."
-          expect { Params.read_yml_params StringIO.new 'tmp4False: 4.5' }.should raise_error \
+          expect { Params.read_yml_params StringIO.new 'tmp4False: 4.5' }.to raise_error \
               "Parameter:'tmp4False' type:'Boolean' but value type to override " \
                       "is:'Float'."
-          expect { Params.read_yml_params StringIO.new 'tmp4False: true' }.should_not raise_error
-          expect { Params.read_yml_params StringIO.new 'tmp4False: false' }.should_not raise_error
+          expect { Params.read_yml_params StringIO.new 'tmp4False: true' }.to_not raise_error
+          expect { Params.read_yml_params StringIO.new 'tmp4False: false' }.to_not raise_error
 
         end
 
         it 'should raise error when yml file format is bad' do
-          expect { Params.read_yml_params StringIO.new 'bad yml format' }.should raise_error
+          expect { Params.read_yml_params StringIO.new 'bad yml format' }.to raise_error
         end
 
         it 'should override defined values with yml values' do
@@ -132,50 +132,50 @@ module BBFS
 
       describe 'Params.parse_command_line_arguments' do
         it 'should raise error when command line parameter is not defined' do
-          expect { Params.parse_command_line_arguments ['--new_param=9]'] }.should raise_error
+          expect { Params.parse_command_line_arguments ['--new_param=9]'] }.to raise_error
         end
 
         it 'should parse parameter from command line.' do
           # Override string with types.
           Params.string('tmp6str', 'dummy', 'tmp6str def')
-          expect { Params.parse_command_line_arguments ['--tmp6str=9'] }.should_not raise_error
-          expect { Params.parse_command_line_arguments ['--tmp6str=8.1'] }.should_not raise_error
-          expect { Params.parse_command_line_arguments ['--tmp6str=ff'] }.should_not raise_error
-          expect { Params.parse_command_line_arguments ['--tmp6str=true'] }.should_not raise_error
-          expect { Params.parse_command_line_arguments ['--tmp6str=false'] }.should_not raise_error
+          expect { Params.parse_command_line_arguments ['--tmp6str=9'] }.to_not raise_error
+          expect { Params.parse_command_line_arguments ['--tmp6str=8.1'] }.to_not raise_error
+          expect { Params.parse_command_line_arguments ['--tmp6str=ff'] }.to_not raise_error
+          expect { Params.parse_command_line_arguments ['--tmp6str=true'] }.to_not raise_error
+          expect { Params.parse_command_line_arguments ['--tmp6str=false'] }.to_not raise_error
 
           # from fixnum to other types.
           Params.integer('tmp6', 8, 'tmp6 def')
-          expect { Params.parse_command_line_arguments ['--tmp6=9'] }.should_not raise_error
-          expect { Params.parse_command_line_arguments ['--tmp6=8.1'] }.should raise_error
-          expect { Params.parse_command_line_arguments ['--tmp6=ff'] }.should raise_error
-          expect { Params.parse_command_line_arguments ['--tmp6=true'] }.should raise_error
-          expect { Params.parse_command_line_arguments ['--tmp6=false'] }.should raise_error
+          expect { Params.parse_command_line_arguments ['--tmp6=9'] }.to_not raise_error
+          expect { Params.parse_command_line_arguments ['--tmp6=8.1'] }.to raise_error
+          expect { Params.parse_command_line_arguments ['--tmp6=ff'] }.to raise_error
+          expect { Params.parse_command_line_arguments ['--tmp6=true'] }.to raise_error
+          expect { Params.parse_command_line_arguments ['--tmp6=false'] }.to raise_error
 
           # from float to other types.
           Params.float('tmp7', 8.9, 'tmp7 def')
           # Casting fix num to float
-          expect { Params.parse_command_line_arguments ['--tmp7=9'] }.should_not raise_error
-          expect { Params.parse_command_line_arguments ['--tmp7=3.4'] }.should_not raise_error
-          expect { Params.parse_command_line_arguments ['--tmp7=ff'] }.should raise_error
-          expect { Params.parse_command_line_arguments ['--tmp7=true'] }.should raise_error
-          expect { Params.parse_command_line_arguments ['--tmp7=false'] }.should raise_error
+          expect { Params.parse_command_line_arguments ['--tmp7=9'] }.to_not raise_error
+          expect { Params.parse_command_line_arguments ['--tmp7=3.4'] }.to_not raise_error
+          expect { Params.parse_command_line_arguments ['--tmp7=ff'] }.to raise_error
+          expect { Params.parse_command_line_arguments ['--tmp7=true'] }.to raise_error
+          expect { Params.parse_command_line_arguments ['--tmp7=false'] }.to raise_error
 
           # from TrueClass to other types.
           Params.boolean('tmp8', true, 'tmp8 def')
-          expect { Params.parse_command_line_arguments ['--tmp8=9'] }.should_not raise_error
-          expect { Params.parse_command_line_arguments ['--tmp8=3.4'] }.should_not raise_error
-          expect { Params.parse_command_line_arguments ['--tmp8=ff'] }.should_not raise_error
-          expect { Params.parse_command_line_arguments ['--tmp8=true'] }.should_not raise_error
-          expect { Params.parse_command_line_arguments ['--tmp8=false'] }.should_not raise_error
+          expect { Params.parse_command_line_arguments ['--tmp8=9'] }.to_not raise_error
+          expect { Params.parse_command_line_arguments ['--tmp8=3.4'] }.to_not raise_error
+          expect { Params.parse_command_line_arguments ['--tmp8=ff'] }.to_not raise_error
+          expect { Params.parse_command_line_arguments ['--tmp8=true'] }.to_not raise_error
+          expect { Params.parse_command_line_arguments ['--tmp8=false'] }.to_not raise_error
 
           # from FalseClass to other types.
           Params.boolean('tmp9', false, 'tmp9 def')
-          expect { Params.parse_command_line_arguments ['--tmp9=9'] }.should_not raise_error
-          expect { Params.parse_command_line_arguments ['--tmp9=3.4'] }.should_not raise_error
-          expect { Params.parse_command_line_arguments ['--tmp9=ff'] }.should_not raise_error
-          expect { Params.parse_command_line_arguments ['--tmp9=true'] }.should_not raise_error
-          expect { Params.parse_command_line_arguments ['--tmp9=false'] }.should_not raise_error
+          expect { Params.parse_command_line_arguments ['--tmp9=9'] }.to_not raise_error
+          expect { Params.parse_command_line_arguments ['--tmp9=3.4'] }.to_not raise_error
+          expect { Params.parse_command_line_arguments ['--tmp9=ff'] }.to_not raise_error
+          expect { Params.parse_command_line_arguments ['--tmp9=true'] }.to_not raise_error
+          expect { Params.parse_command_line_arguments ['--tmp9=false'] }.to_not raise_error
         end
       end
 
@@ -184,44 +184,44 @@ module BBFS
           File.stub(:exist?).and_return false
           # Override string with types.
           Params.string('tmp6str2', 'dummy', 'tmp6str def')
-          expect { Params.init ['--tmp6str2=9'] }.should_not raise_error
-          expect { Params.init ['--tmp6str2=8.1'] }.should_not raise_error
-          expect { Params.init ['--tmp6str2=ff'] }.should_not raise_error
-          expect { Params.init ['--tmp6str2=true'] }.should_not raise_error
-          expect { Params.init ['--tmp6str2=false'] }.should_not raise_error
+          expect { Params.init ['--tmp6str2=9'] }.to_not raise_error
+          expect { Params.init ['--tmp6str2=8.1'] }.to_not raise_error
+          expect { Params.init ['--tmp6str2=ff'] }.to_not raise_error
+          expect { Params.init ['--tmp6str2=true'] }.to_not raise_error
+          expect { Params.init ['--tmp6str2=false'] }.to_not raise_error
 
           # from fixnum to other types.
           Params.integer('tmp6Fixnum2', 8, 'tmp6 def')
-          expect { Params.init ['--tmp6Fixnum2=9'] }.should_not raise_error
-          expect { Params.init ['--tmp6Fixnum2=8.1'] }.should raise_error
-          expect { Params.init ['--tmp6Fixnum2=ff'] }.should raise_error
-          expect { Params.init ['--tmp6Fixnum2=true'] }.should raise_error
-          expect { Params.init ['--tmp6Fixnum2=false'] }.should raise_error
+          expect { Params.init ['--tmp6Fixnum2=9'] }.to_not raise_error
+          expect { Params.init ['--tmp6Fixnum2=8.1'] }.to raise_error
+          expect { Params.init ['--tmp6Fixnum2=ff'] }.to raise_error
+          expect { Params.init ['--tmp6Fixnum2=true'] }.to raise_error
+          expect { Params.init ['--tmp6Fixnum2=false'] }.to raise_error
 
           # from float to other types.
           Params.float('tmp7float2', 8.9, 'tmp7 def')
           # Casting fix num to float
-          expect { Params.init ['--tmp7float2=9'] }.should_not raise_error
-          expect { Params.init ['--tmp7float2=3.4'] }.should_not raise_error
-          expect { Params.init ['--tmp7float2=ff'] }.should raise_error
-          expect { Params.init ['--tmp7float2=true'] }.should raise_error
-          expect { Params.init ['--tmp7float2=false'] }.should raise_error
+          expect { Params.init ['--tmp7float2=9'] }.to_not raise_error
+          expect { Params.init ['--tmp7float2=3.4'] }.to_not raise_error
+          expect { Params.init ['--tmp7float2=ff'] }.to raise_error
+          expect { Params.init ['--tmp7float2=true'] }.to raise_error
+          expect { Params.init ['--tmp7float2=false'] }.to raise_error
 
           # from TrueClass to other types.
           Params.boolean('tmp8true2', true, 'tmp8 def')
-          expect { Params.init ['--tmp8true2=9'] }.should raise_error
-          expect { Params.init ['--tmp8true2=3.4'] }.should raise_error
-          expect { Params.init ['--tmp8true2=ff'] }.should raise_error
-          expect { Params.init ['--tmp8true2=true'] }.should_not raise_error
-          expect { Params.init ['--tmp8true2=false'] }.should_not raise_error
+          expect { Params.init ['--tmp8true2=9'] }.to raise_error
+          expect { Params.init ['--tmp8true2=3.4'] }.to raise_error
+          expect { Params.init ['--tmp8true2=ff'] }.to raise_error
+          expect { Params.init ['--tmp8true2=true'] }.to_not raise_error
+          expect { Params.init ['--tmp8true2=false'] }.to_not raise_error
 
           # from FalseClass to other types.
           Params.boolean('tmp9false2', false, 'tmp9 def')
-          expect { Params.init ['--tmp9false2=9'] }.should raise_error
-          expect { Params.init ['--tmp9false2=3.4'] }.should raise_error
-          expect { Params.init ['--tmp9false2=ff'] }.should raise_error
-          expect { Params.init ['--tmp9false2=true'] }.should_not raise_error
-          expect { Params.init ['--tmp9false2=false'] }.should_not raise_error
+          expect { Params.init ['--tmp9false2=9'] }.to raise_error
+          expect { Params.init ['--tmp9false2=3.4'] }.to raise_error
+          expect { Params.init ['--tmp9false2=ff'] }.to raise_error
+          expect { Params.init ['--tmp9false2=true'] }.to_not raise_error
+          expect { Params.init ['--tmp9false2=false'] }.to_not raise_error
         end
 
         it 'should override defined values with command line values' do

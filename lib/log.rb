@@ -28,9 +28,9 @@ module BBFS
       'Else, init should be called. ' + \
       'Else Init will be called automatically on the first attempt to log.'
     Params.integer 'log_debug_level', 0 , 'Log level.'
-    Params.integer 'log_param_number_of_mega_bytes_stored_before_flush', 1 , \
+    Params.integer 'log_param_number_of_mega_bytes_stored_before_flush', 0, \
       'log param. Number of mega bytes stored before they are flushed.'
-    Params.float 'log_param_max_elapsed_time_in_seconds_from_last_flush',1, \
+    Params.float 'log_param_max_elapsed_time_in_seconds_from_last_flush', 0, \
       'log param. Max elapsed time in seconds from last flush'
     Params.boolean 'log_write_to_file', true , \
       'If true then the logger will write the messages to a file.'
