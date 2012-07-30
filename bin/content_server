@@ -5,12 +5,19 @@
 # Each unique content is backed up to the remote (backup) server.
 
 begin
-  require 'content_server'
+  require 'yaml'
   require 'params'
+  require 'run_in_background'
+  require 'content_server'
 rescue LoadError
   require 'rubygems'
+  require 'yaml'
+  require 'params'
+  require 'run_in_background'
   require 'content_server'
 end
+include BBFS
 
-BBFS::Params.init ARGV
-BBFS::ContentServer.run
+Params.init ARGV
+
+RunInBackground.run { ContentServer.run }

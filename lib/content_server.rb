@@ -21,7 +21,7 @@ module BBFS
                      'Listening port for backup server content data.')
     Params.string('backup_username', nil, 'Backup server username.')
     Params.string('backup_password', nil, 'Backup server password.')
-    Params.string('backup_destination_folder', '',
+    Params.string('backup_destination_folder', File.expand_path(Dir.pwd),
                      'Backup server destination folder, default is the relative local folder.')
     Params.string('content_data_path', File.expand_path('~/.bbfs/var/content.data'),
                      'ContentData file path.')
@@ -185,3 +185,4 @@ module BBFS
 
   end # module ContentServer
 end # module BBFS
+

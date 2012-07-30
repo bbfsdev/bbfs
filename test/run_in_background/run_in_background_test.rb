@@ -21,7 +21,7 @@ module BBFS
       @good_daemonize = "good_daemonize_test"
       @good_win32daemon = "good_win32daemon_test"
       @bad_daemon = "bad_daemon_test"
-      @binary = File.join(File.dirname(File.expand_path(__FILE__)), "test_app")
+      @binary = File.join(File.dirname(File.expand_path(__FILE__)), 'test_app')
       @binary.tr!('/','\\') if OS == :WINDOWS
       File.chmod(0755, @binary) if OS == :LINUX && !File.executable?(@binary)
       @absent_binary = File.join(File.dirname(File.expand_path(__FILE__)), "test_app_absent")
@@ -62,7 +62,15 @@ module BBFS
       Process.waitpid pid
       # checking that it indeed was daemonized
       # e.i. process was killed and code rerun in background
-      sleep 2
+      # it takes time to the OS to remove process, so using a timeout here
+      0.upto(RunInBackground::TIMEOUT) do
+        begin
+          Process.kill(0, pid)
+        rescue Errno::ESRCH
+          break
+        end
+        sleep 1
+      end
       assert_raise(Errno::ESRCH) { Process.kill(0, pid) }
       assert_equal(true, RunInBackground.exists?(@good_daemonize))
       assert_equal(true, RunInBackground.running?(@good_daemonize))
@@ -97,11 +105,10 @@ module BBFS
       assert_nothing_raised { RunInBackground.delete(@good_daemon) }
       assert_equal(false, RunInBackground.exists?(@good_daemon))
 
-      if RunInBackground.exists?(@good_daemonize)
-        assert_nothing_raised { RunInBackground.delete(@good_daemonize) }
-        assert_equal(false, RunInBackground.exists?(@good_daemonize))
-      end
+      assert_nothing_raised { RunInBackground.delete(@good_daemonize) }
+      assert_equal(false, RunInBackground.exists?(@good_daemonize))
 
+      # actuall only for Windows platform
       if RunInBackground.exists?(@good_win32daemon)
         assert_nothing_raised { RunInBackground.delete(@good_win32daemon) }
         assert_equal(false, RunInBackground.exists?(@good_win32daemon))

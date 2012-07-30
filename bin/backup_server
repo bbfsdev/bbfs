@@ -5,13 +5,22 @@
 # A remote server copies new/changed files in the backup server. The backup server
 # index those new files too and send the content data (their SHA1 to the original server).
 
+# NOTE this file mainly is a copy of content_server
+
 begin
-  require 'content_server'
+  require 'yaml'
   require 'params'
+  require 'run_in_background'
+  require 'content_server'
 rescue LoadError
   require 'rubygems'
+  require 'yaml'
+  require 'params'
+  require 'run_in_background'
   require 'content_server'
 end
+include BBFS
 
-BBFS::Params.init ARGV
-BBFS::ContentServer.run_backup_server
+Params.init ARGV
+
+RunInBackground.run { ContentServer.run_backup_server }
