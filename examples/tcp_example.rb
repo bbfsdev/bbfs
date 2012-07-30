@@ -5,10 +5,10 @@ require 'log'
 require 'networking/tcp'
 require 'params'
 
-BBFS::Params.init ARGV
-
 BBFS::Params['log_write_to_console'] = true
 BBFS::Params['log_debug_level'] = 0
+
+BBFS::Params.init ARGV
 
 BBFS::Log.init
 
