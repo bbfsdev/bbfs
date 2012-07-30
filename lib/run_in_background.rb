@@ -42,8 +42,10 @@ module BBFS
     Params.string('bg_command', nil, 'Server\'s command. Commands are: start, delete and nil for' \
                   ' not running in background.')
     Params.string('service_name', File.basename($0), 'Background service name.')
-    Params.integer('timeout', 20, 'Maximal time in seconds to wait until OS will finish a ' \
-                   'requested operation, e.g. daemon start/delete')
+
+    # Maximal time in seconds to wait until OS will finish a requested operation,
+    # e.g. daemon start/delete.
+    TIMEOUT = 20
 
     if RUBY_PLATFORM =~ /linux/ or RUBY_PLATFORM =~ /darwin/
       begin
@@ -134,7 +136,7 @@ module BBFS
         start_linux binary_path, binary_args, name, opts_specific
       end
 
-      0.upto(Params['timeout']) do
+      0.upto(TIMEOUT) do
         if exists?(name) && running?(name)
           puts "daemon/service #{name} started\n"
           Log.info("daemon/service #{name} started")
@@ -236,7 +238,7 @@ module BBFS
       else  # OS == :LINUX
         raise NotImplementedError.new("Unsupported method on #{OS}")
       end
-      0.upto(Params['timeout']) do
+      0.upto(TIMEOUT) do
         if exists?(name) && running?(name)
           puts "windows service #{name} started\n"
           Log.info("windows service #{name} started")
@@ -314,7 +316,7 @@ module BBFS
         #end
         #Process.waitpid pid
       end
-      0.upto(Params['timeout']) do
+      0.upto(TIMEOUT) do
         unless exists? name
           puts "daemon/service #{name} deleted\n"
           Log.info("daemon/service #{name} deleted")
