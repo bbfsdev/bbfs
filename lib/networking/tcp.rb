@@ -142,7 +142,6 @@ module BBFS
               Log.warning('Socket not good, breaking client reading thread.')
               break
             end
-            Log.debug1("socket:#{@tcp_socket.string}")
             status, obj = Networking.read_from_stream(@tcp_socket)
             Log.debug3("Client returned from read: #{status}, #{obj}")
             # Handle case when socket is closed in middle.

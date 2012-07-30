@@ -22,5 +22,6 @@ end
 include BBFS
 
 Params.init ARGV
+Log.init
 
 RunInBackground.run { ContentServer.run_backup_server }
