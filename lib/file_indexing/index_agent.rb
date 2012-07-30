@@ -1,10 +1,11 @@
 require 'digest/sha1'
-require 'logger'
 require 'pp'
+require 'set'
 require 'time'
 
 require 'content_data'
 require 'file_indexing/indexer_patterns'
+require 'log'
 
 module BBFS
   module FileIndexing
@@ -14,53 +15,56 @@ module BBFS
 ####################
 
     class IndexAgent
-      attr_reader :indexed_content
+      attr_reader :indexed_content, :failed_files
 
+      # Why are those lines needed?
       LOCALTZ = Time.now.zone
       ENV['TZ'] = 'UTC'
 
       def initialize
-        init_log()
-        init_db()
-      end
-
-      def init_db()
         @indexed_content = ContentData::ContentData.new
-      end
-
-      def init_log()
-        @log = Logger.new(STDERR)
-        @log.level = Logger::WARN
-        @log.datetime_format = "%Y-%m-%d %H:%M:%S"
-      end
-
-      def set_log(log_path, log_level)
-        @log = Logger.new(log_path) if log_path
-        @log.level = log_level
+        @failed_files = Set.new
       end
 
       # Calculate file checksum (SHA1)
       def self.get_checksum(filename)
         digest = Digest::SHA1.new
         begin
-          file = File.new(filename)
-          while buffer = file.read(65536)
-            digest << buffer
-          end
-          #@log.info { digest.hexdigest.downcase + ' ' + filename }
+          File.open(filename, 'rb') { |f|
+            while buffer = f.read(65536) do
+              digest << buffer
+            end
+          }
+          Log.debug1("#{filename} sha1 #{digest.hexdigest.downcase}")
           digest.hexdigest.downcase
         rescue Errno::EACCES, Errno::ETXTBSY => exp
-          @log.warn { "#{exp.message}" }
+          Log.warning("#{exp.message}")
           false
-        ensure
-          file.close if file != nil
         end
+      end
+
+      def IndexAgent.get_content_checksum(content)
+        # Calculate checksum.
+        digest = Digest::SHA1.new
+        digest << content
+        digest.hexdigest.downcase
       end
 
       # get all files
       # satisfying the pattern
       def collect(pattern)
         Dir.glob(pattern.to_s)
+      end
+
+      # TODO(kolman): Replace this with File.lstat(file).mtime when new version of Ruby comes out.
+      # http://bugs.ruby-lang.org/issues/6385
+      def get_correct_mtime(file)
+        begin
+        File.open(file, 'r') { |f| f.mtime }
+        rescue Errno::EACCES => e
+          Log.warning("Could not open file #{file} to get mtime. #{e}")
+          return 0
+        end
       end
 
       # index device according to the pattern
@@ -112,13 +116,14 @@ module BBFS
         # create and add contents and instances
         files.each do |file|
           file_stats = File.lstat(file)
+          file_mtime = get_correct_mtime(file)
 
           # index only files
-          next if (file_stats.directory?)
+          next if file_stats.directory?
 
           # keep only files with names in UTF-8
           unless file.force_encoding("UTF-8").valid_encoding?
-            @log.warn { "Non-UTF8 file name \"#{file}\"" }
+            Log.warning("Non UTF-8 file name \"#{file}\", skipping.")
             next
           end
 
@@ -126,24 +131,30 @@ module BBFS
           # from further processing (save checksum calculation)
           if otherDB_table.has_key?(file)
             instance = otherDB_table[file]
-            if instance.size == file_stats.size and instance.modification_time == File.open(file, 'r') { |f| f.mtime }
+            if instance.size == file_stats.size and instance.modification_time == file_mtime
               @indexed_content.add_content(otherDB_contents[instance.checksum])
               @indexed_content.add_instance(instance)
               next
+            else
+              Log.warning("File (#{file}) size or modification file is different.")
             end
           end
 
           # calculate a checksum
           unless (checksum = self.class.get_checksum(file))
-            @log.warn { "Cheksum failure: " + file }
+            Log.warning("Cheksum failure: " + file)
+            @failed_files.add(file)
             next
           end
 
-          @indexed_content.add_content ContentData::Content.new(checksum, file_stats.size, Time.now.utc) \
-              unless @indexed_content.content_exists(checksum)
+          if !@indexed_content.content_exists(checksum)
+            @indexed_content.add_content ContentData::Content.new(checksum, file_stats.size,
+                                                                  Time.now.utc)
+          end
 
-          instance = ContentData::ContentInstance.new(checksum, file_stats.size, server_name, file_stats.dev.to_s,
-                                                          File.expand_path(file), File.open(file, 'r') { |f| f.mtime })
+          instance = ContentData::ContentInstance.new(
+              checksum, file_stats.size, server_name, file_stats.dev.to_s,
+              File.expand_path(file), file_mtime)
           @indexed_content.add_instance(instance)
         end
       end

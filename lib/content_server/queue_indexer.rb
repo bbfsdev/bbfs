@@ -25,16 +25,21 @@ module BBFS
             event = @input_queue.pop
             Log.info "event: #{event}"
             # index files and add to copy queue
-            if event[0] == FileMonitoring::FileStatEnum::CHANGED || event[0] == FileMonitoring::FileStatEnum::NEW
+            if event[0] == FileMonitoring::FileStatEnum::STABLE
               Log.info "Indexing content #{event[1]}."
               index_agent = FileIndexing::IndexAgent.new
               indexer_patterns = FileIndexing::IndexerPatterns.new
               indexer_patterns.add_pattern(event[1])
               index_agent.index(indexer_patterns, server_content_data)
+
+              Log.info("Failed files: #{index_agent.failed_files.to_a.join(',')}.") \
+                       if !index_agent.failed_files.empty?
+
               server_content_data.merge index_agent.indexed_content
               # TODO(kolman): Don't write to file each change?
               Log.info "Writing server content data to #{@content_data_path}."
               server_content_data.to_file(@content_data_path)
+
               Log.info 'Adding server content data to queue.'
               @output_queue.push(server_content_data)
             end

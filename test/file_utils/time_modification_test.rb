@@ -90,7 +90,7 @@ module BBFS
           assert_equal(MOD_TIME_CONTENTS, file_mtime)
 
           # !!! This fails on windows with different timezone
-          #assert_equal(MOD_TIME_CONTENTS, file_stats.mtime)
+          # assert_equal(MOD_TIME_CONTENTS, file_stats.mtime)
         end
 
         def test_modify
