@@ -2,7 +2,7 @@
 # Wrapper script, that can receive commands from Windows Service Control and run user script,
 # provided as it's argument.
 # NOTE This wrapper script doesn't intended to be run from command line,
-# rather be started and conrolled by Windows Service Control. 
+# rather be started and controlled by Windows Service Control.
 # For more information see documentations and examples of win32-daemon library.
 # usage: $0 <abs path to Ruby> <abs path to script> [blank-separated list of script's arguments]
 # example: C:\ruby.exe c:\dev\daemon_wrapper c:\ruby.exe c:\dev\test_app 1000 -dbg=true
@@ -26,15 +26,12 @@ BBFS::Params['log_write_to_console'] = false
 # On WindowsXP log can be found under:
 # C:/Documents and Settings/NetworkService/.bbfs/daemon_wrapper_<pid>.log
 BBFS::Params['log_file_name'] = File.join(Dir.home, '.bbfs', "#{File.basename(__FILE__)}_#{Process.pid}.log")
-BBFS::Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] = 1
-# NOTE change it to receive more debug info
-BBFS::Params['log_debug_level'] = 1
 BBFS::Log.init
 
 class WrapperDaemon < Daemon
   def service_main
     BBFS::Log.info "Wrapper starts: #{ARGV.join(' ')}"
-    @pid = Process.spawn ARGV.join(" ")
+    @pid = Process.spawn ARGV.join(' ')
     BBFS::Log.debug1 "Wrapper inner app pid: #{@pid}"
 
     while running?
@@ -43,7 +40,7 @@ class WrapperDaemon < Daemon
         Process.kill 0, @pid  
       rescue Errno::ESRCH
         # if inner application exited then stop the service
-        BBFS::Log.debug1 "inner app no more running"
+        BBFS::Log.debug1 'Inner app no more running.'
         service_stop
       end
       sleep 0.5

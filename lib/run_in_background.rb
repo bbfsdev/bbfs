@@ -1,6 +1,9 @@
 # Author: Genady Petelko (nukegluk@gmail.com)
 # Description: The file contains implementation of 'RunInBackground' module.
 
+require 'params'
+require 'log'
+
 module BBFS
   # This library provides a basic cross-platform functionality to run arbitrary ruby scripts
   # in background and control them. <br>Supported platforms: Windows, Linux, Mac
@@ -36,16 +39,11 @@ module BBFS
   #    <br>One of the suggested methods can be before starting a daemon to check with <tt>exists?</tt>
   #    method whether daemon already exists and with <tt>running?</tt> method does it running.
   module RunInBackground
-    require 'params'
-    require 'log'
-
     Params.string('bg_command', nil, 'Server\'s command. Commands are: start, delete and nil for' \
                   ' not running in background.')
-    Params.string('service_name', Log.executable_name, 'Background service name.')
-
-    # maximal time to wait untill OS will finish a requested operation
-    # e.g. daemon start/delete
-    TIMEOUT = 20
+    Params.string('service_name', File.basename($0), 'Background service name.')
+    Params.integer('timeout', 20, 'Maximal time in seconds to wait until OS will finish a ' \
+                   'requested operation, e.g. daemon start/delete')
 
     if RUBY_PLATFORM =~ /linux/ or RUBY_PLATFORM =~ /darwin/
       begin
@@ -58,25 +56,23 @@ module BBFS
       end
 
       OS = :LINUX
-      Params.string 'pid_dir', File.expand_path(File.join(Dir.home, '.bbfs', 'pids')),
+      Params.string('pid_dir', File.expand_path(File.join(Dir.home, '.bbfs', 'pids')),
         'Absolute path to directory, where pid files will be stored. ' + \
         'User should have a read/write permissions to this location. ' + \
         'If absent then it will be created. ' + \
         'It\'s actual only for Linux/Mac. ' + \
         'For more information see documentation on daemons module. ' +\
-        'Default location is: $HOME/.bbfs/pids'
+        'Default location is: $HOME/.bbfs/pids')
 
-      # directory used to store pid files
-      PID_DIR = File.expand_path(Params['pid_dir'])
-      if Dir.exists? PID_DIR
-        unless File.directory? PID_DIR
-         raise IOError.new("pid directory #{PID_DIR} should be a directory")
+      if Dir.exists? Params['pid_dir']
+        unless File.directory? Params['pid_dir']
+         raise IOError.new("pid directory #{Params['pid_dir']} should be a directory")
         end
-        unless File.readable?(PID_DIR) && File.writable?(PID_DIR)
-          raise IOError.new("you should have read/write permissions to pid dir: #{PID_DIR}")
+        unless File.readable?(Params['pid_dir']) && File.writable?(Params['pid_dir'])
+          raise IOError.new("you should have read/write permissions to pid dir: #{Params['pid_dir']}")
         end
       else
-        ::FileUtils.mkdir_p PID_DIR
+        ::FileUtils.mkdir_p Params['pid_dir']
       end
     elsif RUBY_PLATFORM =~ /mingw/ or RUBY_PLATFORM =~ /ms/ or RUBY_PLATFORM =~ /win/
       require 'rbconfig'
@@ -92,7 +88,7 @@ module BBFS
 
       OS = :WINDOWS
       # Get ruby interpreter path. Need it to run ruby binary.
-      # <br>TODO check whether this code works with Windows Ruby Version Managment (e.g. Pik)
+      # <br>TODO check whether this code works with Windows Ruby Version Management (e.g. Pik)
       RUBY_INTERPRETER_PATH = File.join(Config::CONFIG["bindir"],
                                         Config::CONFIG["RUBY_INSTALL_NAME"] +
                                             Config::CONFIG["EXEEXT"]).tr!('/','\\')
@@ -120,12 +116,12 @@ module BBFS
     # ==== Example (LINUX)
     # <tt>  RunInBackground.start "/home/user/test_app", [], "daemon_test", {:monitor => true}</tt>
     def RunInBackground.start binary_path, binary_args, name, opts_specific = {}
-      Log.debug1 "executable that should be run as daemon/service: #{binary_path}"
-      Log.debug1 "arguments: #{binary_args}"
-      Log.debug1 "specific oprions: #{opts_specific}"
+      Log.debug1("executable that should be run as daemon/service: #{binary_path}")
+      Log.debug1("arguments: #{binary_args}")
+      Log.debug1("specific oprions: #{opts_specific}")
 
       if binary_path == nil or binary_args == nil or name == nil
-        Log.error "binary path, binary args, name arguments must be defined"
+        Log.error("binary path, binary args, name arguments must be defined")
         raise ArgumentError.new("binary path, binary args, name arguments must be defined")
       end
 
@@ -138,18 +134,18 @@ module BBFS
         start_linux binary_path, binary_args, name, opts_specific
       end
 
-      0.upto(TIMEOUT) do
+      0.upto(Params['timeout']) do
         if exists?(name) && running?(name)
           puts "daemon/service #{name} started\n"
-          Log.info "daemon/service #{name} started"
+          Log.info("daemon/service #{name} started")
           return
         end
         sleep 1
       end
       # if got here then something gone wrong and daemon/service wasn't started in timely manner
       delete name if exists? name
-      Log.error "daemon/service #{name} wasn't started in timely manner"
-      sleep Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5
+      Log.error("daemon/service #{name} wasn't started in timely manner")
+      sleep(Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5)
       raise "daemon/service #{name} wasn't started in timely manner"
     end
 
@@ -165,11 +161,11 @@ module BBFS
       opts[:app_name] = name
       opts[:ARGV] = ['start']
       (opts[:ARGV] << '--').concat(binary_args) if !binary_args.nil? && binary_args.size > 0
-      opts[:dir] = PID_DIR
+      opts[:dir] = Params['pid_dir']
       opts[:dir_mode] = :normal
 
-      Log.debug1 "binary path: #{binary_path}"
-      Log.debug1 "opts: #{opts}"
+      Log.debug1("binary path: #{binary_path}")
+      Log.debug1("opts: #{opts}")
 
       # Current process, that creates daemon, will transfer control to the Daemons library.
       # So to continue working with current process, daemon creation initiated from separate process.
@@ -204,7 +200,7 @@ module BBFS
       # NOTE most of examples uses this option as defined beneath. The default is nil.
       #opts[:load_order_group] = 'Network' unless opts.has_key? :load_order_group
 
-      Log.debug1 "create service options: #{opts}"
+      Log.debug1("create service options: #{opts}")
       Service.create(opts)
       begin
         Service.start(opts[:service_name])
@@ -219,6 +215,7 @@ module BBFS
     # <br>It suggested to remove from ARGV any command line arguments that point
     # to run script in background, <br>otherwise an unexpexted result can be received
     def RunInBackground.start! name, opts = {}
+      # $0 is the executable name.
       start(File.expand_path($0), ARGV, name, opts)
       sleep Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5
       exit!
@@ -230,27 +227,27 @@ module BBFS
     # <br>For more information see Win32::Daemon help and examples.
     # <br>No need  to wrap such a script.
     def RunInBackground.start_win32service binary_path, binary_args, name, opts_specific = {}
-      Log.debug1 "executable that should be run as service: #{binary_path}"
-      Log.debug1 "arguments: #{binary_args}"
-      Log.debug1 "specific oprions: #{opts_specific}"
+      Log.debug1("executable that should be run as service: #{binary_path}")
+      Log.debug1("arguments: #{binary_args}")
+      Log.debug1("specific options: #{opts_specific}")
 
       if OS == :WINDOWS
         start_windows binary_path, binary_args, name, opts_specific
       else  # OS == :LINUX
         raise NotImplementedError.new("Unsupported method on #{OS}")
       end
-      0.upto(TIMEOUT) do
+      0.upto(Params['timeout']) do
         if exists?(name) && running?(name)
           puts "windows service #{name} started\n"
-          Log.info "windows service #{name} started"
+          Log.info("windows service #{name} started")
           return
         end
         sleep 1
       end
       # if got here then something gone wrong and daemon/service wasn't started in timely manner
       delete name if exists? name
-      Log.error "daemon/service #{name} wasn't started in timely manner"
-      sleep Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5
+      Log.error("daemon/service #{name} wasn't started in timely manner")
+      sleep(Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5)
       raise "daemon/service #{name} wasn't started in timely manner"
     end
 
@@ -281,7 +278,7 @@ module BBFS
         opts = {:app_name => name,
                 :ARGV => ['stop'],
                 :dir_mode => :normal,
-                :dir => PID_DIR
+                :dir => Params['pid_dir']
                }
         # Current process, that creates daemon, will transfer control to the Daemons library.
         # So to continue working with current process, daemon creation initiated from separate process.
@@ -307,7 +304,7 @@ module BBFS
         opts = {:app_name => name,
                 :ARGV => ['zap'],
                 :dir_mode => :normal,
-                :dir => PID_DIR
+                :dir => Params['pid_dir']
                }
         # Current process, that creates daemon, will transfer control to the Daemons library.
         # So to continue working with current process, daemon creation initiated from separate process.
@@ -317,17 +314,17 @@ module BBFS
         #end
         #Process.waitpid pid
       end
-      0.upto(TIMEOUT) do
+      0.upto(Params['timeout']) do
         unless exists? name
           puts "daemon/service #{name} deleted\n"
-          Log.info "daemon/service #{name} deleted"
+          Log.info("daemon/service #{name} deleted")
           return
         end
         sleep 1
       end
       # if got here then something gone wrong and daemon/service wasn't deleted in timely manner
-      Log.error "daemon/service #{name} wasn't deleted in timely manner"
-      sleep Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5
+      Log.error("daemon/service #{name} wasn't deleted in timely manner")
+      sleep(Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5)
       raise "daemon/service #{name} wasn't deleted in timely manner"
     end
 
@@ -337,7 +334,7 @@ module BBFS
       elsif OS == :WINDOWS
         Service.exists? name
       else  # OS == :LINUX
-        pid_files = Daemons::PidFile.find_files(PID_DIR, name)
+        pid_files = Daemons::PidFile.find_files(Params['pid_dir'], name)
         pid_files != nil && pid_files.size > 0
       end
     end
@@ -360,7 +357,7 @@ module BBFS
       path
     end
 
-    # Returns load path as it provided in command line
+    # Returns load path as it provided in command line.
     def RunInBackground.get_load_path
       load_path = Array.new
       $:.each do |location|
@@ -369,22 +366,26 @@ module BBFS
       load_path.join ' '
     end
 
-    # prepare ARGV so it can be provided as a command line arguments
+    # Prepare ARGV so it can be provided as a command line arguments.
+    # Remove bg_command from ARGV to prevent infinite recursion.
     def RunInBackground.prepare_argv
       new_argv = Array.new
       ARGV.each do |arg|
+        # For each argument try splitting to 'name'='value'
         arg_arr = arg.split '='
+        # If no '=' is argument, just copy paste.
         if arg_arr.size == 1
           arg = "\"#{arg}\"" if arg =~ / /
           new_argv << arg
+        # If it is a 'name'='value' argument add "" so the value can be passed as argument again.
         elsif arg_arr.size == 2
-          # Skip bg_command flag!
-          if '--bg_command' != arg_arr[0]
+          # Skip bg_command flag (remove infinite recursion)!
+          if arg_arr[0] !~ 'bg_command'
             arg_arr[1] = "\"#{arg_arr[1]}\"" if arg_arr[1] =~ / /
             new_argv << arg_arr.join('=')
           end
         else
-          Log::warning "ARGV argument #{arg} wasn't processed"
+          Log.warning("ARGV argument #{arg} wasn't processed")
           new_argv << arg
         end
       end
@@ -397,7 +398,7 @@ module BBFS
         when nil
           yield b
         when 'start'
-          # to prevent service enter loop cause of background parameter
+          # To prevent service enter loop cause of background parameter
           # all options that points to run in background must be disabled
           # (for more information see documentation for RunInBackground::start!)
           Params['bg_command'] = nil
@@ -406,7 +407,7 @@ module BBFS
           begin
             RunInBackground.start! Params['service_name']
           rescue Exception => e
-            Log.error "Start service command failed: #{e.message}"
+            Log.error("Start service command failed: #{e.message}")
             raise
           end
         when 'delete'
@@ -415,12 +416,12 @@ module BBFS
           else
             msg = "Can't delete. Service #{Params['service_name']} already deleted"
             puts msg
-            Log.warning msg
+            Log.warning(msg)
           end
         else
           msg = "Unsupported command #{Params['bg_command']}. Supported commands are: start, delete"
           puts msg
-          Log.error msg
+          Log.error(msg)
       end
     end
 
