@@ -71,6 +71,8 @@ module BBFS
       #    be made for Float parameters which are set with integer values.
       # 4. Check will be skipped for nil value.
       def value_type_check value
+        # Always allow nil values.
+        return value if value.nil?
         case( @type )
           when 'Integer' then
             if not @value.nil?
