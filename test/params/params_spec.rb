@@ -8,7 +8,13 @@ require_relative '../../lib/params.rb'
 
 module BBFS
   module Params
+    # make private methods or Params public for testing capability.
+    public_class_method :print_global_parameters, :parse_command_line_arguments, \
+                        :raise_error_if_param_exists, :raise_error_if_param_does_not_exist, \
+                        :read_yml_params, :override_param
+
     module Spec
+
       describe 'Params::parameter' do
 
         it 'should define a new parameters' do
