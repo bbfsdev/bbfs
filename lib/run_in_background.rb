@@ -118,7 +118,7 @@ module BBFS
     def RunInBackground.start binary_path, binary_args, name, opts_specific = {}
       Log.debug1("executable that should be run as daemon/service: #{binary_path}")
       Log.debug1("arguments: #{binary_args}")
-      Log.debug1("specific oprions: #{opts_specific}")
+      Log.debug1("specific options: #{opts_specific}")
 
       if binary_path == nil or binary_args == nil or name == nil
         Log.error("binary path, binary args, name arguments must be defined")
@@ -380,7 +380,7 @@ module BBFS
         # If it is a 'name'='value' argument add "" so the value can be passed as argument again.
         elsif arg_arr.size == 2
           # Skip bg_command flag (remove infinite recursion)!
-          if arg_arr[0] !~ 'bg_command'
+          if arg_arr[0] !~ /bg_command/
             arg_arr[1] = "\"#{arg_arr[1]}\"" if arg_arr[1] =~ / /
             new_argv << arg_arr.join('=')
           end
