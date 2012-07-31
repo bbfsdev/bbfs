@@ -295,16 +295,20 @@ module BBFS
       @init_debug_messages << '---------------------------------'
     end
 
+    #Auxiliary method to retrieve the executable name
+    def Params.executable_name
+      /([a-zA-Z0-9\-_\.]+):\d+/ =~ caller[caller.size-1]
+      return $1
+    end
     #define default params:
-    # 1. configuration file. Use $0 as the executable name
-    Params.string('conf_file',  File.expand_path("~/.bbfs/conf/#{$0}.conf"), 'Default configuration file.')
+    # 1. configuration file
+    Params.string('conf_file',  File.expand_path("~/.bbfs/conf/#{executable_name}.conf"), 'Default configuration file.')
     # 2. Print params to stdout
-    Params.string('print_params_to_stdout', false, 'print_params_to_stdout or not during Params.init')
+    Params.boolean('print_params_to_stdout', false, 'print_params_to_stdout or not during Params.init')
 
     private_class_method :print_global_parameters, :parse_command_line_arguments, \
                          :raise_error_if_param_exists, :raise_error_if_param_does_not_exist, \
-                         :read_yml_params, :override_param
-
+                         :read_yml_params, :override_param, :executable_name
     end
 end
 
