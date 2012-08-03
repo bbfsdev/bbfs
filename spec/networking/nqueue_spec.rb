@@ -3,7 +3,7 @@ require 'rspec'
 require 'socket'
 require 'stringio'
 
-require_relative '../../lib/networking/tcp'
+require_relative '../../lib/networking/nqueue'
 
 # Uncomment to debug spec.
 #BBFS::Params.log_write_to_console = 'true'
@@ -14,11 +14,7 @@ module BBFS
   module Networking
     module Spec
 
-      describe 'PQueueSender' do
-#        pq_receiver = PQueueReceiver.new(['a', 'b'], 5555)
-      end
-
-      describe 'PQueueReceiver' do
+      describe 'NQueue' do
       end
     end
   end
