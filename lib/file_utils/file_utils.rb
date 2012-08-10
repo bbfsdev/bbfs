@@ -1,5 +1,9 @@
-# This file is the basic file manipulation tool for the distributed system.
-# All the basic commands should reside here.
+# Author:
+# originator: Kolman Vornovizky (kolmanv@gmail.com)
+# update: Alexey Nemytov (alexeyn66@gmail.com) 31/07/2012
+# This file is the consist utility functionality for BBFS
+# Such as automatic file generation, symlink, etc.
+# Run from bbfs> ruby -Ilib bin/file_utils --command=generate_files --log_write_to_console=true --log_debug_level=3
 
 require 'content_data'
 require 'file_indexing'
@@ -11,186 +15,163 @@ require 'params'
 
 module BBFS
   module FileUtils
-
+    Params.string 'command', nil ,'path'
+    Params.string 'ref_cd', nil ,'reference path'
+    Params.string 'base_cd', nil ,'base path'
+    Params.string 'dest', nil ,'destination path'
+    Params.string 'dest_server', nil ,'server name'
+    Params.string 'patterns', nil ,'patterns path'
+    Params.string 'cd', nil ,'path'
+    Params.string 'cd_a', nil ,'a path'
+    Params.string 'cd_b', nil ,'b path'
+    Params.string 'cd_out', nil ,'output path'
+    Params.string 'cd_in', nil ,'input path'
+    Params.string 'exist_cd', nil, 'exist_path'
+    #Params.string 'config_file', 'path' ,'configuration file path'
     class FileUtils
-      def initialize(arguments)
-        if arguments["command"] == "mksymlink"
-          begin
-            Log.info "--ref_cd is not set"
+      def FileUtils.run
+        if Params['command'] == 'mksymlink'
+          if Params['ref_cd'].nil?
+            Log.error ("--ref_cd is not set")
             return
-          end unless not arguments["ref_cd"].nil?
+          end
           ref_cd = ContentData.new()
-          ref_cd.from_file(arguments["ref_cd"])
-          begin
-            Log.info "Error loading content data ref_cd=%s" % arguments["ref_cd"]
+          ref_cd.from_file(Params['ref_cd'])
+          if ref_cd.nil?
+            Log.error ("Error loading content data ref_cd=%s" % Params['ref_cd'])
             return
-          end unless not ref_cd.nil?
+          end
 
-          begin
-            Log.info "--base_cd is not set"
+          if Params['base_cd'].nil?
+            Log.error ("--base_cd is not set")
             return
-          end unless not arguments["base_cd"].nil?
+          end
           base_cd = ContentData.new()
-          base_cd.from_file(arguments["base_cd"])
-          begin
-            Log.info "Error loading content data base_cd=%s" % arguments["base_cd"]
+          base_cd.from_file(Params['base_cd'])
+          if base_cd.nil?
+            Log.error ("Error loading content data base_cd=%s" % Params['base_cd'])
             return
-          end unless not base_cd.nil?
+          end
 
-          begin
-            Log.info "--dest is not set"
+          if Params['dest'].nil?
+            Log.error ("--dest is not set")
             return
-          end unless not arguments["dest"].nil?
+          end
 
           not_found = nil
           begin
-            not_found = FileUtil.mksymlink(ref_cd, base_cd, arguments["dest"])
+            not_found = FileUtil.mksymlink(ref_cd, base_cd, Params['dest'])
           rescue NotImplementedError
-            Log.info "symlinks are unimplemented on this machine"
+            Log.error ("symlinks are unimplemented on this machine")
             return nil
           end
           return not_found
-        elsif (arguments["command"] == "merge" or
-            arguments["command"] == "intersect" or
-            arguments["command"] == "minus")
+        elsif (Params['command'] == "merge" or
+            Params['command'] == "intersect" or
+            Params['command'] == "minus")
 
-          begin
-            Log.info "--cd_a is not set"
+          if Params['cd_a'].nil?
+            Log.error ("--cd_a is not set")
             return
-          end unless not arguments["cd_a"].nil?
+          end
           cd_a = ContentData.new()
-          cd_a.from_file(arguments["cd_a"])
-          begin
-            Log.info "Error loading content data cd_a=%s" % arguments["cd_a"]
+          cd_a.from_file(Params['cd_a'])
+          if cd_a.nil?
+            Log.error ("Error loading content data cd_a=%s" % Params['cd_a'])
             return
-          end unless not cd_a.nil?
+          end
 
-          begin
-            Log.info "--cd_b is not set"
+          if Params['cd_b'].nil?
+            Log.error ("--cd_b is not set")
             return
-          end unless not arguments["cd_b"].nil?
+          end
           cd_b = ContentData.new()
-          cd_b.from_file(arguments["cd_b"])
-          begin
-            Log.info "Error loading content data cd_b=%s" % arguments["cd_b"]
+          cd_b.from_file(Params['cd_b'])
+          if cd_b.nil?
+            Log.error ("Error loading content data cd_b=%s" % Params['cd_b'])
             return
-          end unless not cd_b.nil?
+          end
 
-          begin
-            Log.info "--dest is not set"
+          if Params['cd_b'].nil?
+            Log.error ("--dest is not set")
             return
-          end unless not arguments["dest"].nil?
+          end
 
-          output = FileUtil.contet_data_command(arguments["command"], cd_a, cd_b, arguments["dest"])
-          #elsif arguments["command"] == "copy"
-          #  begin
-          #    Log.info "--conf is not set"
-          #    return
-          #  end unless not arguments["conf"].nil?
-          #  conf = Configuration.new(arguments["conf"])
-          #
-          #  begin
-          #    Log.info "Error loading content data conf=%s" % arguments["conf"]
-          #    return
-          #  end unless not conf.nil?
-          #
-          #  begin
-          #    Log.info "--cd is not set"
-          #    return
-          #  end unless not arguments["cd"].nil?
-          #  cd = ContentData.new()
-          #  cd.from_file(arguments["cd"])
-          #  begin
-          #    Log.info "Error loading content data cd=%s" % arguments["cd"]
-          #    return
-          #  end unless not cd.nil?
-          #
-          #  begin
-          #    Log.info "--dest_server is not set"
-          #    return
-          #  end unless not arguments["dest_server"].nil?
-          #  dest_server = arguments["dest_server"]
-          #
-          #  begin
-          #    Log.info "--dest_path is not set"
-          #    return
-          #  end unless not arguments["dest_path"].nil?
-          #  dest_path = arguments["dest_path"]
-          #
-          #  Copy.new(conf, cd, dest_server, dest_path)
-        elsif arguments["command"] == "unify_time"
-          begin
-            Log.info "--cd is not set"
+          output = FileUtil.contet_data_command(Params['command'], cd_a, cd_b, Params['dest'])
+
+        elsif Params['command'] == 'unify_time'
+          if  Params['cd'].nil?
+            Log.error ("--cd is not set")
             return
-          end unless not arguments["cd"].nil?
+          end
           cd = ContentData.new()
-          cd.from_file(arguments["cd"])
-          begin
-            Log.info "Error loading content data cd=%s" % arguments["cd"]
+          cd.from_file(Params['cd'])
+          if cd.nil?
+            Log.error ("Error loading content data cd=%s" % Params['cd'])
             return
-          end unless not cd.nil?
+          end
           output = unify_time(cd)
           # indexer
-        elsif arguments["command"] == "indexer"
-          begin
-            Log.info "--patterns is not set"
+        elsif Params['command'] == 'indexer'
+          if Params['patterns'].nil?
+            Log.error ("--patterns is not set")
             return
-          end unless not arguments["patterns"].nil?
+          end
 
           patterns = BBFS::FileIndexing::IndexerPatterns.new
-          arguments["patterns"].split(':').each { |pattern|
+          Params['patterns'].split(':').each { |pattern|
             Log.info "Pattern: #{pattern}"
             patterns.add_pattern File.expand_path(pattern)
           }
 
           unless patterns.size > 0
-            Log.info "Error loading patterns=%s (empty file)" % arguments["patterns"]
+            Log.error ("Error loading patterns=%s (empty file)" % Params['patterns'])
             return
           end
 
           exist_cd = nil
-          if (arguments.has_key?"exist_cd")
+          if not Params['exist_cd'].nil?
             exist_cd = BBFS::ContentData::ContentData.new()
-            exist_cd.from_file(arguments["exist_cd"])
-            begin
-              Log.info "Error loading content data exist_cd=%s" % arguments["exist_cd"]
+            exist_cd.from_file(Params['exist_cd'])
+            if exist_cd.nil?
+              Log.error ("Error loading content data exist_cd=%s" % Params['exist_cd'])
               return
-            end unless not exist_cd.nil?
+            end
           end
           indexer = BBFS::FileIndexing::IndexAgent.new
           indexer.index(patterns, exist_cd)
           Log.info indexer.indexed_content.to_s
           # crawler
-        elsif arguments["command"] == "crawler"
-          begin
-            Log.info "--conf_file is not set"
+        elsif Params['command'] == 'crawler'
+          if Params['conf_file'].nil?
+            Log.error ("--conf_file is not set")
             return
-          end unless not arguments["conf_file"].nil?
-          begin
-            Log.info "config file doesn't exist conf_file=%s" % arguments["conf_file"]
+          end
+          if not File.exists?(Params['conf_file'])
+            Log.error ("config file doesn't exist conf_file=%s" % Params['conf_file'])
             return
-          end unless not File.exists?(arguments["conf_file"])
+          end
 
-          if arguments["cd_out"].nil?
+          if Params['cd_out'].nil?
             time = Tme.now.utc
-            arguments["cd_out"] = "crawler.out.#{time.strftime('%Y/%m/%d_%H-%M-%S')}"
+            Params['cd_out'] = "crawler.out.#{time.strftime('%Y/%m/%d_%H-%M-%S')}"
           end
-          unless (arguments["cd_in"].nil?)
-            begin
-              Log.info "input data file doesn't exist cd_in=%s" % arguments["cd_in"]
+          unless (Params['cd_in'].nil?)
+            if not File.exists?(Params['conf_file'])
+              Log.error ("input data file doesn't exist cd_in=%s" % Params['cd_in'])
               return
-            end unless not File.exists?(arguments["conf_file"])
+            end
           end
 
-          conf = Configuration.new(arguments["conf_file"])
+          conf = Configuration.new(Params['conf_file'])
           threads = Array.new
           conf.server_conf_vec.each do |server|
-            threads.push(Thread.new { Crawler.new(server, arguments["cd_out"], arguments["cd_in"]) })
+            threads.push(Thread.new { Crawler.new(server, Params['cd_out'], Params['cd_in']) })
           end
 
           threads.each { |a| a.join }
-          join_servers_results(conf.server_conf_vec, arguments["cd_out"])
-        elsif arguments["command"] == "generate_files"
+          join_servers_results(conf.server_conf_vec, Params['cd_out'])
+        elsif Params['command'] == 'generate_files'
           fg = BBFS::FileGenerator::FileGenerator.new()
           fg.run()
         end
@@ -235,7 +216,7 @@ module BBFS
             if (file_mtime == db.instances[instance.global_path].modification_time \
                 and file_size == instance.size \
                 and (file_mtime <=> instance.modification_time) > 0)
-              Log.info "Comparison success."
+              Log.info ("Comparison success.")
               File.utime File.atime(instance.full_path), instance.modification_time, instance.full_path
               file_mtime = File.open(instance.full_path) { |f| f.mtime }
               Log.info "file mtime:#{file_mtime}."
@@ -276,37 +257,9 @@ module BBFS
             warnings << "Warning: base content does not contains:'%s'" % instance.checksum
           end
         }
-        Log.info warnings
+        Log.warning (warnings)
         return not_found
       end
-    end
-
-    COMMANDS = Hash.new
-    COMMANDS["mksymlink"] = "  mksymlink --ref_cd=<path> --base_cd=<path> --dest=<path>"
-    COMMANDS["merge"] = "  merge --cd_a=<path> --cd_b=<path> --dest=<path>"
-    COMMANDS["intersect"] = "  intersect --cd_a=<path> --cd_b=<path> --dest=<path>"
-    COMMANDS["minus"] = "  minus --cd_a=<path> --cd_b=<path> --dest=<path>"
-    COMMANDS["copy"] = "  copy --conf=<path> --cd=<path> --dest_server=<server name> --dest_path=<dir>"
-    COMMANDS["unify_time"] = "  unify_time --cd=<path>"
-    COMMANDS["indexer"] = "  indexer --patterns=<path> [--exist_cd=<path>]"
-    COMMANDS["crawler"] = "  crawler --conf_file=<path> [--cd_out=<path>] [--cd_in=<path>]"
-    COMMANDS["generate_files"] = "  generate_files"
-
-    def self.print_usage
-      Log.info "Usage: fileutil <command> params..."
-      Log.info "Commands:"
-      COMMANDS.each { |name, description|
-        Log.info description
-      }
-    end
-
-    def self.run
-      parsed_arguments = Hash.new
-      begin
-        print_usage
-        return
-      end unless Params::ReadArgs.read_arguments(ARGV, parsed_arguments, COMMANDS)
-      FileUtils.new(parsed_arguments)
     end
 
   end
