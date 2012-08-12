@@ -7,7 +7,7 @@ module BBFS
     def Networking.write_to_stream(stream, obj)
       Log.debug3('Writing to stream.')
       marshal_data = Marshal.dump(obj)
-      Log.info("Writing data size: #{marshal_data.length}")
+      Log.debug1("Writing data size: #{marshal_data.length}")
       data_size = [marshal_data.length].pack("l")
       if data_size.nil? || marshal_data.nil?
         Log.debug3 'Send data size is nil!'
@@ -22,7 +22,7 @@ module BBFS
       Log.debug3('Read from stream.')
       return [false, nil] unless size_of_data = stream.read(4)
       size_of_data = size_of_data.unpack("l")[0]
-      Log.info("Reading data size:#{size_of_data}")
+      Log.debug1("Reading data size:#{size_of_data}")
       data = stream.read(size_of_data)
       unmarshalled_data = Marshal.load(data)
       Log.debug3("unmarshalled_data:#{unmarshalled_data}")
@@ -44,6 +44,7 @@ module BBFS
         @sockets = {}
         @tcp_thread = run_server
         @tcp_thread.abort_on_exception = true
+        @tcp_client_threads = {}
       end
 
       def send_obj(obj, addr_info=nil)
@@ -64,19 +65,22 @@ module BBFS
         return Thread.new do
           Log.debug3('run_server2')
           Socket.tcp_server_loop(@port) do |sock, addr_info|
-            Log.debug3('-----')
-            Log.debug3("tcp_server_loop... #{sock} #{addr_info.inspect}")
-            @sockets[addr_info] = sock
-            @new_clb.call(addr_info) if @new_clb
-            loop do
-              # Blocking read.
-              Log.debug3('read_from_stream')
-              status, obj = Networking.read_from_stream(sock)
-              Log.debug3("Server returned from read: #{status}, #{obj}")
-              @obj_clb.call(addr_info, obj) if @obj_clb && status
-              break unless status
+            @tcp_client_threads[addr_info] = Thread.new do
+              Log.debug3('-----')
+              Log.debug3("tcp_server_loop... #{sock} #{addr_info.inspect}")
+              @sockets[addr_info] = sock
+              @new_clb.call(addr_info) if @new_clb
+              loop do
+                # Blocking read.
+                Log.debug3('read_from_stream')
+                status, obj = Networking.read_from_stream(sock)
+                Log.debug3("Server returned from read: #{status}, #{obj}")
+                @obj_clb.call(addr_info, obj) if @obj_clb && status
+                break unless status
+              end
+              @closed_clb.call(addr_info) if @closed_clb
             end
-            @closed_clb.call(addr_info) if @closed_clb
+            @tcp_client_threads[addr_info].abort_on_exception = true
           end
         end
       end
@@ -97,6 +101,12 @@ module BBFS
           @tcp_thread = start_reading
           @tcp_thread.abort_on_exception = true
         end
+      end
+
+      def addr_info
+        Log.info(@tcp_client.addr.inspect) if @tcp_client
+        return @tcp_client.addr if @tcp_client
+        return '#{host}:port'
       end
 
       def send_obj(obj)
@@ -121,7 +131,7 @@ module BBFS
           Log.warning('Connection refused')
         end
         Log.debug1("Reconnect clb: '#{@reconnected_clb}'")
-        #@reconnected_clb.call if @reconnected_clb && socket_good?
+        @reconnected_clb.call if @reconnected_clb && socket_good?
       end
 
       private
