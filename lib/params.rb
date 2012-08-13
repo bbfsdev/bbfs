@@ -58,6 +58,11 @@ module BBFS
   module Params
 
     @init_debug_messages = []
+    @help_messages = []
+
+    def Params.get_init_messages
+      return @init_debug_messages
+    end
 
     # Represents a parameter.
     class Param
@@ -227,7 +232,10 @@ module BBFS
 
       print_global_parameters
 
+      # Prints help and parameters if needed.
+      puts @help_messages unless @help_messages.empty?
       puts @init_debug_messages if Params['print_params_to_stdout']
+      exit unless @help_messages.empty?
     end
 
     # Load yml params and override default values.
@@ -275,8 +283,7 @@ module BBFS
         # Define help command for available options
         # executing --help will printout all pre-defined switch options
         opts.on_tail("-h", "--help", "Show this message") do
-          @init_debug_messages << opts
-          exit
+          @help_messages << opts
         end
 
         opts.parse(args)  # Parse command line
@@ -285,7 +292,8 @@ module BBFS
     end # end of Parse function
 
     def Params.print_global_parameters
-      @init_debug_messages << "\nInitialized global parameters:"
+      @init_debug_messages << "\n"
+      @init_debug_messages << 'Initialized global parameters:'
       @init_debug_messages << '---------------------------------'
       counter=0
       @globals_db.values.each do |param|
