@@ -59,8 +59,8 @@ module BBFS
                 instance_to_remove = server_content_data.instances[key]
                 # Remove file from content data only if it does not pass the shallow check, i.e.,
                 # content has changed/removed.
-                if !shallow_check(instance)
-                  content_to_remove = server_content_data.contents[instance.checksum]
+                if !shallow_check(instance_to_remove)
+                  content_to_remove = server_content_data.contents[instance_to_remove.checksum]
                   # Remove the deleted instance.
                   content_data_to_remove = ContentData::ContentData.new
                   content_data_to_remove.add_content(content_to_remove)
