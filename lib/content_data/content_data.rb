@@ -314,7 +314,7 @@ module BBFS
         b.instances.values.each do |instance|
           if !a.instances.key?(instance.global_path)
             ret.add_content(b.contents[instance.checksum])
-            ret.add_instance(instance) unless a.content_exists(instance.checksum)
+            ret.add_instance(instance)
           end
         end
 
