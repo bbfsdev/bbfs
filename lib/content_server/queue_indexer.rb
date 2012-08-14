@@ -50,7 +50,7 @@ module BBFS
               Log.info("Failed files: #{index_agent.failed_files.to_a.join(',')}.") \
                        if !index_agent.failed_files.empty?
               server_content_data.merge index_agent.indexed_content
-            elsif (event[0] == FileMonitoring::FileStatEnum::DELETED ||
+            elsif (event[0] == FileMonitoring::FileStatEnum::NON_EXISTING ||
                    # If file content changed, we should remove old instance.
                    event[0] == FileMonitoring::FileStatEnum::CHANGED)
               key = IndexAgent.global_path(event[1])
