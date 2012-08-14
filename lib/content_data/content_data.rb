@@ -90,11 +90,11 @@ module BBFS
       end
 
       def global_path
-        ContentInstance.instance_global_path(@server_name, @device, @full_path)
+        ContentInstance.instance_global_path(@server_name, @full_path)
       end
 
-      def ContentInstance.instance_global_path(server_name, device, full_path)
-        "%s:%s:%s" % [server_name, device, full_path]
+      def ContentInstance.instance_global_path(server_name, full_path)
+        "%s:%s" % [server_name, full_path]
       end
 
       def to_s
