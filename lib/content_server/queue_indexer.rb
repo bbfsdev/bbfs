@@ -53,7 +53,7 @@ module BBFS
             elsif (event[0] == FileMonitoring::FileStatEnum::NON_EXISTING ||
                    # If file content changed, we should remove old instance.
                    event[0] == FileMonitoring::FileStatEnum::CHANGED)
-              key = IndexAgent.global_path(event[1])
+              key = FileIndexing::IndexAgent.global_path(event[1])
               # Check if deleted file exists at content data.
               if server_content_data.instances.exists?(key)
                 instance_to_remove = server_content_data.instances[key]
