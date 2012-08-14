@@ -170,7 +170,7 @@ module BBFS
       def IndexAgent.global_path(filename)
         server_name = `hostname`.strip
         return nil unless File.exists?(filename)
-        file_stats = File.lstat(file)
+        file_stats = File.lstat(filename)
         device = file_stats.dev.to_s
         return ContentData::ContentInstance.instance_global_path(server_name, device, filename)
       end
