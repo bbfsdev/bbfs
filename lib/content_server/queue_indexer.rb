@@ -55,13 +55,17 @@ module BBFS
               # Check if deleted file exists at content data.
               if server_content_data.instances.exists?(key)
                 instance_to_remove = server_content_data.instances[key]
-                content_to_remove = server_content_data.contents[instance.checksum]
-                # Remove the deleted instance.
-                content_data_to_remove = ContentData::ContentData.new
-                content_data_to_remove.add_content(content_to_remove)
-                content_data_to_remove.add_instance(instance_to_remove)
-                # Remove the file.
-                server_content_data = ContentData::remove(content_data_to_remove, server_content_data)
+                # Remove file from content data only if it does not pass the shallow check, i.e.,
+                # content has changed/removed.
+                if !shallow_check(instance)
+                  content_to_remove = server_content_data.contents[instance.checksum]
+                  # Remove the deleted instance.
+                  content_data_to_remove = ContentData::ContentData.new
+                  content_data_to_remove.add_content(content_to_remove)
+                  content_data_to_remove.add_instance(instance_to_remove)
+                  # Remove the file.
+                  server_content_data = ContentData::remove(content_data_to_remove, server_content_data)
+                end
               end
             end
             # TODO(kolman): Don't write to file each change?
