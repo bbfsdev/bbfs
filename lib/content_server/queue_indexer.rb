@@ -23,10 +23,13 @@ module BBFS
         server_content_data = ContentData::ContentData.new
         tmp_content_data.instances.each do |instance|
           # Skipp instances (files) which did not pass the shallow check.
+          Log.info('Shallow checking content data:')
           if shallow_check(instance)
+            Log.info("exists: #{instance.full_path}")
             server_content_data.add_content(tmp_content_data.contents[instance.checksum])
             server_content_data.add_instance(instance)
           else
+            Log.info("changed: #{instance.full_path}")
             # Add non existing and changed files to index queue.
             @input_queue.push([FileMonitoring::FileStatEnum::STABLE, instance.full_path])
           end
