@@ -158,6 +158,22 @@ module BBFS
           @indexed_content.add_instance(instance)
         end
       end
+
+      def IndexAgent.create_shallow_instance(filename)
+        return nil unless File.exists?(filename)
+        file_stats = File.lstat(file)
+        file_mtime = get_correct_mtime(file)
+        ContentData::ContentInstance.new(nil, file_stats.size, nil, file_stats.dev.to_s,
+                                         File.expand_path(filename), file_mtime)
+      end
+
+      def IndexAgent.global_path(filename)
+        server_name = `hostname`.strip
+        return nil unless File.exists?(filename)
+        file_stats = File.lstat(file)
+        device = file_stats.dev.to_s
+        return ContentData::ContentInstance.instance_global_path(server_name, device, filename)
+      end
     end
 
   end
