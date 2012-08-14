@@ -66,7 +66,8 @@ module BBFS
                   content_data_to_remove.add_content(content_to_remove)
                   content_data_to_remove.add_instance(instance_to_remove)
                   # Remove the file.
-                  server_content_data = ContentData::ContentData.remove(content_data_to_remove, server_content_data)
+                  server_content_data = ContentData::ContentData.remove_instances(
+                      content_data_to_remove, server_content_data)
                 end
               end
             end

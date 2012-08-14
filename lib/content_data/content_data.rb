@@ -306,6 +306,21 @@ module BBFS
         return ret
       end
 
+      def self.remove_instances(a, b)
+        return nil unless a.instance_of?ContentData
+        return nil unless b.instance_of?ContentData
+
+        ret = ContentData.new
+        b.instances.values.each do |instance|
+          if !a.instances.key?(instance.global_path)
+            ret.add_content(b.contents[instance.checksum])
+            ret.add_instance(instance) unless a.content_exists(instance.checksum)
+          end
+        end
+
+        return ret
+      end
+
       # returns the common content in both a and b
       def self.intersect(a, b)
         b_minus_a = ContentData.remove(a, b)
