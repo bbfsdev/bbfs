@@ -20,7 +20,7 @@ module BBFS
         # Shallow check content data files.
         tmp_content_data = ContentData::ContentData.new
         tmp_content_data.from_file(@content_data_path) if File.exists?(@content_data_path)
-        tmp_content_data.instances.each do |instance|
+        tmp_content_data.instances.each_value do |instance|
           # Skipp instances (files) which did not pass the shallow check.
           Log.info('Shallow checking content data:')
           if shallow_check(instance)
@@ -84,7 +84,7 @@ module BBFS
       # Check file existence, check it's size and modification date.
       # If something wrong reindex the file and update content data.
       def shallow_check(instance)
-        shallow_instance = IndexAgent.create_shallow_instance(instance.full_path)
+        shallow_instance = FileIndexing::IndexAgent.create_shallow_instance(instance.full_path)
         return false unless shallow_instance
         return (shallow_instance.size == instance.size &&
                 shallow_instance.modification_time == instance.modification_time)
