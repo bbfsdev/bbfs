@@ -51,11 +51,11 @@ module BBFS
                        if !index_agent.failed_files.empty?
               server_content_data.merge index_agent.indexed_content
             elsif (event[0] == FileMonitoring::FileStatEnum::NON_EXISTING ||
-                   # If file content changed, we should remove old instance.
                    event[0] == FileMonitoring::FileStatEnum::CHANGED)
+                   # If file content changed, we should remove old instance.
               key = FileIndexing::IndexAgent.global_path(event[1])
               # Check if deleted file exists at content data.
-              Log.debug1("Instance to remove: #{key}")
+              Log.info("Instance to remove: #{key}")
               if server_content_data.instances.key?(key)
                 instance_to_remove = server_content_data.instances[key]
                 # Remove file from content data only if it does not pass the shallow check, i.e.,
