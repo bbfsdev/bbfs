@@ -280,6 +280,8 @@ module BBFS
       end
 
       def to_file(filename)
+        content_data_dir = File.dirname(filename)
+        FileUtils.makedirs(content_data_dir) unless File.exists?(content_data_dir)
         File.open(filename, 'w') {|f| f.write(to_s) }
       end
 
