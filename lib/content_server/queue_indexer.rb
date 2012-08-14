@@ -16,11 +16,10 @@ module BBFS
       end
 
       def run
-        tmp_content_data = ContentData::ContentData.new
-        tmp_content_data.from_file(@content_data_path) rescue Errno::ENOENT
-        # Shallow check content data files.
-
         server_content_data = ContentData::ContentData.new
+        # Shallow check content data files.
+        tmp_content_data = ContentData::ContentData.new
+        tmp_content_data.from_file(@content_data_path) if File.exists?(@content_data_path)
         tmp_content_data.instances.each do |instance|
           # Skipp instances (files) which did not pass the shallow check.
           Log.info('Shallow checking content data:')
