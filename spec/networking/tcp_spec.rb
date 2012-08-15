@@ -61,21 +61,33 @@ module BBFS
           ::Socket.stub(:tcp_server_loop).once.and_yield(stream, info)
           ::TCPSocket.stub(:new).and_return(stream)
 
-          tcp_server = TCPServer.new(5555, nil)
-          # Wait for @sockets to be filled.
-          sleep 0.1
-          # Send has to be successful.
-          tcp_server.send_obj(data).should eq({info => true})
-          stream.rewind
+          tcp_server = nil
+          new_clb = lambda { |i|
+            #2 - After after @sockets is filled. Send has to be successful.
+            tcp_server.send_obj(data).should eq({info => true})
 
-          func = lambda { |d| Log.info("data: #{d}") }
-          # Check data is received.
-          func.should_receive(:call).with(data)
-          # Send data first.
-          tcp_client = TCPClient.new('kuku', 5555, func)
+            stream.rewind
 
-          # Wait for the read loop to read the stream at least once.
-          sleep 0.1
+            func = lambda { |d|
+              # 6, After client initialized, it should send object.
+              Log.info("data: #{d}")
+              # Validate received data.
+              d.should eq(data)
+              # Exit tcp client reading loop thread.
+              Thread.exit
+            }
+
+            # 4 - Create client and wait for read data.
+            tcp_client = TCPClient.new('kuku', 5555, func)
+            tcp_client.tcp_thread.abort_on_exception = true
+            tcp_client.tcp_thread.join()
+            # We can finish now. Exit tcp server listening loop.
+            Thread.exit
+          }
+          #1 - Create server, send data and wait.
+          tcp_server = TCPServer.new(5555, nil, new_clb)
+          tcp_server.tcp_thread.abort_on_exception = true
+          tcp_server.tcp_thread.join()
         end
       end
     end

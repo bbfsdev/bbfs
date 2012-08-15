@@ -67,16 +67,16 @@ module BBFS
             Log.debug3('-----')
             Log.debug3("tcp_server_loop... #{sock} #{addr_info.inspect}")
             @sockets[addr_info] = sock
-            @new_clb.call(addr_info) if @new_clb
+            @new_clb.call(addr_info) if @new_clb != nil
             loop do
               # Blocking read.
               Log.debug3('read_from_stream')
               status, obj = Networking.read_from_stream(sock)
               Log.debug3("Server returned from read: #{status}, #{obj}")
-              @obj_clb.call(addr_info, obj) if @obj_clb && status
+              @obj_clb.call(addr_info, obj) if @obj_clb != nil && status
               break unless status
             end
-            @closed_clb.call(addr_info) if @closed_clb
+            @closed_clb.call(addr_info) if @closed_clb != nil
           end
         end
       end
@@ -93,7 +93,7 @@ module BBFS
         @reconnected_clb = reconnected_clb
         Log.debug1('TCPClient init.')
         Log.debug1("TCPClient init...#{@obj_clb}...")
-        if @obj_clb
+        if @obj_clb != nil
           @tcp_thread = start_reading
           @tcp_thread.abort_on_exception = true
         end
@@ -121,7 +121,7 @@ module BBFS
           Log.warning('Connection refused')
         end
         Log.debug1("Reconnect clb: '#{@reconnected_clb}'")
-        #@reconnected_clb.call if @reconnected_clb && socket_good?
+        @reconnected_clb.call if @reconnected_clb != nil && socket_good?
       end
 
       private
@@ -146,7 +146,7 @@ module BBFS
             Log.debug3("Client returned from read: #{status}, #{obj}")
             # Handle case when socket is closed in middle.
             # In that case we should not call obj_clb.
-            @obj_clb.call(obj) if status
+            @obj_clb.call(obj) if (status && @obj_clb != nil)
           end
         end
       end
