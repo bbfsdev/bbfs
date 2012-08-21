@@ -1,12 +1,15 @@
 # This example shows bi-directional simple communication between TCP server and client.
-
+# Example run:
+# bbfs>ruby -Ilib examples/tcp_example.rb --log_debug_level=3
 require 'log'
 require 'networking/tcp'
+require 'params'
 
-BBFS::Params.log_write_to_console = 'true'
-BBFS::Params.log_debug_level = 0
-BBFS::Params.log_param_number_of_mega_bytes_stored_before_flush = 0
-BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 0
+BBFS::Params['log_write_to_console'] = true
+BBFS::Params['log_debug_level'] = 0
+
+BBFS::Params.init ARGV
+
 BBFS::Log.init
 
 def server_receive_obj(addr_info, hello_msg)

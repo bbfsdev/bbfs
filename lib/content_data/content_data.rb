@@ -33,8 +33,6 @@ module BBFS
         end
       end
 
-
-
       def to_s
         "%s,%d,%s" % [@checksum, @size, ContentData.format_time(@first_appearance_time)]
       end
@@ -44,16 +42,6 @@ module BBFS
             self.size.eql? other.size and
             self.first_appearance_time.to_i.eql? other.first_appearance_time.to_i)
       end
-
-      # Support for protocol buffers
-      #def serialize
-      #  serializer = ContentMessage.new
-      #  serializer.checksum = checksum
-      #  serializer.size = size
-      #  serializer.first_appearance_time = ContentData.format_time(first_appearance_time)
-      #
-      #  serializer
-      #end
     end
 
     class ContentInstance
@@ -102,7 +90,11 @@ module BBFS
       end
 
       def global_path
-        "%s:%s:%s" % [@server_name, @device, @full_path]
+        ContentInstance.instance_global_path(@server_name, @full_path)
+      end
+
+      def ContentInstance.instance_global_path(server_name, full_path)
+        "%s:%s" % [server_name, full_path]
       end
 
       def to_s
@@ -118,26 +110,6 @@ module BBFS
             self.full_path.eql? other.full_path and
             self.modification_time.to_i.eql? other.modification_time.to_i)
       end
-
-      # Support for protocol buffers
-      #      #def serialize
-      #  serializer = ContentInstanceMessage.new
-      #  serializer.checksum = checksum
-      #  serializer.size = size
-      #  serializer.modification_time = ContentData.format_time(modification_time)
-      #  serializer.server_name = server_name
-      #  serializer.device = device.to_s
-      #  serializer.full_path = full_path
-      #
-      #  serializer
-      #end
-
-      #@checksum
-      #@size
-      #@server_name
-      #@device
-      #@full_path
-      #@modification_time
     end
 
     class ContentData
@@ -166,34 +138,6 @@ module BBFS
           end
         end
       end
-
-      # Support for protocol buffers
-      #def serialize (serializer = nil)
-      #  serializer = ContentDataMessage.new if (serializer == nil)
-      #  contents.each do |key, value|
-      #    hash_value = ContentDataMessage::HashEntry::HashValue.new
-      #    content_serializer = value.serialize
-      #    #content_serializer = ContentMessage.new
-      #    #content_serializer.parse_from_string(content_serializer_str)
-      #    hash_value.content = content_serializer
-      #    hash_entry = ContentDataMessage::HashEntry.new
-      #    hash_entry.key = key
-      #    hash_entry.value = hash_value
-      #    serializer.contents << hash_entry
-      #  end
-      #  instances.each do |key, value|
-      #    hash_value = ContentDataMessage::HashEntry::HashValue.new
-      #    instance_serializer = value.serialize
-      #    #instance_serializer = ContentInstanceMessage.new
-      #    #instance_serializer.parse_from_string(instance_serializer_str)
-      #    hash_value.instance = instance_serializer
-      #    hash_entry = ContentDataMessage::HashEntry.new
-      #    hash_entry.key = key
-      #    hash_entry.value = hash_value
-      #    serializer.instances << hash_entry
-      #  end
-      #  serializer
-      #end
 
       def add_content(content)
         @contents[content.checksum] = content
@@ -236,33 +180,22 @@ module BBFS
       end
 
       def ==(other)
-
-        #print "size:%s\n" % @contents.size
-        #print "other size:%s\n" % other.contents.size
         return false if other == nil
         return false unless @contents.size == other.contents.size
         return false unless @instances.size == other.instances.size
 
         @contents.keys.each { |key|
           if (@contents[key] != other.contents[key])
-            #print "%s-" % @contents[key].to_s
-            #print other.contents[key].to_s
-            #Log.info " compare - false"
             Log.info @contents[key].first_appearance_time.to_i
             Log.info other.contents[key].first_appearance_time.to_i
             return false
           end
         }
-
         @instances.keys.each { |key|
           if (@instances[key] != other.instances[key])
-            #print "%s-" % @instances[key].to_s
-            #print other.instances[key].to_s
-            #Log.info " compare - false"
             return false
           end
         }
-        #Log.info "compare - true"
         return true
       end
 
@@ -280,6 +213,8 @@ module BBFS
       end
 
       def to_file(filename)
+        content_data_dir = File.dirname(filename)
+        FileUtils.makedirs(content_data_dir) unless File.exists?(content_data_dir)
         File.open(filename, 'w') {|f| f.write(to_s) }
       end
 
@@ -371,6 +306,21 @@ module BBFS
         return ret
       end
 
+      def self.remove_instances(a, b)
+        return nil unless a.instance_of?ContentData
+        return nil unless b.instance_of?ContentData
+
+        ret = ContentData.new
+        b.instances.values.each do |instance|
+          if !a.instances.key?(instance.global_path)
+            ret.add_content(b.contents[instance.checksum])
+            ret.add_instance(instance)
+          end
+        end
+
+        return ret
+      end
+
       # returns the common content in both a and b
       def self.intersect(a, b)
         b_minus_a = ContentData.remove(a, b)
@@ -427,7 +377,9 @@ module BBFS
             if ((instance.modification_time <=> time) == 0)
               mod_db.add_instance(instance)
             else # must be bigger then found min time
-              mod_instance = ContentInstance.new(instance.checksum, instance.size, instance.server_name, instance.device, instance.full_path, time)
+              mod_instance = ContentInstance.new(instance.checksum, instance.size,
+                                                 instance.server_name, instance.device,
+                                                 instance.full_path, time)
               mod_db.add_instance(mod_instance)
             end
           end

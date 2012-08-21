@@ -86,8 +86,8 @@ module BBFS
           end
 
           Log.info 'Updating file copy queue.'
-          Log.info "local_server_content_data #{local_server_content_data}."
-          Log.info "backup_server_content_data #{backup_server_content_data}."
+          Log.debug1 "local_server_content_data #{local_server_content_data}."
+          Log.debug1 "backup_server_content_data #{backup_server_content_data}."
           # Remove backup content data from local server
           content_to_copy = ContentData::ContentData.remove(backup_server_content_data, local_server_content_data)
           # Add copy instruction in case content is not empty
@@ -239,3 +239,4 @@ module BBFS
 
   end # module ContentServer
 end # module BBFS
+

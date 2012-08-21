@@ -67,6 +67,9 @@ module BBFS
       @log_initialized = true
       Log.info 'BBFS Log initialized.'  # log first data
       Log.info "Log file path:'#{Params['log_file_name']}'" if Params['log_write_to_file']
+      Params.get_init_messages().each { |msg|
+        Log.info msg
+      } unless Params.get_init_messages().empty?
     end
 
     # Clears consumers

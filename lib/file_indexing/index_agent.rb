@@ -58,7 +58,7 @@ module BBFS
 
       # TODO(kolman): Replace this with File.lstat(file).mtime when new version of Ruby comes out.
       # http://bugs.ruby-lang.org/issues/6385
-      def get_correct_mtime(file)
+      def IndexAgent.get_correct_mtime(file)
         begin
         File.open(file, 'r') { |f| f.mtime }
         rescue Errno::EACCES => e
@@ -116,7 +116,7 @@ module BBFS
         # create and add contents and instances
         files.each do |file|
           file_stats = File.lstat(file)
-          file_mtime = get_correct_mtime(file)
+          file_mtime = IndexAgent.get_correct_mtime(file)
 
           # index only files
           next if file_stats.directory?
@@ -157,6 +157,19 @@ module BBFS
               File.expand_path(file), file_mtime)
           @indexed_content.add_instance(instance)
         end
+      end
+
+      def IndexAgent.create_shallow_instance(filename)
+        return nil unless File.exists?(filename)
+        file_stats = File.lstat(filename)
+        file_mtime = IndexAgent.get_correct_mtime(filename)
+        ContentData::ContentInstance.new(nil, file_stats.size, nil, file_stats.dev.to_s,
+                                         File.expand_path(filename), file_mtime)
+      end
+
+      def IndexAgent.global_path(filename)
+        server_name = `hostname`.strip
+        return ContentData::ContentInstance.instance_global_path(server_name, filename)
       end
     end
 
