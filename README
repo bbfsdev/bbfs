@@ -1,91 +1,82 @@
 Big brother file system (distributed file system).
 --------------------------------------------------
 
-Backup system:
---------------
-Content server monitors a set of directories (blobs/patterns).
-The files in those directories are indexed (calculating their SHA1).
-Each unique content is backed up to the remote (backup) server.
-The backup server also monitors a set of directories (blobs/patterns).
-The files in those directories are also indexed.
-The content server copies new/changed files in the backup server.
-The backup server index those new files too and send the content data (their SHA1 to the original server).
+A. Backup system, general workflow:
+
+    1. Content server monitors a set of directories (blobs/patterns).
+    2. The files in those directories are indexed (calculating their SHA1/file content fingerprint).
+    3. Each unique content is backed up to the remote (backup) server.
+    4. The backup server also monitors a set of directories (blobs/patterns).
+    5. The files in those directories are also indexed.
+    6. The backup server copies new/changed files from the content server.
+    7. The backup server index those new files too and send the content data (their SHA1 to the original server).
 
 How to install and run:
 -----------------------
 A) Installation of BBFS development kit:
-  1) Download and install git.
-  2) Download and install ruby.
-  3) Download and unpack and install DevKit (Windows). Note that after unpacking there are installation instructions at
+  1. Download and install git.
+  2. Download and install ruby.
+  3. Download and unpack and install DevKit (Windows). Note that after unpacking there are installation instructions at
      https://github.com/oneclick/rubyinstaller/wiki/Development-Kit.
-  4) Mac (only) users will have to install XCode for gcc compiler.
+  4. Mac (only) users will have to install XCode for gcc compiler.
   Run in command prompt (Windows users should run in Git Bash):
-  5) git clone https://github.com/kolmanv/bbfs.git
-  6) cd bbfs
-  7) gem install bundler
-  8) bundle install
-  9) rake  # This will run all project tests and specs.
-  10) You are done, you can start coding on the project.
+  5. git clone https://github.com/kolmanv/bbfs.git
+  6. cd bbfs
+  7. gem install bundler
+  8. bundle install
+  9. rake  # This will run all project tests and specs.
+  10. You are done, you can start coding on the project.
 
 B) (Optional) Recommended:
-  1) Download and install smartgit.
-  2) Download and install Ruby IDE (for example RubyMine).
+  1. Download and install smartgit.
+  2. Download and install Ruby IDE (for example RubyMine).
 
-C) Installing SFTP server backup server dependency (For now a must!):
-  Install and run sftp server (for example set a 'test' user with 'test' password) on same computer
-  which runs backup server with user working directory set to backup file monitoring dir,
-  for example: C:/Users/kolman/backup_data
-  Make sure the user have write permissions into the directory.
-  Make sure the sftp server configured to support username/password authentication.
+C) Preparing configuration files:
+ 	1. Prepare two monitoring yml files. Each server, i.e., content server and backup server needs
+ 	a monitoring configuration file.
 
-D) Preparing configuration files:
-  Prepare two monitoring yml files. Each server, i.e., content server and backup server needs
-  a monitoring configuration file.
-  1) Configuration file for content server which is located in ~/.bbfs/etc/file_monitoring.yml:
+    2. Create configuration file for content server which should be located in ~/.bbfs/etc/file_monitoring.yml
+    cat > file_monitoring.yml    #  to create a file  CNTRL-D to save
+    File content (number of spaces is important, read YML format):
 
-    paths:
-      - path: C:/Users/kolman/test_files  # <=== replace this directory with your local directory
-        scan_period: 1
-        stable_state: 5
+paths:
+   - path: /home/user_name/.bbfs/test_files  # <=== replace with your local directory
+     scan_period: 1
+     stable_state: 5
 
-  2) Configuration file for backup server which is located in ~/.bbfs/etc/backup_file_monitoring.yml:
+    3. Create configuration file for backup server which should be located in ~/.bbfs/etc/backup_file_monitoring.yml
+    File content:
 
-    paths:
-      - path: C:/Users/kolman/backup_data  # <=== replace this directory with your local directory
-        scan_period: 1
-        stable_state: 5
+paths:
+   - path:  /home/user_name/.bbfs/backup_data  # <=== replace with your local directory
+     scan_period: 1
+     stable_state: 5
 
-E) Note that for now parameter parsing is not yet available so just hard-code the parameters in the
-  executables and run the local code:
+    4. Explanation about file_monitoring.yml and backup_file_monitoring.yml configuration files:
 
-  For content server edit the executable bin/content_server and add those parameters just before the
-  run command (BBFS::ContentServer.run):
-  ...
-  # Replace values to suite your local configuration
-  BBFS::Params['remote_server'] = '127.0.0.1'
-  BBFS::Params['backup_username'] = 'test'
-  BBFS::Params['backup_password'] = 'test'
-  BBFS::Params['content_data_path'] = File.expand_path('~/.bbfs/var/server_content.data')
-  ...
+    	"path:" - say to program which folder to scan recursively in order to find new/changed files and folders.
+    	"scan_period:" - how much time in seconds passed before two consecutive scans for files and directories.
+		"stable_state:" - how many scan_period passed until the file is considered stable.
 
-  For backup server edit the executable bin/backup_server and add the parameter just before the
-  run command (BBFS::ContentServer.run_backup_server):
-  ...
-  # Replace value to suite your local configuration
-  BBFS::Params['monitoring_config_path'] = File.expand_path('~/.bbfs/etc/backup_file_monitoring.yml')
-  ...
+D) Run content server and backup server:
 
-F) Run content server:
-  bbfs> ruby -Ilib bin/content_server
-  Run backup server (after content server is running):
-  bbfs> ruby -Ilib bin/backup_server
+	1. run content server
+		ruby -Ilib bin/content_server --remote_server="backup_address"
 
-G) (Optional) Later when paramter parsing will be available we could do:
-  Run content server:
-  bbfs> ruby -Ilib bin/content_server --remote_server='127.0.0.1' --backup_username=test \
-              --backup_password=test --content_data_path=~/.bbfs/var/server_content.data
-  Run backup server (after content server is running):
-  bbfs> ruby -Ilib bin/backup_server --monitoring_config_path=~/.bbfs/etc/backup_file_monitoring.yml
+	2. Run backup server (after content server is running):
+		ruby -Ilib bin/backup_server --remote_server="content_address" --backup_destination_folder=/home/user_name/.bbfs/backup_data
+
+
+    3. where user_name is your user name at linux.
+       where backup_address and content_address is address of backup and content servers.
+
+    notes: when you not use --remote_server localhost used as default address. thats mean that
+           content and backup servers run on the same physical machine.
+
+E) Detailed description of applications (using parameters and etc)
+   in order to see help run:
+   ruby -Ilib bin/content_server --help
+   TODO continue from here
 
 How to contribute to this project:
 ----------------------------------
