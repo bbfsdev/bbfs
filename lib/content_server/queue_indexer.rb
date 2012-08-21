@@ -9,7 +9,7 @@ module BBFS
     # content data updates into output queue.
     class QueueIndexer
 
-      def initialize input_queue, output_queue, content_data_path
+      def initialize(input_queue, output_queue, content_data_path)
         @input_queue = input_queue
         @output_queue = output_queue
         @content_data_path = content_data_path
