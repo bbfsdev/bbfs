@@ -4,6 +4,8 @@ require 'socket'
 module BBFS
   module Networking
 
+    Params.integer('client_retry_delay', 60, 'Number of seconds before trying to reconnect.')
+
     def Networking.write_to_stream(stream, obj)
       Log.debug3('Writing to stream.')
       marshal_data = Marshal.dump(obj)
@@ -25,7 +27,7 @@ module BBFS
       Log.info("Reading data size:#{size_of_data}")
       data = stream.read(size_of_data)
       unmarshalled_data = Marshal.load(data)
-      Log.debug3("unmarshalled_data:#{unmarshalled_data}")
+      #Log.debug3("unmarshalled_data:#{unmarshalled_data}")
       return [true, unmarshalled_data]
     end
 
@@ -48,11 +50,11 @@ module BBFS
 
       def send_obj(obj, addr_info=nil)
         Log.debug3("addr_info=#{addr_info}")
-        if addr_info
-          Networking.write_to_stream(@sockets[addr_info], obj) > 0
+        unless addr_info.nil?
+          Networking.write_to_stream(@sockets[addr_info], obj)
         else
           out = {}
-          @sockets.each { |key, sock| out[key] = Networking.write_to_stream(sock, obj) > 0 }
+          @sockets.each { |key, sock| out[key] = Networking.write_to_stream(sock, obj) }
           return out
         end
       end
@@ -74,7 +76,7 @@ module BBFS
               status, obj = Networking.read_from_stream(sock)
               Log.debug3("Server returned from read: #{status}, #{obj}")
               @obj_clb.call(addr_info, obj) if @obj_clb != nil && status
-              break unless status
+              break if status.nil?
             end
             @closed_clb.call(addr_info) if @closed_clb != nil
           end
@@ -97,6 +99,9 @@ module BBFS
           @tcp_thread = start_reading
           @tcp_thread.abort_on_exception = true
         end
+        # Variable to signal when remote server is ready.
+        @remote_server_available = ConditionVariable.new
+        @remote_server_available_mutex = Mutex.new
       end
 
       def send_obj(obj)
@@ -109,7 +114,7 @@ module BBFS
         end
         Log.debug1('writing...')
         bytes_written = Networking.write_to_stream(@tcp_socket, obj)
-        return bytes_written > 0
+        return bytes_written
       end
 
       private
@@ -121,13 +126,18 @@ module BBFS
           Log.warning('Connection refused')
         end
         Log.debug1("Reconnect clb: '#{@reconnected_clb}'")
-        @reconnected_clb.call if @reconnected_clb != nil && socket_good?
+        if socket_good?
+          @remote_server_available_mutex.synchronize {
+            @remote_server_available.signal
+          }
+          @reconnected_clb.call if @reconnected_clb != nil && socket_good?
+        end
       end
 
       private
       def socket_good?
-        Log.debug1 "socket_good? #{@tcp_socket && !@tcp_socket.closed?}"
-        return @tcp_socket && !@tcp_socket.closed?
+        Log.debug1 "socket_good? #{@tcp_socket != nil && !@tcp_socket.closed?}"
+        return @tcp_socket != nil && !@tcp_socket.closed?
       end
 
       private
@@ -139,14 +149,20 @@ module BBFS
             # Blocking read.
             open_socket unless socket_good?
             if !socket_good?
-              Log.warning('Socket not good, breaking client reading thread.')
-              break
+              Log.warning("Socket not good, waiting for reconnection with " \
+                          "#{Params['client_retry_delay']} seconds timeout.")
+              @remote_server_available_mutex.synchronize {
+                @remote_server_available.wait(@remote_server_available_mutex,
+                                              Params['client_retry_delay'])
+              }
+              #sleep(Params['client_retry_delay'])
+            else
+              status, obj = Networking.read_from_stream(@tcp_socket)
+              Log.debug3("Client returned from read: #{status}, #{obj}")
+              # Handle case when socket is closed in middle.
+              # In that case we should not call obj_clb.
+              @obj_clb.call(obj) if (status != nil && @obj_clb != nil)
             end
-            status, obj = Networking.read_from_stream(@tcp_socket)
-            Log.debug3("Client returned from read: #{status}, #{obj}")
-            # Handle case when socket is closed in middle.
-            # In that case we should not call obj_clb.
-            @obj_clb.call(obj) if (status && @obj_clb != nil)
           end
         end
       end
