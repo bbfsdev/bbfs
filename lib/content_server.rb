@@ -111,14 +111,6 @@ module BBFS
     end
     module_function :run
 
-    # Creates destination filename for backup server, input is base folder and sha1.
-    # for example: folder:/mnt/hd1/bbbackup, sha1:d0be2dc421be4fcd0172e5afceea3970e2f3d940
-    # dest filename: /mnt/hd1/bbbackup/d0/be/2d/d0be2dc421be4fcd0172e5afceea3970e2f3d940
-    def destination_filename(folder, sha1)
-      File.join(folder, sha1[0,2], sha1[2,2], sha1)
-    end
-    module_function :destination_filename
-
     def run_backup_server
       all_threads = []
 

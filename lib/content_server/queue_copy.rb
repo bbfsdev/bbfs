@@ -73,13 +73,13 @@ module BBFS
                       end
                       # Send pair (content + checksum).
                       Log.debug1("Content to send size: #{content.length}")
-                      bytes_written = @backup_tcp.send_obj([content, checksum])
+                      bytes_written = @backup_tcp.send_obj([:COPY_MESSAGE, [content, checksum]])
                       Log.debug1("Sent content of file #{file}, bytes written: #{bytes_written}.")
-                      if content.length == bytes_written
+                      # We can actually check the number of bytes in content (not in message).
+                      if bytes_written > 0
                         @copy_prepare.delete(checksum)
                       else
-                        Log.error("Could not copy file, content length is not same as bytes " \
-                                  "written: #{content.length} != #{bytes_written}")
+                        Log.error("Could not copy file, wrote 0 bytes.")
                       end
                     else
                       Log.warning("File to send '#{file}', does not exist")
@@ -107,7 +107,8 @@ module BBFS
         nil
       end
 
-      # This is a static function which receives the messages send above (this is the back code)
+      # This is a function which receives the messages (file or ack) and return answer in case
+      # of ack.
       def on_file_receive(addr_info, message)
         message_type, message_content = message
         if message_type == :COPY_MESSAGE
@@ -118,7 +119,8 @@ module BBFS
           Log.info(comment) if checksum == received_checksum
           Log.error(comment) if checksum != received_checksum
 
-          write_to = destination_filename(Params['backup_destination_folder'] ,received_checksum)
+          write_to = QueueFileReceiver.destination_filename(Params['backup_destination_folder'],
+                                                            received_checksum)
           if File.exists?(write_to)
             Log.warning("File already exists (#{write_to}) not writing.")
           else
@@ -145,6 +147,14 @@ module BBFS
           Log.error("Unexpected message type: #{message_type}")
         end
       end
+
+      # Creates destination filename for backup server, input is base folder and sha1.
+      # for example: folder:/mnt/hd1/bbbackup, sha1:d0be2dc421be4fcd0172e5afceea3970e2f3d940
+      # dest filename: /mnt/hd1/bbbackup/d0/be/2d/d0be2dc421be4fcd0172e5afceea3970e2f3d940
+      def self.destination_filename(folder, sha1)
+        File.join(folder, sha1[0,2], sha1[2,2], sha1)
+      end
+
     end # class QueueFileReceiver
   end
 end
