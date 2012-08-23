@@ -93,7 +93,7 @@ module BBFS
           content_to_copy = ContentData::ContentData.remove(backup_server_content_data, local_server_content_data)
           # Add copy instruction in case content is not empty
           Log.info "Content to copy: #{content_to_copy}"
-          copy_files_events.push(content_to_copy) unless content_to_copy.empty?
+          copy_files_events.push([:COPY_MESSAGE, content_to_copy]) unless content_to_copy.empty?
         end
       end
 
@@ -155,43 +155,14 @@ module BBFS
         end
       end
       
-      tcp_file_server = Networking::TCPServer.new(Params['backup_file_listening_port'],
-                                                  method(:on_file_receive))
-      all_threads << tcp_file_server.tcp_thread
+      queue_file_receiver = QueueFileReceiver.new(Params['backup_file_listening_port'])
+      all_threads << queue_file_receiver.tcp_thread
 
       all_threads.each { |t| t.abort_on_exception = true }
       all_threads.each { |t| t.join }
       # Should never reach this line.
     end
     module_function :run_backup_server
-
-    def ContentServer.on_file_receive(addr_info, remote_file)
-      content, checksum = remote_file
-      #Log.info("Content: #{content} class #{content.class}.")
-      received_checksum = FileIndexing::IndexAgent.get_content_checksum(content)
-      comment = "Calculated received content checksum #{received_checksum}"
-      Log.info(comment) if checksum == received_checksum
-      Log.error(comment) if checksum != received_checksum
-
-      write_to = destination_filename(Params['backup_destination_folder'] ,received_checksum)
-      if File.exists?(write_to)
-        Log.warning("File already exists (#{write_to}) not writing.")
-      else
-        # Make the directory if does not exists.
-        Log.debug1("Writing to: #{write_to}")
-        Log.debug1("Creating directory: #{File.dirname(write_to)}")
-
-        FileUtils.makedirs(File.dirname(write_to))
-        count = File.open(write_to, 'wb') { |f| f.write(content) }
-        Log.debug1("Number of bytes written: #{count}")
-        Log.info("File #{write_to} was written.")
-      end
-
-      # Check written/local file checksum (maybe skip or send to indexer)
-      local_file_checksum = FileIndexing::IndexAgent.get_checksum(write_to)
-      message = "Local checksum (#{local_file_checksum}) received checksum #{received_checksum})"
-      Log.info(message) ? local_file_checksum == received_checksum : Log.error(message)
-    end
 
   end # module ContentServer
 end # module BBFS

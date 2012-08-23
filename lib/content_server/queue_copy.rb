@@ -8,24 +8,27 @@ module BBFS
   module ContentServer
     Params.integer('ack_timeout', 5, 'Timeout of ack from backup server in seconds.')
 
+    # Copy message types.
+    :ACK_MESSAGE
+    :COPY_MESSAGE
+
     # Simple copier, gets inputs events (files to copy), requests ack from backup to copy
     # then copies one file.
     class QueueCopy
       def initialize(copy_input_queue, host, port)
         # Local simple tcp connection.
-        @backup_tcp = Networking::TCPClient.new(host, port, method(:copy_acked_file))
+        @backup_tcp = Networking::TCPClient.new(host, port, method(:receive_ack))
         @copy_input_queue = copy_input_queue
-        @copy_ack_queue = Queue.new
+        # Stores for each checksum, the file source path.
+        # TODO(kolman): If there are items in copy_prepare which timeout (don't get ack),
+        # resend the ack request.
+        @copy_prepare = {}
       end
 
-      def copy_acked_file(addr_info, message)
-        # The timestamp is of local content server! not backup server!
-        timestamp, ack, checksum = message
-
-        # Copy file if ack (does not exists on backup and not too much time passed)
-        if time() - timestamp < ack_timeout && ack
-
-        end
+      def receive_ack(message)
+        # Add ack message to copy queue.
+        Log.info("Ack received: #{message}")
+        @copy_input_queue.push(message)
       end
 
       def run()
@@ -33,52 +36,115 @@ module BBFS
         threads << Thread.new do
           while true do
             Log.info 'Waiting on copy files events.'
-            copy_event = @copy_input_queue.pop
+            message_type, message_content = @copy_input_queue.pop
 
-            Log.info "Copy file event: #{copy_event}"
+            if message_type == :COPY_MESSAGE
+              Log.info "Copy file event: #{message_content}"
+              # Prepare source,dest map for copy.
+              message_content.instances.each { |key, instance|
+                @copy_prepare[instance.checksum] = instance.full_path
+                Log.info("Sending ack for: #{instance.checksum}")
+                @backup_tcp.send_obj([:ACK_MESSAGE, [instance.checksum, Time.now.to_i]])
+              }
+            elsif message_type == :ACK_MESSAGE
+              # Received ack from backup, copy file if all is good.
+              # The timestamp is of local content server! not backup server!
+              timestamp, ack, checksum = message_content
 
-            # Prepare source,dest map for copy.
-            used_contents = Set.new
-            files_map = Hash.new
-            Log.info "Instances: #{copy_event.instances}"
-            copy_event.instances.each { |key, instance|
-              Log.info "Instance: #{instance}"
-              # Add instance only if such content has not added yet.
-              if !used_contents.member?(instance.checksum)
-                files_map[instance.full_path] = instance.checksum
-                used_contents.add(instance.checksum)
-              end
-            }
+              Log.info("Ack (#{ack}) received for: #{checksum}, timestamp: #{timestamp} " \
+                       "now: #{Time.now.to_i}")
 
-            Log.info "Copying files: #{files_map}."
-            # Copy files, waits until files are finished copying.
-            uploads = files_map.map { |file, checksum|
-              begin
-                if File.exists?(file)
-                  # TODO(kolman): Fails to allocate memory for large files, should send file
-                  # as stream.
-                  content = File.open(file, 'rb') { |f| f.read() }
-                  read_content_checksum = FileIndexing::IndexAgent.get_content_checksum(content)
-                  Log.debug1("read_content_checksum: #{read_content_checksum}")
-                  if read_content_checksum != checksum
-                    Log.error("Read file content is not equal to file checksum.")
-                  end
-                  # Send pair (content + checksum).
-                  Log.debug1("Content to send size: #{content.length}")
-                  bytes_written = @backup_tcp.send_obj([content, checksum])
-                  Log.debug1("Sent content of file #{file}, bytes written: #{bytes_written}.")
+              # Copy file if ack (does not exists on backup and not too much time passed)
+              if ack && (Time.now.to_i - timestamp < Params['ack_timeout'])
+                if !@copy_prepare.key?(checksum)
+                  Log.warning("Could not find file to copy checksum: #{checksum}")
                 else
-                  Log.warning("File to send '#{file}', does not exist")
+                  file = @copy_prepare[checksum]
+                  Log.info "Copying file: #{checksum} #{file}."
+                  begin
+                    if File.exists?(file)
+                      # TODO(kolman): Fails to allocate memory for large files, should send file
+                      # as stream.
+                      content = File.open(file, 'rb') { |f| f.read() }
+                      read_content_checksum = FileIndexing::IndexAgent.get_content_checksum(content)
+                      Log.debug1("read_content_checksum: #{read_content_checksum}")
+                      if read_content_checksum != checksum
+                        Log.error("Read file content is not equal to file checksum.")
+                      end
+                      # Send pair (content + checksum).
+                      Log.debug1("Content to send size: #{content.length}")
+                      bytes_written = @backup_tcp.send_obj([content, checksum])
+                      Log.debug1("Sent content of file #{file}, bytes written: #{bytes_written}.")
+                      if content.length == bytes_written
+                        @copy_prepare.delete(checksum)
+                      else
+                        Log.error("Could not copy file, content length is not same as bytes " \
+                                  "written: #{content.length} != #{bytes_written}")
+                      end
+                    else
+                      Log.warning("File to send '#{file}', does not exist")
+                    end
+                  rescue Errno::EACCES => e
+                    Log.warning("Could not open file #{file} for copy. #{e}")
+                  end
                 end
-              rescue Errno::EACCES => e
-                Log.warning("Could not open file #{file} for copy. #{e}")
               end
-            }
+            else
+              Log.error("Copy event not supported: #{message_type}")
+            end
           end
         end
+      end
+    end  # class QueueCopy
 
+    class QueueFileReceiver
+      def initialize(port)
+        @tcp_server = Networking::TCPServer.new(port, method(:on_file_receive))
       end
 
-    end  # class QueueCopy
+      def tcp_thread
+        return @tcp_server.tcp_thread if @tcp_server != nil
+        nil
+      end
+
+      # This is a static function which receives the messages send above (this is the back code)
+      def on_file_receive(addr_info, message)
+        message_type, message_content = message
+        if message_type == :COPY_MESSAGE
+          content, checksum = message_content
+          #Log.info("Content: #{content} class #{content.class}.")
+          received_checksum = FileIndexing::IndexAgent.get_content_checksum(content)
+          comment = "Calculated received content checksum #{received_checksum}"
+          Log.info(comment) if checksum == received_checksum
+          Log.error(comment) if checksum != received_checksum
+
+          write_to = destination_filename(Params['backup_destination_folder'] ,received_checksum)
+          if File.exists?(write_to)
+            Log.warning("File already exists (#{write_to}) not writing.")
+          else
+            # Make the directory if does not exists.
+            Log.debug1("Writing to: #{write_to}")
+            Log.debug1("Creating directory: #{File.dirname(write_to)}")
+
+            FileUtils.makedirs(File.dirname(write_to))
+            count = File.open(write_to, 'wb') { |f| f.write(content) }
+            Log.debug1("Number of bytes written: #{count}")
+            Log.info("File #{write_to} was written.")
+          end
+
+          # Check written/local file checksum (maybe skip or send to indexer)
+          local_file_checksum = FileIndexing::IndexAgent.get_checksum(write_to)
+          message = "Local checksum (#{local_file_checksum}) received checksum #{received_checksum})"
+          Log.info(message) ? local_file_checksum == received_checksum : Log.error(message)
+        elsif message_type == :ACK_MESSAGE
+          checksum, timestamp = message_content
+          # Here we should check file existence
+          Log.info("Returning ack for: #{checksum}, timestamp: #{timestamp}")
+          @tcp_server.send_obj([:ACK_MESSAGE, [timestamp, true, checksum]])
+        else
+          Log.error("Unexpected message type: #{message_type}")
+        end
+      end
+    end # class QueueFileReceiver
   end
 end
