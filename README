@@ -4,22 +4,25 @@ Big brother file system (distributed file system).
 A. Backup system, general workflow:
 
     1. Content server monitors a set of directories (blobs/patterns).
-    2. The files in those directories are indexed (calculating their SHA1/file content fingerprint).
+    2. The files in those directories are indexed (calculating their SHA1/file content
+       fingerprint).
     3. Each unique content is backed up to the remote (backup) server.
     4. The backup server also monitors a set of directories (blobs/patterns).
     5. The files in those directories are also indexed.
     6. The backup server copies new/changed files from the content server.
-    7. The backup server index those new files too and send the content data (their SHA1 to the original server).
+    7. The backup server index those new files too and send the content data (their
+       SHA1 to the original server).
 
 How to install and run:
 -----------------------
 A) Installation of BBFS development kit:
   1. Download and install git.
   2. Download and install ruby.
-  3. Download and unpack and install DevKit (Windows). Note that after unpacking there are installation instructions at
+  3. Download and unpack and install DevKit (Windows). Note that after unpacking there
+     are installation instructions at
      https://github.com/oneclick/rubyinstaller/wiki/Development-Kit.
   4. Mac (only) users will have to install XCode for gcc compiler.
-  Run in command prompt (Windows users should run in Git Bash):
+     Run in command prompt (Windows users should run in Git Bash):
   5. git clone https://github.com/kolmanv/bbfs.git
   6. cd bbfs
   7. gem install bundler
@@ -32,31 +35,37 @@ B) (Optional) Recommended:
   2. Download and install Ruby IDE (for example RubyMine).
 
 C) Preparing configuration files:
- 	1. Prepare two monitoring yml files. Each server, i.e., content server and backup server needs
- 	a monitoring configuration file.
+ 	1. Prepare two monitoring yml files. Each server, i.e., content server and
+ 	   backup server needs a monitoring configuration file.
 
-    2. Create configuration file for content server which should be located in ~/.bbfs/etc/file_monitoring.yml
-    cat > file_monitoring.yml    #  to create a file  CNTRL-D to save
-    File content (number of spaces is important, read YML format):
+    2. Create configuration file for content server which should be located
+       in ~/.bbfs/etc/file_monitoring.yml
+       cat > file_monitoring.yml    #  to create a file  CNTRL-D to save
+       File content (number of spaces is important, read YML format):
 
 paths:
-   - path: /home/user_name/.bbfs/test_files  # <=== replace with your local directory
+   - path: /home/user_name/.bbfs/test_files  # <=== replace with your local dir.
      scan_period: 1
      stable_state: 5
 
-    3. Create configuration file for backup server which should be located in ~/.bbfs/etc/backup_file_monitoring.yml
-    File content:
+    3. Create configuration file for backup server which should be located
+       in ~/.bbfs/etc/backup_file_monitoring.yml
+       File content:
 
 paths:
-   - path:  /home/user_name/.bbfs/backup_data  # <=== replace with your local directory
+   - path:  /home/user_name/.bbfs/backup_data  # <=== replace with your local dir.
      scan_period: 1
      stable_state: 5
 
-    4. Explanation about file_monitoring.yml and backup_file_monitoring.yml configuration files:
+    4. Explanation about file_monitoring.yml and backup_file_monitoring.yml
+       configuration files:
 
-    	"path:" - say to program which folder to scan recursively in order to find new/changed files and folders.
-    	"scan_period:" - how much time in seconds passed before two consecutive scans for files and directories.
-		"stable_state:" - how many scan_period passed until the file is considered stable.
+    	"path:" - say to program which folder to scan recursively in order to find
+    	          new/changed files and folders.
+    	"scan_period:" - how much time in seconds passed before two consecutive scans
+    	                 for files and directories.
+		"stable_state:" - how many scan_period passed until the file is considered
+		                  stable.
 
 D) Run content server and backup server:
 
@@ -68,10 +77,12 @@ D) Run content server and backup server:
 
 
     3. where user_name is your user name at linux.
-       where backup_address and content_address is address of backup and content servers.
+       where backup_address and content_address is address of backup and content
+       servers.
 
-    notes: when you not use --remote_server localhost used as default address. thats mean that
-           content and backup servers run on the same physical machine.
+    notes: when you not use --remote_server localhost used as default address.
+           thats mean that content and backup servers run on the same physical
+           machine.
 
 E) Detailed description of applications (using parameters and etc)
    in order to see help run:
@@ -83,17 +94,22 @@ How to contribute to this project:
 A) Clone the project:
   > git@github.com:kolmanv/bbfs.git
   > cd bbfs
-B) Master is sarced! Note this, this is important : you will never commit or merge into master branch.
-  Master is master. You will use to get the changes, and only that.
+B) Master is sarced! Note this, this is important : you will never commit or merge
+   into master branch. Master is master. You will use to get the changes, and only
+   that.
 C) Topic branch:
-  So you want to fix a bug, add a great feature ? No problem, you create a new branch (because remember you will never
-  commit or merge into your master branch!) :
-  bbfs> git checkout -b feature-world-conquest
-  Then you work in this branch, commit when you want, revert, etc. In short: you work. If you work on two different topics
-  (add the world conquest feature and fix a bug) you create a topic branch for each. Don't forget to test your changes!
-D) Fetch master: It's been a while you work on different topics. You want to test your changes with last changes :
-  bbfs> git merge master
-  Resolve conflicts if any, and try.
-E) OK, it works. Now, you want to publish your changes to master branch. You go to github at
-  https://github.com/kolmanv/bbfs, then for each new topic branches, you select it, then do a pull request. We'll review
-  the code, eventually merge it in the master branch. Then you'll be able to drop your old topic branches.
+   So you want to fix a bug, add a great feature ? No problem, you create a new branch
+   (because remember you will never commit or merge into your master branch!) :
+   bbfs> git checkout -b feature-world-conquest
+   Then you work in this branch, commit when you want, revert, etc. In short: you
+   work. If you work on two different topics (add the world conquest feature and fix
+   a bug) you create a topic branch for each. Don't forget to test your changes!
+D) Fetch master: It's been a while you work on different topics. You want to test your
+   changes with last changes :
+   bbfs> git merge master
+   Resolve conflicts if any, and try.
+E) OK, it works. Now, you want to publish your changes to master branch. You go to
+   github at: https://github.com/kolmanv/bbfs,
+   then for each new topic branches, you select it, then do a pull request. We'll
+   review the code, eventually merge it in the master branch. Then you'll be able to
+   drop your old topic branches.
