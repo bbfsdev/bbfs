@@ -1,85 +1,77 @@
 File Generator utility
 ------------------------------------------------------------------
-Generates files with random content with random file size according to the given FileGenerator Parameters.
-The FileGeneratorParameters Represents parameters for file generation and can be defined in the YAML as follow:
-defaults:
-#Represents the target path for files generation
-  target_path:  C:/Users/kolman/test_files
-#Represents the file name template for generated file
-  file_name_template: auto_generated_file_4_backup_server
-#Represents the directory name template for generated file
-  dir_name_template:  test_dir_4_backup_server
-#Represents the required file size in MB. Not relevant if random calculation is triggered
-  file_size_in_mb: 500
-#Represents the total created directories. Use any negative value or zero for Infinity.
-#Not relevant if random calculation is triggered
-  total_created_directories: -1
-#Represents the total files in directory. Use any negative value or zero for Infinity
-  total_files_in_dir: 10
-#Represents the sleeping time for generation files
-  sleep_time_in_seconds:  10
-#Represents the upper limit file size in MB for random size calculation
-  upper_size_in_mb: 500
-#Represents the Lower limit file size in MB for random size calculation
-  down_size_in_mb: 50
-#Represents the Lower limit for total files in directory for random calculation
-  lower_limit_4_files_in_dir: 10
-#Represents the Upper limit for total files in directory for random calculation
-  upper_limit_4_files_in_dir: 20
-#Indicates that total files in a directory will be calculated randomly.
-  is_tot_files_in_dir_random: true
-#Indicates that file size will be calculated randomly.
-  is_use_random_size: true
-#Indicated if target path for creation files will taken from content server config file.
-  is_use_content_server_conf: true
+A. Short program description:
+	Generates files and folders with random content with random file size according to the given
+	FileGenerator Parameters.
+	The parameters can be provided by two ways. One way is by YML file. Second wasy is by passing
+	parameters to application trought command line. The two ways and meaning of parameters described in next sections.
 
-Note that these are defaults parameter.
-It means that you can define your own YAML file with only parameter/s that you want to override.
-You have not to provide your own YMAL.
-You can change the default YAML file file_generator_parameters.yml.
-This file located in: BBFS/lib/file_generator
+B. Instalation of application and it dependencies:
+	1. The File Generator utility is integrated to general file utility.
+	   You have to install file_utils and log
+	   Install file_utils as follow:
+	   bbfs> gem build file_utils.gemspec
+	   after run this you will get next message: "Successfully built RubyGem..."
+	   and run:
+       bbfs> gem install file_utils-0.0.1.gem
+       after run this you will get next message: "Successfully installed file_utils-0.0.1..."
 
-The File Generator utility is integrated to general file utility.
-You have to install file_utils and log
-Install file_utils as follow:
-bbfs> gem build file_utils.gemspec
-  Successfully built RubyGem
-  Name: file_utils
-  Version: 0.0.1
-  File: file_utils-0.0.1.gem
-bbfs> gem install file_utils-0.0.1.gem
-    Successfully installed file_utils-0.0.1
-    1 gem installed
-    Installing ri documentation for file_utils-0.0.1...
-    Installing RDoc documentation for file_utils-0.0.1...
+	2. The File Generation Util is depend on log gem. Install log gem as follow:
+	   bbfs> gem build log.gemspec
+	   after run this you will get next message: "Successfully built RubyGem..."
+       run:
+       bbfs> gem install log-0.0.1.gem
+       and get "Successfully installed log-0.0.1..."
 
-Install log as follow:
-bbfs> gem build log.gemspec
-      Successfully built RubyGem
-      Name: log
-      Version: 0.0.1
-      File: log-0.0.1.gem
-bbfs> gem install log-0.0.1.gem
-    Successfully installed log-0.0.1
-    1 gem installed
-    Installing ri documentation for log-0.0.1...
-    Installing RDoc documentation for log-0.0.1...
+C. How to run.
+	1. Create YML configuration file and locate it in file system. The path where the YML file is
+	   located must be provided by --conf_file parameter that passed to program in command line.
+    2. Run the program by
+       bbfs> ruby -Ilib bin/file_utils --command=generate_files --conf_file=~/.bbfs/conf/file_generator.yml
+    3. In order to see all parameters that can be provided to application run next:
+       bbfs> ruby -Ilib bin/file_utils --print_params_to_stdout=true
+    4. In order to get help run: bbfs> ruby -Ilib bin/file_utils --help
+
+D. Desription of YML file
+	The parameters of YML file is divided to two relevant group: "Location and naming", "Processing"
+
+	***********************************Location and naming*********************************************
+	target_path      - Represents the root path where directories and files will be generated.
+	dir_name_prefix  - Represents the directory name template. Name of created directories
+	                   will be dir_name_prefix_xxx. where xxx is random characters
+	file_name_prefix - Represents the file name template for generated file. Name of created
+	                   files will be dir_name_prefix_xxx. where xxx is random characters
+
+	*******************************************Processing**********************************************
+	total_created_directories  - Represents the total created directories. Use any negative value or
+	                             zero for Infinity. Not relevant if random calculation is triggered.
+	is_tot_files_in_dir_random - Indicates that total files in a directory will be calculated randomly.
+	                             If false then value will be taken from parameter:'total_files_in_dir'.
+	                             Also lower\upper_limit_4_files_in_dir parameters will not be used.
+	lower_limit_4_files_in_dir - Represents the Lower limit for total files in directory for random calculation.
+	                             Active only if parameter:'is_tot_files_in_dir_random' is true.
+	upper_limit_4_files_in_dir - Represents the Upper limit for total files in directory for random calculation.
+	                             Active only if parameter:'is_tot_files_in_dir_random' is true.
+	total_files_in_dir         - Represents the total files in directory. Use any negative value or
+	                             zero for Infinity. Active only if parameter:'is_tot_files_in_dir_random' is false.
+	is_use_random_size         - Indicates that file size will be calculated randomly.
+	                             If false then value will be taken from parameter:'file_size_in_mb'.
+	                             Also next 2 parameters will not be used.
+	upper_size_in_mb           - Represents the upper limit file size in MB for random size calculation.
+	                             Active only if parameter:'is_use_random_size' is true.
+	down_size_in_mb            - Represents the Lower limit file size in MB for random size calculation.
+	                             Active only if parameter:'is_use_random_size' is true.
+	file_size_in_mb            - Represents the file size in MB. Not relevant if random calculation is triggered.
+	                             Active only if parameter:'is_use_random_size' is false.
+	sleep_time_in_seconds      - Represent delay between two close cycles of processing.
+	                             In each cycle of processing file\s and\or folder\s created.
+
+	Example of using parameter in yml document is in line below:
+	target_path: home/user_name/.bbfs/test_files
+
+    Note: you can override parameters givven in YML file by providing the parameter trough command line.
 
 
 
-The examples to run File Generator utility
----------------------------------------------------------------
-To start File Generator utility by file_utils:
-$ file_utils generate_files
 
-To start File Generator utility from any place:
-fg = BBFS::FileGenerator::FileGenerator.new()
-fg.run()
-
-To start File Generator utility from any place with FileGeneratorParameters:
-fp = BBFS::FileGenerator::FileGeneratorParameters.new()
-fp.target_path = "./test_files333"
-fp.file_name_template = "agf_4_bs_s"
-fg = BBFS::FileGenerator::FileGenerator.new(fp)
-fg.run()
 
