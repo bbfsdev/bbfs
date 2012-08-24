@@ -17,9 +17,9 @@ module BBFS
             size_of_data = size_of_data.unpack("l")[0]
             Log.debug3 "Size of data: #{size_of_data}"
             data = sock.read(size_of_data)
-            Log.debug3 "Data received: #{data}"
+            #Log.debug3 "Data received: #{data}"
             unmarshaled_data = Marshal.load(data)
-            Log.debug3 "Unmarshaled data: #{unmarshaled_data}"
+            #Log.debug3 "Unmarshaled data: #{unmarshaled_data}"
             @queue.push unmarshaled_data
             Log.debug3 "Socket closed? #{sock.closed?}."
             break if sock.closed?
@@ -45,11 +45,11 @@ module BBFS
 
       def send_content_data content_data
         open_socket if @tcp_socket.closed?
-        Log.debug3 "Data to send: #{content_data}"
+        #Log.debug3 "Data to send: #{content_data}"
         marshal_data = Marshal.dump(content_data)
         Log.debug3 "Marshaled size: #{marshal_data.length}."
         data_size = [marshal_data.length].pack("l")
-        Log.debug3 "Marshaled data: #{marshal_data}."
+        #Log.debug3 "Marshaled data: #{marshal_data}."
         if data_size.nil? || marshal_data.nil?
           Log.debug3 'Send data is nil!!!!!!!!'
         end

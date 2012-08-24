@@ -57,7 +57,7 @@ module BBFS
               # Copy file if ack (does not exists on backup and not too much time passed)
               if ack && (Time.now.to_i - timestamp < Params['ack_timeout'])
                 if !@copy_prepare.key?(checksum)
-                  Log.warning("Could not find file to copy checksum: #{checksum}")
+                  Log.warning("Ack was already received:#{checksum}")
                 else
                   file = @copy_prepare[checksum]
                   Log.info "Copying file: #{checksum} #{file}."

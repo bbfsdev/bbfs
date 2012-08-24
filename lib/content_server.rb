@@ -48,15 +48,15 @@ module BBFS
 
       # # # # # # # # # # # # # # # # # # # # # # # # #
       # Initialize/Start backup server content data listener
-      backup_server_content_data = nil
-      backup_server_content_data_queue = Queue.new
-      content_data_receiver = ContentDataReceiver.new(
-          backup_server_content_data_queue,
-          Params['remote_listening_port'])
+      #backup_server_content_data = nil
+      #backup_server_content_data_queue = Queue.new
+      #content_data_receiver = ContentDataReceiver.new(
+      #    backup_server_content_data_queue,
+      #    Params['remote_listening_port'])
       # Start listening to backup server
-      all_threads << Thread.new do
-        content_data_receiver.run
-      end
+      #all_threads << Thread.new do
+      #  content_data_receiver.run
+      #end
 
       # # # # # # # # # # # # # #
       # Initialize/Start local indexer
@@ -71,27 +71,28 @@ module BBFS
       # Initialize/Start content data comparator
       copy_files_events = Queue.new
       all_threads << Thread.new do
-        backup_server_content_data = ContentData::ContentData.new
-        local_server_content_data = nil
+      #  backup_server_content_data = ContentData::ContentData.new
+      #  local_server_content_data = nil
         while true do
 
           # Note: This thread should be the only consumer of local_server_content_data_queue
           Log.info 'Waiting on local server content data.'
           local_server_content_data = local_server_content_data_queue.pop
-
-          # Note: This thread should be the only consumer of backup_server_content_data_queue
-          # Note: The server will wait in the first time on pop until backup sends it's content data
-          while backup_server_content_data_queue.size > 0
-            Log.info 'Waiting on backup server content data.'
-            backup_server_content_data = backup_server_content_data_queue.pop
-          end
+      #
+      #    # Note: This thread should be the only consumer of backup_server_content_data_queue
+      #    # Note: The server will wait in the first time on pop until backup sends it's content data
+      #    while backup_server_content_data_queue.size > 0
+      #      Log.info 'Waiting on backup server content data.'
+      #      backup_server_content_data = backup_server_content_data_queue.pop
+      #    end
 
           Log.info 'Updating file copy queue.'
           Log.debug1 "local_server_content_data #{local_server_content_data}."
-          Log.debug1 "backup_server_content_data #{backup_server_content_data}."
-          # Remove backup content data from local server
-          content_to_copy = ContentData::ContentData.remove(backup_server_content_data, local_server_content_data)
-          # Add copy instruction in case content is not empty
+      #    Log.debug1 "backup_server_content_data #{backup_server_content_data}."
+      #    # Remove backup content data from local server
+      #    content_to_copy = ContentData::ContentData.remove(backup_server_content_data, local_server_content_data)
+          content_to_copy = local_server_content_data
+      #    # Add copy instruction in case content is not empty
           Log.info "Content to copy: #{content_to_copy}"
           copy_files_events.push([:COPY_MESSAGE, content_to_copy]) unless content_to_copy.empty?
         end
@@ -137,15 +138,15 @@ module BBFS
       # # # # # # # # # # # # # # # # # # # # # # # # # # #
       # Initialize/Start backup server content data sender
       dynamic_content_data = DynamicContentData.new
-      content_data_sender = ContentDataSender.new(
-          Params['remote_server'],
-          Params['remote_listening_port'])
+      #content_data_sender = ContentDataSender.new(
+      #    Params['remote_server'],
+      #    Params['remote_listening_port'])
       # Start sending to backup server
       all_threads << Thread.new do
         while true do
           Log.info 'Waiting on local server content data queue.'
           cd = local_server_content_data_queue.pop
-          content_data_sender.send_content_data(cd)
+      #    content_data_sender.send_content_data(cd)
           dynamic_content_data.update(cd)
         end
       end
