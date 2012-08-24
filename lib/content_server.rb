@@ -136,6 +136,7 @@ module BBFS
 
       # # # # # # # # # # # # # # # # # # # # # # # # # # #
       # Initialize/Start backup server content data sender
+      dynamic_content_data = DynamicContentData.new
       content_data_sender = ContentDataSender.new(
           Params['remote_server'],
           Params['remote_listening_port'])
@@ -143,11 +144,14 @@ module BBFS
       all_threads << Thread.new do
         while true do
           Log.info 'Waiting on local server content data queue.'
-          content_data_sender.send_content_data(local_server_content_data_queue.pop)
+          cd = local_server_content_data_queue.pop
+          content_data_sender.send_content_data(cd)
+          dynamic_content_data.update(cd)
         end
       end
-      
-      queue_file_receiver = QueueFileReceiver.new(Params['backup_file_listening_port'])
+
+      queue_file_receiver = QueueFileReceiver.new(Params['backup_file_listening_port'],
+                                                  dynamic_content_data)
       all_threads << queue_file_receiver.tcp_thread
 
       all_threads.each { |t| t.abort_on_exception = true }
@@ -155,6 +159,29 @@ module BBFS
       # Should never reach this line.
     end
     module_function :run_backup_server
+
+    class DynamicContentData
+      def initialize()
+        @content_data_queue = Queue.new
+        @last_content_data = nil
+      end
+
+      def update(content_data)
+        @content_data_queue.push(content_data)
+      end
+
+      def exists?(checksum)
+        while @content_data_queue.size() > 0
+          @last_content_data = @content_data_queue.pop()
+        end
+        Log.debug3("@last_content_data is nil? #{@last_content_data.nil?}")
+        Log.debug3(@last_content_data.to_s) unless @last_content_data.nil?
+        Log.debug3("Exists?:#{@last_content_data.content_exists(checksum)}") \
+                   unless @last_content_data.nil?
+        return @last_content_data.content_exists(checksum) if @last_content_data != nil
+        false
+      end
+    end
 
   end # module ContentServer
 end # module BBFS

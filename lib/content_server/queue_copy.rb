@@ -98,7 +98,8 @@ module BBFS
     end  # class QueueCopy
 
     class QueueFileReceiver
-      def initialize(port)
+      def initialize(port, dynamic_content_data)
+        @dynamic_content_data = dynamic_content_data
         @tcp_server = Networking::TCPServer.new(port, method(:on_file_receive))
       end
 
@@ -141,8 +142,11 @@ module BBFS
         elsif message_type == :ACK_MESSAGE
           checksum, timestamp = message_content
           # Here we should check file existence
-          Log.info("Returning ack for: #{checksum}, timestamp: #{timestamp}")
-          @tcp_server.send_obj([:ACK_MESSAGE, [timestamp, true, checksum]])
+          Log.debug1("Returning ack for: #{checksum}, timestamp: #{timestamp}")
+          Log.debug1("Ack: #{!@dynamic_content_data.exists?(checksum)}")
+          @tcp_server.send_obj([:ACK_MESSAGE, [timestamp,
+                                               !@dynamic_content_data.exists?(checksum),
+                                               checksum]])
         else
           Log.error("Unexpected message type: #{message_type}")
         end
