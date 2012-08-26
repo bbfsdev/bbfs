@@ -102,7 +102,7 @@ module BBFS
               # Blocking read.
               Log.debug3('read_from_stream')
               stream_ok, obj = Networking.read_from_stream(sock)
-              #Log.debug3("Server returned from read: #{status}, #{obj}")
+              #Log.debug3("Server returned from read: #{stream_ok}, #{obj}")
               @obj_clb.call(addr_info, obj) if @obj_clb != nil && stream_ok
               break if !stream_ok
             end
@@ -191,11 +191,11 @@ module BBFS
               }
               #sleep(Params['client_retry_delay'])
             else
-              status, obj = Networking.read_from_stream(@tcp_socket)
-              Log.debug3("Client returned from read: #{status}, #{obj}")
+              read_ok, obj = Networking.read_from_stream(@tcp_socket)
+              Log.debug3("Client returned from read: #{read_ok}, #{obj}")
               # Handle case when socket is closed in middle.
               # In that case we should not call obj_clb.
-              @obj_clb.call(obj) if (status != nil && @obj_clb != nil)
+              @obj_clb.call(obj) if (read_ok && @obj_clb != nil)
             end
           end
         end

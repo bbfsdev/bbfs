@@ -40,7 +40,7 @@ module BBFS
           # Send data first.
           tcp_client = TCPClient.new('kuku', 5555)
           # Send has to be successful.
-          tcp_client.send_obj(data).should be(true)
+          tcp_client.send_obj(data).should be(21)
 
           # Note this is very important so that reading the stream from beginning.
           stream.rewind
@@ -64,7 +64,7 @@ module BBFS
           tcp_server = nil
           new_clb = lambda { |i|
             #2 - After after @sockets is filled. Send has to be successful.
-            tcp_server.send_obj(data).should eq({info => true})
+            tcp_server.send_obj(data).should eq({info => 21})
 
             stream.rewind
 
