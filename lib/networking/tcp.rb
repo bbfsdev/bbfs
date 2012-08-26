@@ -6,6 +6,8 @@ module BBFS
 
     Params.integer('client_retry_delay', 60, 'Number of seconds before trying to reconnect.')
 
+    # TODO(kolman): To get robustness, just use try catch + return 0 bytes on write +
+    # return false on status on read.
     def Networking.write_to_stream(stream, obj)
       Log.debug3('Writing to stream.')
       marshal_data = Marshal.dump(obj)
@@ -14,19 +16,40 @@ module BBFS
       if data_size.nil? || marshal_data.nil?
         Log.debug3 'Send data size is nil!'
       end
-      bytes_written = stream.write data_size
-      bytes_written += stream.write marshal_data
-      return bytes_written
+      begin
+        bytes_written = stream.write data_size
+        bytes_written += stream.write marshal_data
+        return bytes_written
+      rescue Exception => e
+        Log.warning("Could not write tcp/ip stream, #{e.to_s}")
+        begin
+          stream.close()
+        rescue IOError => e
+          Log.warning("Could not close stream, #{e.to_s}.")
+        end
+        return 0
+      end
     end
 
     # Returns pair [status(true/false), obj]
     def Networking.read_from_stream(stream)
       Log.debug3('Read from stream.')
-      return [false, nil] unless size_of_data = stream.read(4)
-      size_of_data = size_of_data.unpack("l")[0]
-      Log.debug2("Reading data size:#{size_of_data}")
-      data = stream.read(size_of_data)
-      unmarshalled_data = Marshal.load(data)
+      begin
+        return [false, nil] unless size_of_data = stream.read(4)
+        size_of_data = size_of_data.unpack("l")[0]
+        Log.debug2("Reading data size:#{size_of_data}")
+        data = stream.read(size_of_data)
+      rescue Exception => e
+        Log.warning("Could not read tcp/ip stream, #{e.to_s}.")
+        begin
+          stream.close()
+        rescue IOError => e
+          Log.warning("Could not close stream, #{e.to_s}.")
+        end
+        return [false, nil]
+      end
+
+    unmarshalled_data = Marshal.load(data)
       #Log.debug3("unmarshalled_data:#{unmarshalled_data}")
       return [true, unmarshalled_data]
     end
@@ -51,7 +74,12 @@ module BBFS
       def send_obj(obj, addr_info=nil)
         Log.debug3("addr_info=#{addr_info}")
         unless addr_info.nil?
-          Networking.write_to_stream(@sockets[addr_info], obj)
+          if @sockets.key?(addr_info)
+            Networking.write_to_stream(@sockets[addr_info], obj)
+          else
+            Log.warning("Could not find client socket: #{addr_info}")
+            return 0
+          end
         else
           out = {}
           @sockets.each { |key, sock| out[key] = Networking.write_to_stream(sock, obj) }
@@ -73,11 +101,17 @@ module BBFS
             loop do
               # Blocking read.
               Log.debug3('read_from_stream')
-              status, obj = Networking.read_from_stream(sock)
+              stream_ok, obj = Networking.read_from_stream(sock)
               #Log.debug3("Server returned from read: #{status}, #{obj}")
-              @obj_clb.call(addr_info, obj) if @obj_clb != nil && status
-              break if status.nil?
+              @obj_clb.call(addr_info, obj) if @obj_clb != nil && stream_ok
+              break if !stream_ok
             end
+            begin
+              @sockets[addr_info].close() unless @sockets[addr_info].nil?
+            rescue IOError => e
+              Log.warning("Could not close socket, #{e.to_s}.")
+            end
+            @sockets.delete(addr_info)
             @closed_clb.call(addr_info) if @closed_clb != nil
           end
         end
