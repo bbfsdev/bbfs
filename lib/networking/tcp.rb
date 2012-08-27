@@ -159,7 +159,7 @@ module BBFS
         rescue Errno::ECONNREFUSED
           Log.warning('Connection refused')
         end
-        Log.debug1("Reconnect clb: '#{@reconnected_clb}'")
+        Log.debug1("Reconnect clb: '#{@reconnected_clb.nil? ? 'nil' : @reconnected_clb}'")
         if socket_good?
           @remote_server_available_mutex.synchronize {
             @remote_server_available.signal

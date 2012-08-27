@@ -112,30 +112,22 @@ module BBFS
       end
     end
 
+    # Unfortunately this class is used as mutable for now. So need to be carefull.
+    # TODO(kolman): Make this class imutable, but add indexing structure to it.
+    # TODO(kolman): Add wrapper to the class to enable dynamic content data
+    # (with easy access indexes)
     class ContentData
       attr_reader :contents, :instances
 
       # @param content_data_serializer_str [String]
-      def initialize(content_data_serializer = nil)
-        @contents = Hash.new # key is a checksum , value is a refernce to the Content object
-        @instances = Hash.new  # key is an instance global path , value is a reference to the ContentInstance object
-        if (content_data_serializer != nil)
-          content_data_serializer.contents.each do |entry|
-            key = entry.key
-            value = entry.value
-            content_serializer = value.content
-            raise ArgumentError.new("content have to be defined") if content_serializer.nil?
-            content = Content.new(nil, nil, nil, content_serializer)
-            @contents[key] = content
-          end
-          content_data_serializer.instances.each do |entry|
-            key = entry.key
-            value = entry.value
-            content_instance_serializer = value.instance
-            raise ArgumentError.new("instance have to be defined") if content_instance_serializer.nil?
-            content_instance = ContentInstance.new(nil, nil, nil, nil, nil, nil, content_instance_serializer)
-            @instances[key] = content_instance
-          end
+      def initialize(copy = nil)
+        if copy.nil?
+          @contents = Hash.new # key is a checksum , value is a refernce to the Content object
+          @instances = Hash.new  # key is an instance global path , value is a reference to the ContentInstance object
+        else
+          # Regenerate only the hashes, the values are immutable.
+          @contents = copy.contents.clone
+          @instances = copy.instances.clone
         end
       end
 

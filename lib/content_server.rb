@@ -6,6 +6,7 @@ require 'content_data'
 require 'content_server/content_receiver'
 require 'content_server/queue_indexer'
 require 'content_server/queue_copy'
+require 'content_server/remote_content'
 require 'file_copy'
 require 'file_indexing'
 require 'file_monitoring'
@@ -31,6 +32,7 @@ module BBFS
                      'ContentData file path.')
     Params.string('monitoring_config_path', File.expand_path('~/.bbfs/etc/file_monitoring.yml'),
                      'Configuration file for monitoring.')
+    Params.integer('remote_content_port', 5555, 'Default port for remote content copy')
 
     def run
       all_threads = []
@@ -70,6 +72,7 @@ module BBFS
       # # # # # # # # # # # # # # # # # # # # # #
       # Initialize/Start content data comparator
       copy_files_events = Queue.new
+      local_dynamic_content_data = ContentData::DynamicContentData.new
       all_threads << Thread.new do
       #  backup_server_content_data = ContentData::ContentData.new
       #  local_server_content_data = nil
@@ -78,6 +81,7 @@ module BBFS
           # Note: This thread should be the only consumer of local_server_content_data_queue
           Log.info 'Waiting on local server content data.'
           local_server_content_data = local_server_content_data_queue.pop
+          local_dynamic_content_data.update(local_server_content_data)
       #
       #    # Note: This thread should be the only consumer of backup_server_content_data_queue
       #    # Note: The server will wait in the first time on pop until backup sends it's content data
@@ -93,11 +97,14 @@ module BBFS
       #    content_to_copy = ContentData::ContentData.remove(backup_server_content_data, local_server_content_data)
           content_to_copy = local_server_content_data
       #    # Add copy instruction in case content is not empty
-          Log.info "Content to copy: #{content_to_copy}"
+          Log.debug1 "Content to copy: #{content_to_copy}"
           copy_files_events.push([:COPY_MESSAGE, content_to_copy]) unless content_to_copy.empty?
         end
       end
 
+      remote_content_client = RemoteContentClient.new(local_dynamic_content_data,
+                                                      Params['remote_content_port'])
+      all_threads << remote_content_client.tcp_thread
 
       # # # # # # # # # # # # # # # #
       # Start copying files on demand
@@ -137,7 +144,7 @@ module BBFS
 
       # # # # # # # # # # # # # # # # # # # # # # # # # # #
       # Initialize/Start backup server content data sender
-      dynamic_content_data = DynamicContentData.new
+      dynamic_content_data = ContentData::DynamicContentData.new
       #content_data_sender = ContentDataSender.new(
       #    Params['remote_server'],
       #    Params['remote_listening_port'])
@@ -151,6 +158,13 @@ module BBFS
         end
       end
 
+      content_server_dynamic_content_data = ContentData::DynamicContentData.new
+      remote_content = ContentServer::RemoteContent.new(content_server_dynamic_content_data,
+                                                        Params['remote_server'],
+                                                        Params['remote_content_port'],
+                                                        Params['backup_destination_folder'])
+      all_threads.concat(remote_content.run())
+
       queue_file_receiver = QueueFileReceiver.new(Params['backup_file_listening_port'],
                                                   dynamic_content_data)
       all_threads << queue_file_receiver.tcp_thread
@@ -160,29 +174,6 @@ module BBFS
       # Should never reach this line.
     end
     module_function :run_backup_server
-
-    class DynamicContentData
-      def initialize()
-        @content_data_queue = Queue.new
-        @last_content_data = nil
-      end
-
-      def update(content_data)
-        @content_data_queue.push(content_data)
-      end
-
-      def exists?(checksum)
-        while @content_data_queue.size() > 0
-          @last_content_data = @content_data_queue.pop()
-        end
-        Log.debug3("@last_content_data is nil? #{@last_content_data.nil?}")
-        Log.debug3(@last_content_data.to_s) unless @last_content_data.nil?
-        Log.debug3("Exists?:#{@last_content_data.content_exists(checksum)}") \
-                   unless @last_content_data.nil?
-        return @last_content_data.content_exists(checksum) if @last_content_data != nil
-        false
-      end
-    end
 
   end # module ContentServer
 end # module BBFS

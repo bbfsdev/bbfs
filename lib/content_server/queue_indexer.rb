@@ -77,7 +77,7 @@ module BBFS
             server_content_data.to_file(@content_data_path)
 
             Log.info 'Adding server content data to queue.'
-            @output_queue.push(server_content_data)
+            @output_queue.push(ContentData::ContentData.new(server_content_data))
           end  # while true do
         end  # Thread.new do
         thread

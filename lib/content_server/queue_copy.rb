@@ -33,6 +33,7 @@ module BBFS
 
       def run()
         threads = []
+        threads << @backup_tcp.tcp_thread if @backup_tcp != nil
         threads << Thread.new do
           while true do
             Log.info 'Waiting on copy files events.'
@@ -88,6 +89,9 @@ module BBFS
                     Log.warning("Could not open file #{file} for copy. #{e}")
                   end
                 end
+              else
+                Log.debug1("Ack timed out span: #{Time.now.to_i - timestamp} > " \
+                           "timeout: #{Params['ack_timeout']}")
               end
             else
               Log.error("Copy event not supported: #{message_type}")
@@ -158,7 +162,6 @@ module BBFS
       def self.destination_filename(folder, sha1)
         File.join(folder, sha1[0,2], sha1[2,2], sha1)
       end
-
     end # class QueueFileReceiver
   end
 end
