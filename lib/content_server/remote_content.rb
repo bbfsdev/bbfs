@@ -8,7 +8,7 @@ require 'params'
 module BBFS
   module ContentServer
 
-    Params.integer('remote_content_timeout', 30, 'Remote content desired freshness in seconds.')
+    Params.integer('remote_content_timeout', 10, 'Remote content desired freshness in seconds.')
     Params.integer('max_content_timeout', 60*60, 'Remote content force refresh in seconds.')
 
     # TODO(kolman): Use only one tcp/ip socket by utilizing one NQueue for many queues!
@@ -60,7 +60,8 @@ module BBFS
             if sleep_time_span >= Params['remote_content_timeout']
               # Send ping!
               Log.debug2('Sending remote contend request.')
-              @remote_tcp.send_obj(nil)
+              bytes_written = @remote_tcp.send_obj(nil)
+              Log.debug3("Bytes written #{bytes_written}.")
             end
 
             sleep_time_span = Time.now.to_i - @last_update_timestamp \

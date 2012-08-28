@@ -21,8 +21,6 @@ require 'params'
 module BBFS
   module ContentServer
     Params.string('remote_server', 'localhost', 'IP or DNS of backup server.')
-    Params.integer('remote_listening_port', 3333,
-                     'Listening port for backup server content data.')
     Params.string('backup_username', nil, 'Backup server username.')
     Params.string('backup_password', nil, 'Backup server password.')
     Params.integer('backup_file_listening_port', 4444, 'Listening port in backup server for files')
@@ -32,7 +30,8 @@ module BBFS
                      'ContentData file path.')
     Params.string('monitoring_config_path', File.expand_path('~/.bbfs/etc/file_monitoring.yml'),
                      'Configuration file for monitoring.')
-    Params.integer('remote_content_port', 5555, 'Default port for remote content copy')
+    Params.integer('remote_content_port', 3333, 'Default port for remote content copy.')
+    Params.integer('backup_check_delay', 5, 'Time between two content vs backup checks.')
 
     def run
       all_threads = []
@@ -90,15 +89,15 @@ module BBFS
       #      backup_server_content_data = backup_server_content_data_queue.pop
       #    end
 
-          Log.info 'Updating file copy queue.'
-          Log.debug1 "local_server_content_data #{local_server_content_data}."
+      #    Log.info 'Updating file copy queue.'
+      #    Log.debug1 "local_server_content_data #{local_server_content_data}."
       #    Log.debug1 "backup_server_content_data #{backup_server_content_data}."
       #    # Remove backup content data from local server
       #    content_to_copy = ContentData::ContentData.remove(backup_server_content_data, local_server_content_data)
-          content_to_copy = local_server_content_data
+      #    content_to_copy = local_server_content_data
       #    # Add copy instruction in case content is not empty
-          Log.debug1 "Content to copy: #{content_to_copy}"
-          copy_files_events.push([:COPY_MESSAGE, content_to_copy]) unless content_to_copy.empty?
+      #    Log.debug1 "Content to copy: #{content_to_copy}"
+      #    copy_files_events.push([:COPY_MESSAGE, content_to_copy]) unless content_to_copy.empty?
         end
       end
 
@@ -108,9 +107,8 @@ module BBFS
 
       # # # # # # # # # # # # # # # #
       # Start copying files on demand
-      queue_copy = QueueCopy.new(copy_files_events, Params['remote_server'],
-                                 Params['backup_file_listening_port'])
-      all_threads.concat(queue_copy.run())
+      copy_server = FileCopyServer.new(copy_files_events, Params['backup_file_listening_port'])
+      all_threads.concat(copy_server.run())
 
       # Finalize server threads.
       all_threads.each { |t| t.abort_on_exception = true }
@@ -165,9 +163,23 @@ module BBFS
                                                         Params['backup_destination_folder'])
       all_threads.concat(remote_content.run())
 
-      queue_file_receiver = QueueFileReceiver.new(Params['backup_file_listening_port'],
-                                                  dynamic_content_data)
-      all_threads << queue_file_receiver.tcp_thread
+      file_copy_client = FileCopyClient.new(Params['remote_server'],
+                                               Params['backup_file_listening_port'],
+                                               dynamic_content_data)
+      all_threads.concat(file_copy_client.threads)
+
+      # Each
+      all_threads << Thread.new do
+        loop do
+          sleep(Params['backup_check_delay'])
+          local_cd = dynamic_content_data.last_content_data()
+          remote_cd = content_server_dynamic_content_data.last_content_data()
+          diff = ContentData::ContentData.remove(local_cd, remote_cd)
+          Log.debug2("Files to send? #{!diff.empty?}")
+          file_copy_client.request_copy(diff) unless diff.empty?
+        end
+      end
+
 
       all_threads.each { |t| t.abort_on_exception = true }
       all_threads.each { |t| t.join }

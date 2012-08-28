@@ -11,13 +11,14 @@ module BBFS
     # Copy message types.
     :ACK_MESSAGE
     :COPY_MESSAGE
+    :SEND_COPY_MESSAGE
 
     # Simple copier, gets inputs events (files to copy), requests ack from backup to copy
     # then copies one file.
-    class QueueCopy
-      def initialize(copy_input_queue, host, port)
+    class FileCopyServer
+      def initialize(copy_input_queue, port)
         # Local simple tcp connection.
-        @backup_tcp = Networking::TCPClient.new(host, port, method(:receive_ack))
+        @backup_tcp = Networking::TCPServer.new(port, method(:receive_message))
         @copy_input_queue = copy_input_queue
         # Stores for each checksum, the file source path.
         # TODO(kolman): If there are items in copy_prepare which timeout (don't get ack),
@@ -25,9 +26,9 @@ module BBFS
         @copy_prepare = {}
       end
 
-      def receive_ack(message)
+      def receive_message(addr_info, message)
         # Add ack message to copy queue.
-        Log.info("Ack received: #{message}")
+        Log.info("message received: #{message}")
         @copy_input_queue.push(message)
       end
 
@@ -74,10 +75,12 @@ module BBFS
                       end
                       # Send pair (content + checksum).
                       Log.debug1("Content to send size: #{content.length}")
-                      bytes_written = @backup_tcp.send_obj([:COPY_MESSAGE, [content, checksum]])
-                      Log.debug1("Sent content of file #{file}, bytes written: #{bytes_written}.")
+                      bytes_written_hash = @backup_tcp.send_obj([:COPY_MESSAGE,
+                                                                 [content, checksum]])
+                      Log.debug1("Sent content of file #{file}, " \
+                                 "bytes written hash: #{bytes_written_hash}.")
                       # We can actually check the number of bytes in content (not in message).
-                      if bytes_written > 0
+                      if bytes_written_hash.length > 0 && bytes_written_hash.values.first() > 0
                         @copy_prepare.delete(checksum)
                       else
                         Log.error("Could not copy file, wrote 0 bytes.")
@@ -101,22 +104,43 @@ module BBFS
       end
     end  # class QueueCopy
 
-    class QueueFileReceiver
-      def initialize(port, dynamic_content_data)
+    class FileCopyClient
+      def initialize(host, port, dynamic_content_data)
+        @local_queue = Queue.new
         @dynamic_content_data = dynamic_content_data
-        @tcp_server = Networking::TCPServer.new(port, method(:on_file_receive))
+        @tcp_server = Networking::TCPClient.new(host, port, method(:handle_message))
+        @local_thread = Thread.new do
+          loop do
+            handle(@local_queue.pop)
+          end
+        end
       end
 
-      def tcp_thread
-        return @tcp_server.tcp_thread if @tcp_server != nil
-        nil
+      def threads
+        ret = [@local_thread]
+        ret << @tcp_server.tcp_thread if @tcp_server != nil
+        return ret
+      end
+
+      def request_copy(content_data)
+        handle_message([:SEND_COPY_MESSAGE, content_data])
+      end
+
+      def handle_message(message)
+        Log.debug2('QueueFileReceiver handle message')
+        @local_queue.push(message)
       end
 
       # This is a function which receives the messages (file or ack) and return answer in case
-      # of ack.
-      def on_file_receive(addr_info, message)
+      # of ack. Note that it is being executed from the class thread only!
+      def handle(message)
         message_type, message_content = message
-        if message_type == :COPY_MESSAGE
+        if message_type == :SEND_COPY_MESSAGE
+          Log.debug1("Requesting file (content data) to copy.")
+          Log.debug3("File requested: #{message_content.to_s}")
+          bytes_written = @tcp_server.send_obj([:COPY_MESSAGE, message_content])
+          Log.debug1("Sending copy message succeeded? bytes_written: #{bytes_written}.")
+        elsif message_type == :COPY_MESSAGE
           content, checksum = message_content
           #Log.info("Content: #{content} class #{content.class}.")
           received_checksum = FileIndexing::IndexAgent.get_content_checksum(content)
@@ -124,8 +148,8 @@ module BBFS
           Log.info(comment) if checksum == received_checksum
           Log.error(comment) if checksum != received_checksum
 
-          write_to = QueueFileReceiver.destination_filename(Params['backup_destination_folder'],
-                                                            received_checksum)
+          write_to = FileCopyClient.destination_filename(Params['backup_destination_folder'],
+                                                         received_checksum)
           if File.exists?(write_to)
             Log.warning("File already exists (#{write_to}) not writing.")
           else

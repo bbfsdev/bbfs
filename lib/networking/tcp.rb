@@ -49,8 +49,8 @@ module BBFS
         return [false, nil]
       end
 
-    unmarshalled_data = Marshal.load(data)
-      #Log.debug3("unmarshalled_data:#{unmarshalled_data}")
+      unmarshalled_data = Marshal.load(data)
+      Log.debug3('Read good.')
       return [true, unmarshalled_data]
     end
 
@@ -94,7 +94,7 @@ module BBFS
         return Thread.new do
           Log.debug3('run_server2')
           Socket.tcp_server_loop(@port) do |sock, addr_info|
-            Log.debug3('-----')
+            Log.debug3("----- #{@port} -----")
             Log.debug3("tcp_server_loop... #{sock} #{addr_info.inspect}")
             @sockets[addr_info] = sock
             @new_clb.call(addr_info) if @new_clb != nil
@@ -102,10 +102,11 @@ module BBFS
               # Blocking read.
               Log.debug3('read_from_stream')
               stream_ok, obj = Networking.read_from_stream(sock)
-              #Log.debug3("Server returned from read: #{stream_ok}, #{obj}")
+              Log.debug3("Server returned from read: #{stream_ok}")
               @obj_clb.call(addr_info, obj) if @obj_clb != nil && stream_ok
               break if !stream_ok
             end
+            Log.warning("Connection broken, #{addr_info.inspect}")
             begin
               @sockets[addr_info].close() unless @sockets[addr_info].nil?
             rescue IOError => e
@@ -147,10 +148,12 @@ module BBFS
           return false
         end
         Log.debug1('writing...')
+        #Log.debug3("socket port: #{@tcp_socket.peeraddr}")
         bytes_written = Networking.write_to_stream(@tcp_socket, obj)
         return bytes_written
       end
 
+      # This function may be executed only from one thread!!! or in synchronized manner.
       private
       def open_socket
         Log.debug1("Connecting to content server #{@host}:#{@port}.")
@@ -181,7 +184,6 @@ module BBFS
           loop do
             Log.debug3('Start blocking read (TCPClient).')
             # Blocking read.
-            open_socket unless socket_good?
             if !socket_good?
               Log.warning("Socket not good, waiting for reconnection with " \
                           "#{Params['client_retry_delay']} seconds timeout.")
@@ -189,10 +191,9 @@ module BBFS
                 @remote_server_available.wait(@remote_server_available_mutex,
                                               Params['client_retry_delay'])
               }
-              #sleep(Params['client_retry_delay'])
             else
               read_ok, obj = Networking.read_from_stream(@tcp_socket)
-              Log.debug3("Client returned from read: #{read_ok}, #{obj}")
+              Log.debug3("Client returned from read: #{read_ok}")
               # Handle case when socket is closed in middle.
               # In that case we should not call obj_clb.
               @obj_clb.call(obj) if (read_ok && @obj_clb != nil)
