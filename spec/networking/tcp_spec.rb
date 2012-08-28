@@ -54,6 +54,8 @@ module BBFS
           tcp_server.tcp_thread.join
          end
 
+        # TODO(kolman): Don't work, missing client send_obj/open_socket execution in
+        # the correct place.
         #it 'should connect and receive callback from server' do
         #  info = 'info'
         #  data = 'kuku!!!'
