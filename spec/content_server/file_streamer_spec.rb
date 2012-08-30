@@ -10,7 +10,7 @@ BBFS::Params['log_debug_level'] = 0
 BBFS::Log.init
 
 # Have to be set to test chunking mechanism.
-Params['streaming_chunk_size'] = 5
+# Params['streaming_chunk_size'] = 5
 
 module BBFS
   module ContentServer
