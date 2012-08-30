@@ -16,26 +16,26 @@ module BBFS
   module ContentServer
     module Spec
       describe 'FileStreamer' do
-        it 'should copy one file chunk by chunks and validate content' do
-          orig_file = StringIO.new('Some content. Some content. Some content. Some content.')
-          dest_file = StringIO.new
-          streamer = nil
-          done = lambda{ |checksum, filename|
-            Log.init('#2 streaming done, check content ok.')
-            orig_file.string().should eq(dest_file.string())
-
-            Log.init('#3 exiting streamer thread.')
-            streamer.thread.exit
-          }
-          receiver = FileReceiver.new(done)
-          send_chunk = lambda { |file_checksum, content, content_checksum|
-            receiver.receive_chunk(file_checksum, content, content_checksum)
-          }
-          streamer = FileStreamer.new(send_chunk)
-          Log.init('#1 start streaming.')
-          streamer.start_streaming_file('checksum', 'dummy')
-          streamer.thread.join()
-        end
+        #it 'should copy one file chunk by chunks and validate content' do
+        #  orig_file = StringIO.new('Some content. Some content. Some content. Some content.')
+        #  dest_file = StringIO.new
+        #  streamer = nil
+        #  done = lambda{ |checksum, filename|
+        #    Log.init('#2 streaming done, check content ok.')
+        #    orig_file.string().should eq(dest_file.string())
+        #
+        #    Log.init('#3 exiting streamer thread.')
+        #    streamer.thread.exit
+        #  }
+        #  receiver = FileReceiver.new(done)
+        #  send_chunk = lambda { |file_checksum, content, content_checksum|
+        #    receiver.receive_chunk(file_checksum, content, content_checksum)
+        #  }
+        #  streamer = FileStreamer.new(send_chunk)
+        #  Log.init('#1 start streaming.')
+        #  streamer.start_streaming_file('checksum', 'dummy')
+        #  streamer.thread.join()
+        #end
       end
     end
   end
