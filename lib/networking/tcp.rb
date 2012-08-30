@@ -93,28 +93,35 @@ module BBFS
         Log.debug3('run_server')
         return Thread.new do
           Log.debug3('run_server2')
-          Socket.tcp_server_loop(@port) do |sock, addr_info|
-            Log.debug3("----- #{@port} -----")
-            Log.debug3("tcp_server_loop... #{sock} #{addr_info.inspect}")
-            @sockets[addr_info] = sock
-            @new_clb.call(addr_info) if @new_clb != nil
-            loop do
-              # Blocking read.
-              Log.debug3('read_from_stream')
-              stream_ok, obj = Networking.read_from_stream(sock)
-              Log.debug3("Server returned from read: #{stream_ok}")
-              @obj_clb.call(addr_info, obj) if @obj_clb != nil && stream_ok
-              break if !stream_ok
-            end
-            Log.warning("Connection broken, #{addr_info.inspect}")
+          loop {
             begin
-              @sockets[addr_info].close() unless @sockets[addr_info].nil?
+              Socket.tcp_server_loop(@port) do |sock, addr_info|
+                Log.debug3("----- #{@port} -----")
+                Log.debug3("tcp_server_loop... #{sock} #{addr_info.inspect}")
+                @sockets[addr_info] = sock
+                @new_clb.call(addr_info) if @new_clb != nil
+                loop do
+                  # Blocking read.
+                  Log.debug3('read_from_stream')
+                  stream_ok, obj = Networking.read_from_stream(sock)
+                  Log.debug3("Server returned from read: #{stream_ok}")
+                  @obj_clb.call(addr_info, obj) if @obj_clb != nil && stream_ok
+                  break if !stream_ok
+                end
+                Log.warning("Connection broken, #{addr_info.inspect}")
+                begin
+                  @sockets[addr_info].close() unless @sockets[addr_info].nil?
+                rescue IOError => e
+                  Log.warning("Could not close socket, #{e.to_s}.")
+                end
+                @sockets.delete(addr_info)
+                @closed_clb.call(addr_info) if @closed_clb != nil
+              end
             rescue IOError => e
-              Log.warning("Could not close socket, #{e.to_s}.")
+              Log.info("Connection broken during tcp_server_loop. Restarting server loop " \
+                       "port:#{port}.")
             end
-            @sockets.delete(addr_info)
-            @closed_clb.call(addr_info) if @closed_clb != nil
-          end
+          }
         end
       end
     end  # TCPServer
@@ -137,6 +144,7 @@ module BBFS
         # Variable to signal when remote server is ready.
         @remote_server_available = ConditionVariable.new
         @remote_server_available_mutex = Mutex.new
+        open_socket unless socket_good?
       end
 
       def send_obj(obj)
@@ -154,7 +162,7 @@ module BBFS
       end
 
       # This function may be executed only from one thread!!! or in synchronized manner.
-      private
+      # private
       def open_socket
         Log.debug1("Connecting to content server #{@host}:#{@port}.")
         begin
