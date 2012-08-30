@@ -144,7 +144,8 @@ module BBFS
           content, checksum = message_content
           #Log.info("Content: #{content} class #{content.class}.")
           received_checksum = FileIndexing::IndexAgent.get_content_checksum(content)
-          comment = "Calculated received content checksum #{received_checksum}"
+          comment = "Calculated received content checksum #{received_checksum} vs " \
+                    "checksum #{checksum}"
           Log.info(comment) if checksum == received_checksum
           Log.error(comment) if checksum != received_checksum
 

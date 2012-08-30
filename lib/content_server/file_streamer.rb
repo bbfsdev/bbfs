@@ -13,11 +13,22 @@ module BBFS
 
     class Stream
       attr_reader :checksum, :path, :file
-
       def initialize(checksum, path, file)
         @checksum = checksum
         @path = path
         @file = file
+      end
+
+      def self.close_delete_stream(checksum, streams_hash)
+        if streams_hash.key?(checksum)
+          begin
+            streams_hash[checksum].file.close()
+          rescue IOError => e
+            Log.warning("While closing stream, could not close file #{streams_hash[checksum].path}." \
+                        " #{e.to_s}")
+          end
+          streams_hash.delete(checksum)
+        end
       end
 
     end
@@ -32,11 +43,11 @@ module BBFS
       def initialize(send_chunk_clb, abort_streaming_clb=nil)
         @send_chunk_clb = send_chunk_clb
         @abort_streaming_clb = abort_streaming_clb
-        @thread = run
         @stream_queue = Queue.new
 
         # Used from internal thread only.
         @streams = {}
+        @thread = run
       end
 
       def start_streaming(checksum, path)
@@ -48,11 +59,9 @@ module BBFS
       end
 
       def run
-        Thread.new begin
+        return Thread.new begin
           loop {
             checksum = handle(@stream_queue.pop)
-            checksum?!?!?!?!?!?!
-            HOW TO POPULATE THIS QUEUE?! WITH COPY
           }
         end
       end
@@ -68,7 +77,7 @@ module BBFS
           end
           @streams[checksum] = Stream.new(checksum, path, file)
         elsif type = :ABORT_STREAM
-          close_delete_stream(content)
+          Stream.close_delete_stream(content, @streams)
         elsif type = :COPY_CHUNK
           checksum = content
           if @streams.key?(checksum)
@@ -76,10 +85,11 @@ module BBFS
             if !chunk
               # No more to read, send end of file.
               @send_chunk_clb.call(checksum, nil, nil)
-              close_delete_stream(checksum)
+              Stream.close_delete_stream(checksum, @streams)
             else
               chunk_checksum = FileIndexing::IndexAgent.get_content_checksum(chunk)
               @send_chunk_clb.call(checksum, chunk, chunk_checksum)
+              @stream_queue << [:COPY_CHUNK, checksum]
             end
           else
             Log.info("No checksum found to copy chunk. #{checksum}.")
@@ -87,19 +97,6 @@ module BBFS
         end
 
       end
-
-      def close_delete_stream(checksum)
-        if @streams.key?(checksum)
-          begin
-            @streams[checksum].file.close()
-          rescue IOError => e
-            Log.warning("While closing stream, could not close file #{@streams[checksum].path}." \
-                        " #{e.to_s}")
-          end
-          @streams.delete(checksum)
-        end
-      end
-
     end
 
     # Start implementing as dummy, no self thread for now.
@@ -109,9 +106,58 @@ module BBFS
 
       def initialize(file_done_clb)
         @file_done_clb = file_done_clb
+        @streams = {}
       end
 
       def receive_chunk(file_checksum, content, content_checksum)
+        if !content.nil? && !content_checksum.nil?
+          received_content_checksum = FileIndexing::IndexAgent.get_content_checksum(content)
+          comment = "Calculated received chunk with content checksum #{received_content_checksum}" \
+                    " vs message content checksum #{content_checksum}, " \
+                    "file checksum #{file_checksum}"
+          Log.debug1(comment) if content_checksum == received_content_checksum
+          Log.error(comment) if content_checksum != received_content_checksum
+
+          if @streams.key?(file_checksum)
+            FileReceiver.write_string_to_file(content, @streams[file_checksum].file)
+          else
+            path = FileReceiver.destination_filename(Params['backup_destination_folder'],
+                                                     file_checksum)
+            begin
+              file = File.new(path, 'wb')
+            rescue IOError => e
+              Log.warning("Could not stream write to local file #{path}. #{e.to_s}")
+            end
+            @streams[checksum] = Stream.new(checksum, path, file)
+          end
+        elsif content.nil? && content_checksum.nil?
+          @streams[file_checksum].file.close() rescue IOError \
+              Log.warning("Could not close received file properly #{file_checksum}")
+
+          # Check written file checksum!
+          local_file_checksum = FileIndexing::IndexAgent.get_checksum(@streams[file_checksum].path)
+          message = "Local checksum (#{local_file_checksum}) received checksum #{file_checksum})"
+          Log.info(message) ? local_file_checksum == file_checksum : Log.error(message)
+
+          Stream.close_delete_stream(file_checksum, @streams)
+        else
+          Log.warning("Unexpected receive chuck message. file_checksum:#{file_checksum}, " \
+                      "content.nil?:#{content.nil?}, content_checksum:#{content_checksum}")
+        end
+      end
+
+      def self.write_string_to_file(str, file)
+        bytes_to_write = str.bytesize
+        while bytes_to_write > 0
+          bytes_to_write -= file.write(str)
+        end
+      end
+
+      # Creates destination filename for backup server, input is base folder and sha1.
+      # for example: folder:/mnt/hd1/bbbackup, sha1:d0be2dc421be4fcd0172e5afceea3970e2f3d940
+      # dest filename: /mnt/hd1/bbbackup/d0/be/2d/d0be2dc421be4fcd0172e5afceea3970e2f3d940
+      def self.destination_filename(folder, sha1)
+        File.join(folder, sha1[0,2], sha1[2,2], sha1)
       end
 
     end
