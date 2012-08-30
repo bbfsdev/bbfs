@@ -2,7 +2,7 @@ require 'log'
 require 'rspec'
 require 'stringio'
 
-require_relative '../../lib/content_server/file_streamer'
+# require_relative '../../lib/content_server/file_streamer'
 
 # Uncomment to debug spec.
 BBFS::Params['log_write_to_console'] = true

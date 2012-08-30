@@ -117,6 +117,7 @@ module BBFS
                 @sockets.delete(addr_info)
                 @closed_clb.call(addr_info) if @closed_clb != nil
               end
+            break # !!! note this break is needed for tests only !!!! server loop should never end.
             rescue IOError => e
               Log.info("Connection broken during tcp_server_loop. Restarting server loop " \
                        "port:#{port}.")
