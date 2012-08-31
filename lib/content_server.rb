@@ -24,8 +24,6 @@ module BBFS
     Params.string('backup_username', nil, 'Backup server username.')
     Params.string('backup_password', nil, 'Backup server password.')
     Params.integer('backup_file_listening_port', 4444, 'Listening port in backup server for files')
-    Params.string('backup_destination_folder', '',
-                     'Backup server destination folder, default is the relative local folder.')
     Params.string('content_data_path', File.expand_path('~/.bbfs/var/content.data'),
                      'ContentData file path.')
     Params.string('monitoring_config_path', File.expand_path('~/.bbfs/etc/file_monitoring.yml'),
