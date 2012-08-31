@@ -309,7 +309,22 @@ module BBFS
             ret.add_instance(instance)
           end
         end
+        return ret
+      end
 
+      def self.remove_directory(cd, global_dir_path)
+        return nil unless cd.instance_of?ContentData
+
+        ret = ContentData.new
+        cd.instances.values.each do |instance|
+          Log.debug3("global path to check: #{global_dir_path}")
+          Log.debug3("instance global path: #{instance.global_path}")
+          if instance.global_path.scan(global_dir_path).size == 0
+            Log.debug3("Adding instance.")
+            ret.add_content(cd.contents[instance.checksum])
+            ret.add_instance(instance)
+          end
+        end
         return ret
       end
 

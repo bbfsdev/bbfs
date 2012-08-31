@@ -38,22 +38,26 @@ module BBFS
         thread = Thread.new do
           while true do
             Log.info 'Waiting on index input queue.'
-            event = @input_queue.pop
-            Log.info "event: #{event}"
+            state, is_dir, path = @input_queue.pop
+            Log.info "event: #{state}, #{is_dir}, #{path}."
+
             # index files and add to copy queue
-            if event[0] == FileMonitoring::FileStatEnum::STABLE
-              Log.info "Indexing content #{event[1]}."
+            # delete directory with it's sub files
+            # delete file
+            if state == FileMonitoring::FileStatEnum::STABLE && !is_dir
+              Log.info "Indexing content #{path}."
               index_agent = FileIndexing::IndexAgent.new
               indexer_patterns = FileIndexing::IndexerPatterns.new
-              indexer_patterns.add_pattern(event[1])
+              indexer_patterns.add_pattern(path)
               index_agent.index(indexer_patterns, server_content_data)
               Log.info("Failed files: #{index_agent.failed_files.to_a.join(',')}.") \
-                       if !index_agent.failed_files.empty?
+                  if !index_agent.failed_files.empty?
+              Log.info("indexed content #{index_agent.indexed_content}.")
               server_content_data.merge index_agent.indexed_content
-            elsif (event[0] == FileMonitoring::FileStatEnum::NON_EXISTING ||
-                   event[0] == FileMonitoring::FileStatEnum::CHANGED)
-                   # If file content changed, we should remove old instance.
-              key = FileIndexing::IndexAgent.global_path(event[1])
+            elsif ((state == FileMonitoring::FileStatEnum::NON_EXISTING ||
+              state == FileMonitoring::FileStatEnum::CHANGED) && !is_dir)
+              # If file content changed, we should remove old instance.
+              key = FileIndexing::IndexAgent.global_path(path)
               # Check if deleted file exists at content data.
               Log.info("Instance to remove: #{key}")
               if server_content_data.instances.key?(key)
@@ -71,6 +75,15 @@ module BBFS
                       content_data_to_remove, server_content_data)
                 end
               end
+            elsif state == FileMonitoring::FileStatEnum::NON_EXISTING && is_dir
+              Log.info("NonExisting/Changed: #{path}")
+              # Remove directory but only when non-existing.
+              Log.info("Directory to remove: #{path}")
+              global_dir = FileIndexing::IndexAgent.global_path(path)
+              server_content_data = ContentData::ContentData.remove_directory(
+              server_content_data, global_dir)
+            else
+              Log.info("This case should not be handled: #{state}, #{is_dir}, #{path}.")
             end
             # TODO(kolman): Don't write to file each change?
             Log.info "Writing server content data to #{@content_data_path}."

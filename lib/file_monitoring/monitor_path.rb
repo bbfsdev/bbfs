@@ -43,8 +43,8 @@ module BBFS
         @stable_state = stable_state  # number of iteration to move unchanged file to stable state
       end
 
-      def set_output_queue event_queue
-        @event_queue
+      def set_output_queue(event_queue)
+        @event_queue = event_queue
       end
 
       #  Sets a log file to report changes
@@ -109,9 +109,9 @@ module BBFS
             @@log.puts(cur_stat)
             @@log.flush  #Ruby1.9.3: note that this is Ruby internal buffering only; the OS may buffer the data as well
           end
-          if (@event_queue && !self.instance_of?(DirStat))
+          if (!@event_queue.nil?)
             Log.info "Writing to event queue [#{self.state}, #{self.path}]"
-            @event_queue.push([self.state, self.path])
+            @event_queue.push([self.state, self.instance_of?(DirStat), self.path])
           end
         end
       end
@@ -265,7 +265,7 @@ module BBFS
                                     # newly added directories have to remain with NEW state
               was_changed = true
               ds = DirStat.new(file, self.stable_state)
-              ds.set_event_queue(@event_queue) if @event_queue
+              ds.set_event_queue(@event_queue) unless @event_queue.nil?
               ds.monitor
               add_dir(ds)
             end
@@ -275,7 +275,7 @@ module BBFS
                                     # newly added directories have to remain with NEW state
               was_changed = true
               fs = FileStat.new(file, self.stable_state)
-              fs.set_event_queue(@event_queue) if @event_queue
+              fs.set_event_queue(@event_queue) unless @event_queue.nil?
               fs.monitor
               add_file(fs)
             end
