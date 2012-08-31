@@ -14,6 +14,7 @@ module BBFS
     :COPY_MESSAGE
     :SEND_COPY_MESSAGE
     :COPY_CHUNK
+    :ABORT_COPY
 
     # Simple copier, gets inputs events (files to copy), requests ack from backup to copy
     # then copies one file.
@@ -83,6 +84,13 @@ module BBFS
               if content.nil? and content_checksum.nil?
                 @copy_prepare.delete(file_checksum)
               end
+            elsif message_type == :ABORT_COPY
+              Log.info("Aborting file copy: #{message_content}")
+              if @copy_prepare.key?(message_content)
+                Log.info("Aborting: #{@copy_prepare[message_content]}")
+                @copy_prepare.delete(message_content)
+              end
+              @file_streamer.abort_streaming(message_content)
             else
               Log.error("Copy event not supported: #{message_type}")
             end # handle messages here
@@ -96,7 +104,7 @@ module BBFS
         @local_queue = Queue.new
         @dynamic_content_data = dynamic_content_data
         @tcp_server = Networking::TCPClient.new(host, port, method(:handle_message))
-        @file_receiver = FileReceiver.new
+        @file_receiver = FileReceiver.new(method(:done_copy), method(:abort_copy))
         @local_thread = Thread.new do
           loop do
             handle(@local_queue.pop)
@@ -112,6 +120,14 @@ module BBFS
 
       def request_copy(content_data)
         handle_message([:SEND_COPY_MESSAGE, content_data])
+      end
+
+      def abort_copy(checksum)
+        handle_message([:ABORT_COPY, checksum])
+      end
+
+      def done_copy(local_file_checksum, local_path)
+        Log.info("Done copy file: #{local_path}, #{local_file_checksum}")
       end
 
       def handle_message(message)
@@ -138,6 +154,8 @@ module BBFS
           @tcp_server.send_obj([:ACK_MESSAGE, [timestamp,
                                                !@dynamic_content_data.exists?(checksum),
                                                checksum]])
+        elsif message_type == :ABORT_COPY
+          @tcp_server.send_obj([:ABORT_COPY, message_content])
         else
           Log.error("Unexpected message type: #{message_type}")
         end

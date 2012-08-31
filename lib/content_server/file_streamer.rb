@@ -91,7 +91,6 @@ module BBFS
         elsif type == :COPY_CHUNK
           checksum = content
           if @streams.key?(checksum)
-            Log.info("@streams[checksum].file: #{@streams[checksum].file.to_s}.")
             chunk = @streams[checksum].file.read(Params['streaming_chunk_size'])
             if chunk.nil?
               # No more to read, send end of file.
@@ -115,8 +114,9 @@ module BBFS
     # need self thread.
     class FileReceiver
 
-      def initialize(file_done_clb=nil)
+      def initialize(file_done_clb=nil, file_abort_clb=nil)
         @file_done_clb = file_done_clb
+        @file_abort_clb = file_abort_clb
         @streams = {}
       end
 
@@ -134,6 +134,7 @@ module BBFS
                                                      file_checksum)
             if File.exists?(path)
               Log.warning("File already exists (#{path}) not writing.")
+              @file_abort_clb.call(file_checksum) unless @file_abort_clb.nil?
             else
               begin
                 # Make the directory if does not exists.
@@ -147,7 +148,7 @@ module BBFS
               end
             end
           end
-          # We still check @streams has the key, because file can fail to write.
+          # We still check @streams has the key, because file can fail to open.
           if @streams.key?(file_checksum)
             FileReceiver.write_string_to_file(content, @streams[file_checksum].file)
             Log.info("Written already #{@streams[file_checksum].file.size} bytes, " \
