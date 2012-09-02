@@ -15,7 +15,11 @@ A. Backup system, general workflow:
 
 How to install and run:
 -----------------------
-A) Installation of BBFS development kit:
+A1) Installation of BBFS runtime:
+  1. Download and install ruby.
+  2. Download and install gem.
+  3. From command line: gem install content_server
+A2) Installation of BBFS development kit:
   1. Download and install git.
   2. Download and install ruby.
   3. Download and unpack and install DevKit (Windows). Note that after unpacking there
@@ -30,7 +34,7 @@ A) Installation of BBFS development kit:
   9. rake  # This will run all project tests and specs.
   10. You are done, you can start coding on the project.
 
-B) (Optional) Recommended:
+B) (Optional) Recommended for development kit:
   1. Download and install smartgit.
   2. Download and install Ruby IDE (for example RubyMine).
 

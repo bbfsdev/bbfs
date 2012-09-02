@@ -95,6 +95,7 @@ module BBFS
               Log.error("Copy event not supported: #{message_type}")
             end # handle messages here
           end
+          Log.error("Should not reach here, loop should continue.")
         end
       end
     end  # class QueueCopy

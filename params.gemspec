@@ -8,6 +8,8 @@ Gem::Specification.new do |s|
   s.authors     = ['Gena Petelko', 'Kolman Vornovitsky']
   s.email       = 'kolmanv@gmail.com'
   s.homepage    = 'http://github.com/kolmanv/bbfs'
-  s.files       = ['lib/params.rb']
-#  s.test_files  = ['test/params/params_spec.rb']
+  s.files       = Dir['lib/params.rb', 'lib/params/**/*'] \
+                  & `git ls-files -z`.split("\0")
+  s.test_files  = Dir['spec/params/**/*', 'test/params/**/*'] \
+                  & `git ls-files -z`.split("\0")
 end

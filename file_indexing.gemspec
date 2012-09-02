@@ -8,10 +8,10 @@ Gem::Specification.new do |s|
   s.authors     = ['Gena Petelko, Kolman Vornovitsky']
   s.email       = 'kolmanv@gmail.com'
   s.homepage    = 'http://github.com/kolmanv/bbfs'
-  s.files       = ['lib/file_indexing.rb',
-                   'lib/file_indexing/index_agent.rb',
-                   'lib/file_indexing/indexer_patterns.rb']
-#  s.test_files  = ['test/file_indexing/file_indexing_spec.rb']
+  s.files       = Dir['lib/file_indexing.rb', 'lib/file_indexing/**/*'] \
+                  & `git ls-files -z`.split("\0")
+  s.test_files  = Dir['spec/file_indexing/**/*', 'test/file_indexing/**/*'] \
+                  & `git ls-files -z`.split("\0")
   s.add_dependency('content_data')
   s.add_dependency('log')
   s.add_dependency('params')

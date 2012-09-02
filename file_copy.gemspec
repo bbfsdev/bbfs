@@ -8,7 +8,7 @@ Gem::Specification.new do |s|
   s.authors     = ['Gena Petelko, Kolman Vornovitsky']
   s.email       = 'kolmanv@gmail.com'
   s.homepage    = 'http://github.com/kolmanv/bbfs'
-  s.files       = ['lib/file_copy.rb',
-                   'lib/file_copy/copy.rb']
-  s.test_files  = ['test/file_copy/copy_spec.rb']
+  s.files       = Dir['lib/file_copy.rb', 'lib/file_copy/**/*'] \
+                  & `git ls-files -z`.split("\0")
+  s.test_files  = Dir['spec/file_copy/**/*'] & `git ls-files -z`.split("\0")
 end

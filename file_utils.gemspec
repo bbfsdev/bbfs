@@ -8,11 +8,10 @@ Gem::Specification.new do |s|
   s.authors     = ['Gena Petelko, Kolman Vornovitsky']
   s.email       = 'kolmanv@gmail.com'
   s.homepage    = 'http://github.com/kolmanv/bbfs'
-  s.files       = ['lib/file_utils.rb',
-                   'lib/file_utils/file_utils.rb',
-                   'lib/file_utils/file_generator/file_generator.rb',
-                   'lib/file_utils/file_generator/README']
-  #s.test_files  = ['test/file_utils/file_utils_spec.rb']
+  s.files       = Dir['lib/file_utils.rb', 'lib/file_utils/**/*'] \
+                  & `git ls-files -z`.split("\0")
+  s.test_files  = Dir['spec/file_utils/**/*', 'test/file_utils/**/*'] \
+                  & `git ls-files -z`.split("\0")
   s.executables = ['file_utils']
   s.add_dependency('log')
   s.add_dependency('params')

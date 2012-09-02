@@ -8,8 +8,9 @@ Gem::Specification.new do |s|
   s.authors     = ['Yaron Dror']
   s.email       = 'yaron.dror.bb@gmail.com'
   s.homepage    = 'http://github.com/yarondbb/bbfs'
-  s.files       = ['lib/log.rb',
-                   'lib/log/log_consumer.rb']
-  s.test_files  = ['test/log/log_test.rb']
+  s.files       = Dir['lib/log.rb', 'lib/log/**/*'] \
+                  & `git ls-files -z`.split("\0")
+  s.test_files  = Dir['spec/log/**/*', 'test/log/**/*'] \
+                  & `git ls-files -z`.split("\0")
   s.add_dependency('params')
 end

@@ -9,9 +9,10 @@ Gem::Specification.new do |s|
   s.authors     = ['Gena Petelko, Kolman Vornovitsky']
   s.email       = 'kolmanv@gmail.com'
   s.homepage    = 'http://github.com/kolmanv/bbfs'
-  s.files       = ['lib/file_monitoring.rb',
-                   'lib/file_monitoring/file_monitoring.rb',
-                   'lib/file_monitoring/monitor_path.rb']
+  s.files       = Dir['lib/file_monitoring.rb', 'lib/file_monitoring/**/*'] \
+                  & `git ls-files -z`.split("\0")
+  s.test_files  = Dir['spec/file_monitoring/**/*', 'test/file_monitoring/**/*'] \
+                  & `git ls-files -z`.split("\0")
   s.executables << 'file_monitoring'
   s.add_dependency('algorithms')
   s.add_dependency('daemons')

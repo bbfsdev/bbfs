@@ -51,9 +51,7 @@ module BBFS
 
         # Used from internal thread only.
         @streams = {}
-        Log.info("kuku")
         @thread = run
-        Log.info("kak")
       end
 
       def start_streaming(checksum, path)
