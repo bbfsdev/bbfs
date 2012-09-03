@@ -217,16 +217,21 @@ module BBFS
       @init_debug_messages = []
       results = parse_command_line_arguments(args)
       if not results['conf_file'].nil?
-        @init_debug_messages << "Configuration file was overridden. New path:'#{results['conf_file']}'"
-        Params['conf_file'] = results['conf_file']
+        Params['conf_file'] = File.expand_path(results['conf_file'])
       end
 
-      #load yml params
-      if (not Params['conf_file'].nil?) and (File.exist?(File.expand_path Params['conf_file']))
-        @init_debug_messages << 'Configuration file path exists. Loading file parameters.'
-        read_yml_params(File.open(Params['conf_file'], 'r'))
+      #load yml params if path is provided and exists
+      if Params['conf_file'].nil?
+        @init_debug_messages << 'Configuration file was not provided.' + \
+                                'Skipping loading file parameters.'
       else
-        @init_debug_messages << 'Configuration file path does not exist. Skipping loading file parameters.'
+        if File.exist?(Params['conf_file'])
+          @init_debug_messages << "Loading parameters from configuration file:'#{Params['conf_file']}'"
+          read_yml_params(File.open(Params['conf_file'], 'r'))
+        else
+          @init_debug_messages << "Configuration file path:'#{Params['conf_file']}' does not exist. " + \
+                                "Skipping loading file parameters."
+        end
       end
 
       #override command line argument
@@ -314,7 +319,7 @@ module BBFS
     end
     #define default params:
     # 1. configuration file
-    Params.string('conf_file',  File.expand_path("~/.bbfs/conf/#{executable_name}.conf"), 'Default configuration file.')
+    Params.string('conf_file', nil, 'Configuration file path.')
     # 2. Print params to stdout
     Params.boolean('print_params_to_stdout', false, 'print_params_to_stdout or not during Params.init')
 
