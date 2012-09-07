@@ -1,3 +1,4 @@
+require 'tempfile'
 require 'thread'
 
 require 'file_indexing/index_agent'
@@ -14,10 +15,11 @@ module BBFS
                   'Backup server destination folder, default is the relative local folder.')
 
     class Stream
-      attr_reader :checksum, :path, :file, :size
-      def initialize(checksum, path, file, size)
+      attr_reader :checksum, :path, :file, :size, :tmp_file
+      def initialize(checksum, path, file, size, tmp_file=nil)
         @checksum = checksum
         @path = path
+        @tmp_file = tmp_file
         @file = file
         @size = size
       end
@@ -85,7 +87,7 @@ module BBFS
             @stream_queue << [:COPY_CHUNK, checksum]
           end
         elsif type == :ABORT_STREAM
-          Stream.close_delete_stream(content, @streams)
+          Stream.close_delete_stream(content, @streams) # content is the checksum
         elsif type == :COPY_CHUNK
           checksum = content
           if @streams.key?(checksum)
@@ -128,6 +130,7 @@ module BBFS
           Log.error(comment) if content_checksum != received_content_checksum
 
           if !@streams.key?(file_checksum)
+            #open new stream
             path = FileReceiver.destination_filename(Params['backup_destination_folder'],
                                                      file_checksum)
             if File.exists?(path)
@@ -139,8 +142,10 @@ module BBFS
                 Log.debug1("Writing to: #{path}")
                 Log.debug1("Creating directory: #{File.dirname(path)}")
                 FileUtils.makedirs(File.dirname(path))
-                file = File.new(path, 'wb')
-                @streams[file_checksum] = Stream.new(file_checksum, path, file, file_size)
+                file = nil  # the file will be copied from tmp location once the transfer will be done
+                # system will use the checksum and some more unique key for tmp file name
+                tmp_file = Tempfile.new(file_checksum)
+                @streams[file_checksum] = Stream.new(file_checksum, path, file, file_size, tmp_file)
               rescue IOError => e
                 Log.warning("Could not stream write to local file #{path}. #{e.to_s}")
               end
@@ -148,12 +153,24 @@ module BBFS
           end
           # We still check @streams has the key, because file can fail to open.
           if @streams.key?(file_checksum)
-            FileReceiver.write_string_to_file(content, @streams[file_checksum].file)
-            Log.info("Written already #{@streams[file_checksum].file.size} bytes, " \
-                     "out of #{file_size} (#{100.0*@streams[file_checksum].file.size/file_size}%)")
+            # write chunk to temp file
+            FileReceiver.write_string_to_file(content, @streams[file_checksum].tmp_file)
+            Log.info("Written already #{@streams[file_checksum].tmp_file.size} bytes, ")
+            puts("Written already #{@streams[file_checksum].tmp_file.size} bytes, ")
+            puts("Written already out of #{file_size} (#{100.0*@streams[file_checksum].tmp_file.size/file_size}%)")
+            #Log.info("Written already #{@streams[file_checksum].tmp_file.size} bytes, " \
+            #         "out of #{file_size} (#{100.0*@streams[file_checksum].tmp_file.size/file_size}%)")
           end
         elsif content.nil? && content_checksum.nil?
           if @streams.key?(file_checksum)
+            #copy tmp file to permanent location
+            Log.info("Start copy tmp file:'#{@streams[file_checksum].tmp_file.path}' to permanent " \
+                     "location:'#{@streams[file_checksum].path}'")
+            ::FileUtils::copy_file(@streams[file_checksum].tmp_file.path, @streams[file_checksum].path)
+            Log.info("end copy tmp file to permanent location")
+            # close tmp file
+            @streams[file_checksum].tmp_file.close
+            @streams[file_checksum].tmp_file.unlink()  # deletes the temp file
             # Check written file checksum!
             local_path = @streams[file_checksum].path
             Stream.close_delete_stream(file_checksum, @streams)
