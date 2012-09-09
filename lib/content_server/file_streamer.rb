@@ -153,14 +153,10 @@ module BBFS
           Log.warning("File already exists (#{path}) not writing.")
           @file_abort_clb.call(file_checksum) unless @file_abort_clb.nil?
         else
-          begin
-            # the file will be copied from tmp location once the transfer will be done
-            # system will use the checksum and some more unique key for tmp file name
-            tmp_file = Tempfile.new(file_checksum)
-            @streams[file_checksum] = Stream.new(file_checksum, path, tmp_file, file_size)
-          rescue IOError => e
-            Log.warning("Could not stream write to local file #{path}. #{e.to_s}")
-          end
+          # the file will be copied from tmp location once the transfer will be done
+          # system will use the checksum and some more unique key for tmp file name
+          tmp_file = Tempfile.new(file_checksum)
+          @streams[file_checksum] = Stream.new(file_checksum, path, tmp_file, file_size)
         end
       end
 
