@@ -15,11 +15,10 @@ module BBFS
                   'Backup server destination folder, default is the relative local folder.')
 
     class Stream
-      attr_reader :checksum, :path, :file, :size, :tmp_file
-      def initialize(checksum, path, file, size, tmp_file=nil)
+      attr_reader :checksum, :path, :file, :size
+      def initialize(checksum, path, file, size)
         @checksum = checksum
         @path = path
-        @tmp_file = tmp_file
         @file = file
         @size = size
       end
@@ -131,6 +130,7 @@ module BBFS
 
           if !@streams.key?(file_checksum)
             #open new stream
+            # final destination path
             path = FileReceiver.destination_filename(Params['backup_destination_folder'],
                                                      file_checksum)
             if File.exists?(path)
@@ -138,14 +138,10 @@ module BBFS
               @file_abort_clb.call(file_checksum) unless @file_abort_clb.nil?
             else
               begin
-                # Make the directory if does not exists.
-                Log.debug1("Writing to: #{path}")
-                Log.debug1("Creating directory: #{File.dirname(path)}")
-                FileUtils.makedirs(File.dirname(path))
-                file = nil  # the file will be copied from tmp location once the transfer will be done
+                # the file will be copied from tmp location once the transfer will be done
                 # system will use the checksum and some more unique key for tmp file name
                 tmp_file = Tempfile.new(file_checksum)
-                @streams[file_checksum] = Stream.new(file_checksum, path, file, file_size, tmp_file)
+                @streams[file_checksum] = Stream.new(file_checksum, path, tmp_file, file_size)
               rescue IOError => e
                 Log.warning("Could not stream write to local file #{path}. #{e.to_s}")
               end
@@ -154,30 +150,34 @@ module BBFS
           # We still check @streams has the key, because file can fail to open.
           if @streams.key?(file_checksum)
             # write chunk to temp file
-            FileReceiver.write_string_to_file(content, @streams[file_checksum].tmp_file)
-            Log.info("Written already #{@streams[file_checksum].tmp_file.size} bytes, ")
-            puts("Written already #{@streams[file_checksum].tmp_file.size} bytes, ")
-            puts("Written already out of #{file_size} (#{100.0*@streams[file_checksum].tmp_file.size/file_size}%)")
-            #Log.info("Written already #{@streams[file_checksum].tmp_file.size} bytes, " \
-            #         "out of #{file_size} (#{100.0*@streams[file_checksum].tmp_file.size/file_size}%)")
+            FileReceiver.write_string_to_file(content, @streams[file_checksum].file)
+            Log.info("Written already #{@streams[file_checksum].file.size} bytes, " \
+                     "out of #{file_size} (#{100.0*@streams[file_checksum].file.size/file_size}%)")
           end
         elsif content.nil? && content_checksum.nil?
           if @streams.key?(file_checksum)
-            #copy tmp file to permanent location
-            Log.info("Start copy tmp file:'#{@streams[file_checksum].tmp_file.path}' to permanent " \
-                     "location:'#{@streams[file_checksum].path}'")
-            ::FileUtils::copy_file(@streams[file_checksum].tmp_file.path, @streams[file_checksum].path)
-            Log.info("end copy tmp file to permanent location")
-            # close tmp file
-            @streams[file_checksum].tmp_file.close
-            @streams[file_checksum].tmp_file.unlink()  # deletes the temp file
+            begin
+              # Make the directory if does not exists.
+              Log.debug1("Writing to: #{@streams[file_checksum].path}")
+              Log.debug1("Creating directory: #{File.dirname(@streams[file_checksum].path)}")
+              FileUtils.makedirs(File.dirname(@streams[file_checksum].path))
+              #copy tmp file to permanent location
+              Log.info("Start copy tmp file:'#{@streams[file_checksum].file.path}' to permanent " \
+                       "location:'#{@streams[file_checksum].path}'")
+              ::FileUtils::copy_file(@streams[file_checksum].file.path, @streams[file_checksum].path)
+              Log.info("end copy tmp file to permanent location")
+            rescue IOError => e
+              Log.warning("Could not stream write to local file #{path}. #{e.to_s}")
+            end
             # Check written file checksum!
             local_path = @streams[file_checksum].path
-            Stream.close_delete_stream(file_checksum, @streams)
+            tmp_file = @streams[file_checksum].file
+            Stream.close_delete_stream(file_checksum, @streams)  # temp file will be closed here
+            tmp_file.unlink  # deletes the temp file
 
             local_file_checksum = FileIndexing::IndexAgent.get_checksum(local_path)
             message = "Local checksum (#{local_file_checksum}) received checksum (#{file_checksum})."
-            Log.info(message) ? local_file_checksum == file_checksum : Log.error(message)
+            local_file_checksum == file_checksum ? Log.info(message) : Log.error(message)
             Log.info("File fully received #{local_path}")
             @file_done_clb.call(local_file_checksum, local_path) unless @file_done_clb.nil?
           end
