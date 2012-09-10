@@ -1,6 +1,6 @@
 require 'test/unit'
 
-require_relative '../../lib/file_indexing/index_agent'
+require_relative '../../../lib/file_indexing/index_agent'
 
 #if RUBY_PLATFORM =~ /mingw/ or RUBY_PLATFORM =~ /ms/ or RUBY_PLATFORM =~ /win/
 #  require  'win32/process'

@@ -14,7 +14,9 @@ module BBFS
     :COPY_MESSAGE
     :SEND_COPY_MESSAGE
     :COPY_CHUNK
-    :ABORT_COPY
+    :COPY_CHUNK_FROM_REMOTE
+    :ABORT_COPY # Asks the sender to abort file copy.
+    :RESET_RESUME_COPY # Sends the stream sender to resend chunk or resume from different offset.
 
     # Simple copier, gets inputs events (files to copy), requests ack from backup to copy
     # then copies one file.
@@ -52,9 +54,12 @@ module BBFS
               Log.info "Copy file event: #{message_content}"
               # Prepare source,dest map for copy.
               message_content.instances.each { |key, instance|
-                @copy_prepare[instance.checksum] = instance.full_path
-                Log.info("Sending ack for: #{instance.checksum}")
-                @backup_tcp.send_obj([:ACK_MESSAGE, [instance.checksum, Time.now.to_i]])
+                # If not already sending.
+                if !@copy_prepare.key?(instance.checksum)
+                  @copy_prepare[instance.checksum] = instance.full_path
+                  Log.info("Sending ack for: #{instance.checksum}")
+                  @backup_tcp.send_obj([:ACK_MESSAGE, [instance.checksum, Time.now.to_i]])
+                end
               }
             elsif message_type == :ACK_MESSAGE
               # Received ack from backup, copy file if all is good.
@@ -77,9 +82,15 @@ module BBFS
                 Log.debug1("Ack timed out span: #{Time.now.to_i - timestamp} > " \
                            "timeout: #{Params['ack_timeout']}")
               end
+            elsif message_type == :COPY_CHUNK_FROM_REMOTE
+              checksum = message_content
+              @file_streamer.copy_another_chuck(checksum)
             elsif message_type == :COPY_CHUNK
-              file_checksum, file_size, content, content_checksum = message_content
-              Log.info "Send chunk for file #{file_checksum}."
+              # We open the message here for printing info and deleting copy_prepare!
+              file_checksum, offset, file_size, content, content_checksum = message_content
+              Log.info("Send chunk for file #{file_checksum}, offset: #{offset} " \
+                       "filesize: #{file_size}.")
+              # Blocking send.
               @backup_tcp.send_obj([:COPY_CHUNK, message_content])
               if content.nil? and content_checksum.nil?
                 @copy_prepare.delete(file_checksum)
@@ -91,6 +102,10 @@ module BBFS
                 @copy_prepare.delete(message_content)
               end
               @file_streamer.abort_streaming(message_content)
+            elsif message_type == :RESET_RESUME_COPY
+              file_checksum, new_offset = message_content
+              Log.info("Resetting/Resuming file (#{file_checksum}) copy to #{new_offset}")
+              @file_streamer.reset_streaming(file_checksum, new_offset)
             else
               Log.error("Copy event not supported: #{message_type}")
             end # handle messages here
@@ -105,12 +120,15 @@ module BBFS
         @local_queue = Queue.new
         @dynamic_content_data = dynamic_content_data
         @tcp_server = Networking::TCPClient.new(host, port, method(:handle_message))
-        @file_receiver = FileReceiver.new(method(:done_copy), method(:abort_copy))
+        @file_receiver = FileReceiver.new(method(:done_copy),
+                                          method(:abort_copy),
+                                          method(:reset_copy))
         @local_thread = Thread.new do
           loop do
             handle(@local_queue.pop)
           end
         end
+        @local_thread.abort_on_exception = true
       end
 
       def threads
@@ -125,6 +143,10 @@ module BBFS
 
       def abort_copy(checksum)
         handle_message([:ABORT_COPY, checksum])
+      end
+
+      def reset_copy(checksum, new_offset)
+        handle_message([:RESET_RESUME_COPY, [checksum, new_offset]])
       end
 
       def done_copy(local_file_checksum, local_path)
@@ -146,7 +168,11 @@ module BBFS
           bytes_written = @tcp_server.send_obj([:COPY_MESSAGE, message_content])
           Log.debug1("Sending copy message succeeded? bytes_written: #{bytes_written}.")
         elsif message_type == :COPY_CHUNK
-          @file_receiver.receive_chunk(*message_content)
+          Log.debug1('Chunk received.')
+          if @file_receiver.receive_chunk(*message_content)
+            file_checksum, offset, file_size, content, content_checksum = message_content
+            @tcp_server.send_obj([:COPY_CHUNK_FROM_REMOTE, file_checksum])
+          end
         elsif message_type == :ACK_MESSAGE
           checksum, timestamp = message_content
           # Here we should check file existence
@@ -157,6 +183,8 @@ module BBFS
                                                checksum]])
         elsif message_type == :ABORT_COPY
           @tcp_server.send_obj([:ABORT_COPY, message_content])
+        elsif message_type == :RESET_RESUME_COPY
+          @tcp_server.send_obj([:RESET_RESUME_COPY, message_content])
         else
           Log.error("Unexpected message type: #{message_type}")
         end

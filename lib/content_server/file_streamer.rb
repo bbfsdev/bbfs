@@ -1,3 +1,4 @@
+require 'tempfile'
 require 'thread'
 
 require 'file_indexing/index_agent'
@@ -6,7 +7,7 @@ require 'log'
 module BBFS
   module ContentServer
 
-    Params.integer('streaming_chunk_size', 64*1024,
+    Params.integer('streaming_chunk_size', 1024*1024,
                    'Max number of content bytes to send in one chunk.')
     Params.integer('file_streaming_timeout', 5*60,
                    'If no action is taken on a file streamer, abort copy.')
@@ -14,7 +15,7 @@ module BBFS
                   'Backup server destination folder, default is the relative local folder.')
 
     class Stream
-      attr_reader :checksum, :path, :file, :size
+      attr_reader :checksum, :path, :tmp_path, :file, :size
       def initialize(checksum, path, file, size)
         @checksum = checksum
         @path = path
@@ -42,6 +43,7 @@ module BBFS
 
       :NEW_STREAM
       :ABORT_STREAM
+      :RESET_STREAM
       :COPY_CHUNK
 
       def initialize(send_chunk_clb, abort_streaming_clb=nil)
@@ -54,12 +56,20 @@ module BBFS
         @thread = run
       end
 
+      def copy_another_chuck(checksum)
+        @stream_queue << [:COPY_CHUNK, checksum]
+      end
+
       def start_streaming(checksum, path)
         @stream_queue << [:NEW_STREAM, [checksum, path]]
       end
 
       def abort_streaming(checksum)
         @stream_queue << [:ABORT_STREAM, checksum]
+      end
+
+      def reset_streaming(checksum, new_offset)
+        @stream_queue << [:RESET_STREAM, [checksum, new_offset]]
       end
 
       def run
@@ -74,36 +84,50 @@ module BBFS
         type, content = message
         if type == :NEW_STREAM
           checksum, path = content
-          if !@streams.key? checksum
-            begin
-              file = File.new(path, 'rb')
-              Log.info("File streamer: #{file.to_s}.")
-            rescue IOError => e
-              Log.warning("Could not stream local file #{path}. #{e.to_s}")
-            end
-            @streams[checksum] = Stream.new(checksum, path, file, file.size)
-            @stream_queue << [:COPY_CHUNK, checksum]
-          end
+          reset_stream(checksum, path, 0)
+          @stream_queue << [:COPY_CHUNK, checksum] if @streams.key?(checksum)
         elsif type == :ABORT_STREAM
-          Stream.close_delete_stream(content, @streams)
+          checksum = content
+          Stream.close_delete_stream(checksum, @streams)
+        elsif type == :RESET_STREAM
+          checksum, new_offset = content
+          reset_stream(checksum, nil, new_offset)
+          @stream_queue << [:COPY_CHUNK, checksum] if @streams.key?(checksum)
         elsif type == :COPY_CHUNK
           checksum = content
           if @streams.key?(checksum)
+            offset = @streams[checksum].file.pos
             chunk = @streams[checksum].file.read(Params['streaming_chunk_size'])
             if chunk.nil?
               # No more to read, send end of file.
-              @send_chunk_clb.call(checksum, @streams[checksum].size, nil, nil)
+              @send_chunk_clb.call(checksum, offset, @streams[checksum].size, nil, nil)
               Stream.close_delete_stream(checksum, @streams)
             else
               chunk_checksum = FileIndexing::IndexAgent.get_content_checksum(chunk)
-              @send_chunk_clb.call(checksum, @streams[checksum].size, chunk, chunk_checksum)
-              @stream_queue << [:COPY_CHUNK, checksum]
+              @send_chunk_clb.call(checksum, offset, @streams[checksum].size, chunk, chunk_checksum)
             end
           else
             Log.info("No checksum found to copy chunk. #{checksum}.")
           end
         end
 
+      end
+
+      def reset_stream(checksum, path, offset)
+        if !@streams.key? checksum
+          begin
+            file = File.new(path, 'rb')
+            if offset > 0
+              file.seek(offset)
+            end
+            Log.info("File streamer: #{file.to_s}.")
+          rescue IOError => e
+            Log.warning("Could not stream local file #{path}. #{e.to_s}")
+          end
+          @streams[checksum] = Stream.new(checksum, path, file, file.size)
+        else
+          @streams[checksum].file.seek(offset)
+        end
       end
     end
 
@@ -112,67 +136,127 @@ module BBFS
     # need self thread.
     class FileReceiver
 
-      def initialize(file_done_clb=nil, file_abort_clb=nil)
+      def initialize(file_done_clb=nil, file_abort_clb=nil, reset_copy=nil)
         @file_done_clb = file_done_clb
         @file_abort_clb = file_abort_clb
+        @reset_copy = reset_copy
         @streams = {}
       end
 
-      def receive_chunk(file_checksum, file_size, content, content_checksum)
+      def receive_chunk(file_checksum, offset, file_size, content, content_checksum)
+        # If standard chunk copy.
         if !content.nil? && !content_checksum.nil?
           received_content_checksum = FileIndexing::IndexAgent.get_content_checksum(content)
           comment = "Calculated received chunk with content checksum #{received_content_checksum}" \
                     " vs message content checksum #{content_checksum}, " \
                     "file checksum #{file_checksum}"
           Log.debug1(comment) if content_checksum == received_content_checksum
-          Log.error(comment) if content_checksum != received_content_checksum
+          # TODO should be here a kind of abort?
+          if content_checksum != received_content_checksum
+            Log.warning(comment)
+            new_offset = 0
+            if @streams.key?(file_checksum)
+              new_offset = @streams[file_checksum].file.pos
+            end
+            @reset_copy.call(file_checksum, new_offset) unless @reset_copy.nil?
+            return false
+          end
 
           if !@streams.key?(file_checksum)
-            path = FileReceiver.destination_filename(Params['backup_destination_folder'],
-                                                     file_checksum)
-            if File.exists?(path)
-              Log.warning("File already exists (#{path}) not writing.")
-              @file_abort_clb.call(file_checksum) unless @file_abort_clb.nil?
-            else
-              begin
-                # Make the directory if does not exists.
-                Log.debug1("Writing to: #{path}")
-                Log.debug1("Creating directory: #{File.dirname(path)}")
-                FileUtils.makedirs(File.dirname(path))
-                file = File.new(path, 'wb')
-                @streams[file_checksum] = Stream.new(file_checksum, path, file, file_size)
-              rescue IOError => e
-                Log.warning("Could not stream write to local file #{path}. #{e.to_s}")
-              end
-            end
+            handle_new_stream(file_checksum, file_size)
           end
           # We still check @streams has the key, because file can fail to open.
           if @streams.key?(file_checksum)
-            FileReceiver.write_string_to_file(content, @streams[file_checksum].file)
-            Log.info("Written already #{@streams[file_checksum].file.size} bytes, " \
-                     "out of #{file_size} (#{100.0*@streams[file_checksum].file.size/file_size}%)")
+            return handle_new_chunk(file_checksum, offset, content)
+          else
+            Log.warning('Cannot handle chunk, stream does not exists, sending abort.')
+            @file_abort_clb.call(file_checksum) unless @file_abort_clb.nil?
+            return false
           end
+        # If last chunk copy.
         elsif content.nil? && content_checksum.nil?
-          if @streams.key?(file_checksum)
-            # Check written file checksum!
-            local_path = @streams[file_checksum].path
-            Stream.close_delete_stream(file_checksum, @streams)
-
-            local_file_checksum = FileIndexing::IndexAgent.get_checksum(local_path)
-            message = "Local checksum (#{local_file_checksum}) received checksum (#{file_checksum})."
-            Log.info(message) ? local_file_checksum == file_checksum : Log.error(message)
-            Log.info("File fully received #{local_path}")
-            @file_done_clb.call(local_file_checksum, local_path) unless @file_done_clb.nil?
-          end
+          handle_last_chunk(file_checksum)
+          return false
         else
           Log.warning("Unexpected receive chuck message. file_checksum:#{file_checksum}, " \
                       "content.nil?:#{content.nil?}, content_checksum:#{content_checksum}")
+          return false
+        end
+      end
+
+      # open new stream
+      def handle_new_stream(file_checksum, file_size)
+        # final destination path
+        tmp_path = FileReceiver.destination_filename(
+                       File.join(Params['backup_destination_folder'], 'tmp'),
+                       file_checksum)
+        path = FileReceiver.destination_filename(Params['backup_destination_folder'],
+                                                 file_checksum)
+        if File.exists?(path)
+          Log.warning("File already exists (#{path}) not writing.")
+          @file_abort_clb.call(file_checksum) unless @file_abort_clb.nil?
+        else
+          # the file will be moved from tmp location once the transfer will be done
+          # system will use the checksum and some more unique key for tmp file name
+          FileUtils.makedirs(File.dirname(tmp_path)) unless File.directory?(File.dirname(tmp_path))
+          tmp_file = file = File.new(tmp_path, 'wb')
+          @streams[file_checksum] = Stream.new(file_checksum, tmp_path, tmp_file, file_size)
+        end
+      end
+
+      # write chunk to temp file
+      def handle_new_chunk(file_checksum, offset, content)
+        if offset == @streams[file_checksum].file.pos
+          FileReceiver.write_string_to_file(content, @streams[file_checksum].file)
+          Log.info("Written already #{@streams[file_checksum].file.pos} bytes, " \
+                 "out of #{@streams[file_checksum].size} " \
+                 "(#{100.0*@streams[file_checksum].file.size/@streams[file_checksum].size}%)")
+          return true
+        else
+          # Offset is wrong, send reset/resume copy from correct offset.
+          Log.warning("Received chunk with incorrect offset #{offset}, should " \
+                      "be #{@streams[file_checksum].file.pos}, file_checksum:#{file_checksum}")
+          @reset_copy.call(file_checksum, @streams[file_checksum].file.pos) unless @reset_copy.nil?
+          return false
+        end
+      end
+
+      # copy file to permanent location
+      # close stream
+      # remove temp file
+      # check written file
+      def handle_last_chunk(file_checksum)
+        if @streams.key?(file_checksum)
+          begin
+            # Make the directory if does not exists.
+            path = FileReceiver.destination_filename(Params['backup_destination_folder'],
+                                                     file_checksum)
+            Log.debug1("Moving tmp file #{@streams[file_checksum].path} to #{path}")
+            Log.debug1("Creating directory: #{path}")
+            file_dir = File.dirname(path)
+            FileUtils.makedirs(file_dir) unless File.directory?(file_dir)
+            # Move tmp file to permanent location.
+            tmp_file_path = @streams[file_checksum].path
+            Stream.close_delete_stream(file_checksum, @streams)  # temp file will be closed here
+            File.rename(tmp_file_path, path)
+            Log.info("End move tmp file to permanent location.")
+
+            local_file_checksum = FileIndexing::IndexAgent.get_checksum(path)
+            message = "Local checksum (#{local_file_checksum}) received checksum (#{file_checksum})."
+            local_file_checksum == file_checksum ? Log.info(message) : Log.error(message)
+            Log.info("File fully received #{path}")
+            @file_done_clb.call(local_file_checksum, path) unless @file_done_clb.nil?
+          rescue IOError => e
+            Log.warning("Could not move tmp file to permanent file #{path}. #{e.to_s}")
+          end
+        else
+          Log.error("Handling last chunk and tmp stream does not exists.")
         end
       end
 
       def self.write_string_to_file(str, file)
-        Log.info("writing to file: #{file.to_s}.")
         bytes_to_write = str.bytesize
+        Log.info("writing to file: #{file.to_s}, #{bytes_to_write} bytes.")
         while bytes_to_write > 0
           bytes_to_write -= file.write(str)
         end
@@ -185,6 +269,7 @@ module BBFS
         File.join(folder, sha1[0,2], sha1[2,2], sha1)
       end
 
+      private :handle_new_stream, :handle_new_chunk, :handle_last_chunk
     end
 
   end

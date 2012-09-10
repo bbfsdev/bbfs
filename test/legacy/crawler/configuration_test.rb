@@ -1,6 +1,6 @@
 require 'test/unit'
 
-require_relative '../../lib/crawler/configuration'
+require_relative '../../../lib/legacy/crawler/configuration'
 
 class TestConfiguration < Test::Unit::TestCase
   def test_conf_1
