@@ -19,7 +19,6 @@ module BBFS
         @last_update_timestamp = nil
         @content_server_content_data_path = File.join(local_backup_folder, 'remote',
                                                       host + '_' + port.to_s)
-        FileUtils.makedirs(@content_server_content_data_path)
       end
 
       def receive_content(message)
@@ -39,6 +38,8 @@ module BBFS
           Log.debug3("max_time_span: #{max_time_span}")
           write_to = File.join(@content_server_content_data_path,
                                @last_update_timestamp.to_s + '.cd')
+          FileUtils.makedirs(@content_server_content_data_path) unless \
+              File.directory?(@content_server_content_data_path)
           count = File.open(write_to, 'wb') { |f| f.write(message.to_s) }
         else
           Log.debug2("No need to write remote content data, it has not changed.")
