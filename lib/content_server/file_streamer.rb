@@ -126,7 +126,7 @@ module BBFS
                     " vs message content checksum #{content_checksum}, " \
                     "file checksum #{file_checksum}"
           Log.debug1(comment) if content_checksum == received_content_checksum
-          # TODO should there be a somekind of abort?
+          # TODO should be here a kind of abort?
           Log.error(comment) if content_checksum != received_content_checksum
 
           if !@streams.key?(file_checksum)
@@ -144,8 +144,8 @@ module BBFS
         end
       end
 
+      # open new stream
       def handle_new_stream(file_checksum, file_size)
-        #open new stream
         # final destination path
         path = FileReceiver.destination_filename(Params['backup_destination_folder'],
                                                  file_checksum)
@@ -160,14 +160,18 @@ module BBFS
         end
       end
 
+      # write chunk to temp file
       def handle_new_chunk(file_checksum, content)
-        # write chunk to temp file
         FileReceiver.write_string_to_file(content, @streams[file_checksum].file)
         Log.info("Written already #{@streams[file_checksum].file.size} bytes, " \
                  "out of #{@streams[file_checksum].size} " \
                  "(#{100.0*@streams[file_checksum].file.size/@streams[file_checksum].size}%)")
       end
 
+      # copy file to permanent location
+      # close stream
+      # remove temp file
+      # check written file
       def handle_last_chunk(file_checksum)
         if @streams.key?(file_checksum)
           begin
