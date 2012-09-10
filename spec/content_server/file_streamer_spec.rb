@@ -45,6 +45,7 @@ module BBFS
           receiver = BBFS::ContentServer::FileReceiver.new(done)
           send_chunk = lambda { |*args|
             receiver.receive_chunk(*args)
+            streamer.copy_another_chuck('da39a3ee5e6b4b0d3255bfef95601890afd80709')
           }
 
           Log.info('#2 start streaming.')
