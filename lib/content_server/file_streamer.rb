@@ -7,7 +7,7 @@ require 'log'
 module BBFS
   module ContentServer
 
-    Params.integer('streaming_chunk_size', 1024*1024,
+    Params.integer('streaming_chunk_size', 2*1024*1024,
                    'Max number of content bytes to send in one chunk.')
     Params.integer('file_streaming_timeout', 5*60,
                    'If no action is taken on a file streamer, abort copy.')
@@ -97,6 +97,7 @@ module BBFS
           checksum = content
           if @streams.key?(checksum)
             offset = @streams[checksum].file.pos
+            Log.debug1("Sending chunk for #{checksum}, offset #{offset}.")
             chunk = @streams[checksum].file.read(Params['streaming_chunk_size'])
             if chunk.nil?
               # No more to read, send end of file.
@@ -227,27 +228,32 @@ module BBFS
       # check written file
       def handle_last_chunk(file_checksum)
         if @streams.key?(file_checksum)
-          begin
-            # Make the directory if does not exists.
-            path = FileReceiver.destination_filename(Params['backup_destination_folder'],
-                                                     file_checksum)
-            Log.debug1("Moving tmp file #{@streams[file_checksum].path} to #{path}")
-            Log.debug1("Creating directory: #{path}")
-            file_dir = File.dirname(path)
-            FileUtils.makedirs(file_dir) unless File.directory?(file_dir)
-            # Move tmp file to permanent location.
-            tmp_file_path = @streams[file_checksum].path
-            Stream.close_delete_stream(file_checksum, @streams)  # temp file will be closed here
-            File.rename(tmp_file_path, path)
-            Log.info("End move tmp file to permanent location.")
+          # Make the directory if does not exists.
+          path = FileReceiver.destination_filename(Params['backup_destination_folder'],
+                                                   file_checksum)
+          Log.debug1("Moving tmp file #{@streams[file_checksum].path} to #{path}")
+          Log.debug1("Creating directory: #{path}")
+          file_dir = File.dirname(path)
+          FileUtils.makedirs(file_dir) unless File.directory?(file_dir)
+          # Move tmp file to permanent location.
+          tmp_file_path = @streams[file_checksum].path
+          Stream.close_delete_stream(file_checksum, @streams)  # temp file will be closed here
 
-            local_file_checksum = FileIndexing::IndexAgent.get_checksum(path)
-            message = "Local checksum (#{local_file_checksum}) received checksum (#{file_checksum})."
-            local_file_checksum == file_checksum ? Log.info(message) : Log.error(message)
-            Log.info("File fully received #{path}")
-            @file_done_clb.call(local_file_checksum, path) unless @file_done_clb.nil?
-          rescue IOError => e
-            Log.warning("Could not move tmp file to permanent file #{path}. #{e.to_s}")
+          local_file_checksum = FileIndexing::IndexAgent.get_checksum(tmp_file_path)
+          message = "Local checksum (#{local_file_checksum}) received checksum (#{file_checksum})."
+          if local_file_checksum == file_checksum
+            Log.info(message)
+            begin
+              File.rename(tmp_file_path, path)
+              Log.info("End move tmp file to permanent location #{path}.")
+              @file_done_clb.call(local_file_checksum, path) unless @file_done_clb.nil?
+            rescue IOError => e
+              Log.warning("Could not move tmp file to permanent file #{path}. #{e.to_s}")
+            end
+          else
+            Log.error(message)
+            Log.debug1("Deleting tmp file: #{tmp_file_path}")
+            File.delete(tmp_file_path)
           end
         else
           Log.error("Handling last chunk and tmp stream does not exists.")

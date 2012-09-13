@@ -55,8 +55,8 @@ module BBFS
               # Prepare source,dest map for copy.
               message_content.instances.each { |key, instance|
                 # If not already sending.
-                if !@copy_prepare.key?(instance.checksum)
-                  @copy_prepare[instance.checksum] = instance.full_path
+                if !@copy_prepare.key?(instance.checksum) || !@copy_prepare[instance.checksum][1]
+                  @copy_prepare[instance.checksum] = [instance.full_path, false]
                   Log.info("Sending ack for: #{instance.checksum}")
                   @backup_tcp.send_obj([:ACK_MESSAGE, [instance.checksum, Time.now.to_i]])
                 end
@@ -71,12 +71,14 @@ module BBFS
 
               # Copy file if ack (does not exists on backup and not too much time passed)
               if ack && (Time.now.to_i - timestamp < Params['ack_timeout'])
-                if !@copy_prepare.key?(checksum)
-                  Log.warning("Ack was already received:#{checksum}")
+                if !@copy_prepare.key?(checksum) || @copy_prepare[instance.checksum][1]
+                  Log.warning("File was aborted, copied, or started copy just now: #{checksum}")
                 else
-                  path = @copy_prepare[checksum]
+                  path = @copy_prepare[checksum][0]
                   Log.info "Streaming file: #{checksum} #{path}."
                   @file_streamer.start_streaming(checksum, path)
+                  # Ack received, setting prepare to true
+                  @copy_prepare[checksum][1] = true
                 end
               else
                 Log.debug1("Ack timed out span: #{Time.now.to_i - timestamp} > " \
@@ -98,7 +100,7 @@ module BBFS
             elsif message_type == :ABORT_COPY
               Log.info("Aborting file copy: #{message_content}")
               if @copy_prepare.key?(message_content)
-                Log.info("Aborting: #{@copy_prepare[message_content]}")
+                Log.info("Aborting: #{@copy_prepare[message_content][0]}")
                 @copy_prepare.delete(message_content)
               end
               @file_streamer.abort_streaming(message_content)
