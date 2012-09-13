@@ -49,12 +49,12 @@ module BBFS
           }
 
           Log.info('#2 start streaming.')
-          # This is for FileStreamer :NEW_STREAM
-          ::File.stub(:new).and_return(orig_file)
-          # This is for FileReceiver :receive_chunk
-          ::Tempfile.stub(:new).and_return(dest_file)
+          # This is for FileStreamer :NEW_STREAM and FileReceiver :receive_chunk
+          ::File.stub(:new).and_return(orig_file, dest_file)
           ::FileUtils.stub(:makedirs).and_return(true)
           ::FileUtils.stub(:copy_file).and_return(true)
+          # This is for FileReceiver :handle_last_chunk
+          ::File.stub(:rename)
           # This is for Index agent 'get_checksum' which opens file, read content and validates
           # checksum.
           ::File.stub(:open).and_return(dest_file)
