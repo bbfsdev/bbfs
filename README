@@ -88,6 +88,22 @@ D) Run content server and backup server:
            thats mean that content and backup servers run on the same physical
            machine.
 
+  Servers can be run in background (as Linux daemons or Windows services)
+  By default servers run in a foreground.
+  To start daemon/service add command line parameters:
+    --bg_command=start --service_name=<default is a server's file name>
+  To stop daemon/service - server should be run with following parameters:
+    --bg_command=delete --service_name=<same name as was provided when starting service>
+  
+  Background notes:
+  a) No multiple instances with the same name.
+  b) Linux note: when daemon wasn't stoped in a normal way (by delete command), then it's pid file
+     (<service_name>.pid) remains in the pid directory (default is: $HOME/.bbfs/pids) and system's
+     functioning is undefined. It's a user's responsibility to remove such an obsolete files.
+  More informations regarding background functionality as well as instructions how to use this
+  option on Windows7 can be found online:
+  http://rubydoc.info/gems/run_in_background/0.0.9/BBFS/RunInBackground
+       
 E) Detailed description of applications (using parameters and etc)
    in order to see help run:
    ruby -Ilib bin/content_server --help
