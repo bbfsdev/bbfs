@@ -96,8 +96,8 @@ D) Run content server and backup server:
     --bg_command=delete --service_name=<same name as was provided when starting service>
   
   Background notes:
-  1. No multiple instances with the same name.
-  2. Linux note: when daemon wasn't stoped in a normal way (by delete command), then it's pid file
+  a) No multiple instances with the same name.
+  b) Linux note: when daemon wasn't stoped in a normal way (by delete command), then it's pid file
      (<service_name>.pid) remains in the pid directory (default is: $HOME/.bbfs/pids) and system's
      functioning is undefined. It's a user's responsibility to remove such an obsolete files.
   More informations regarding background functionality as well as instructions how to use this
