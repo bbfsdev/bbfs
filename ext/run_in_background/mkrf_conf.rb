@@ -1,4 +1,4 @@
-# this extension used to install platform specific gem dependencies
+# This extension used to install platform specific gem dependencies
 # for more information:
 #     http://stackoverflow.com/questions/4596606/rubygems-how-do-i-add-platform-specific-dependency/10249133#10249133
 #     https://github.com/openshift/os-client-tools/blob/master/express/ext/mkrf_conf.rb
