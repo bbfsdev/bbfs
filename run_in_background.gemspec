@@ -15,9 +15,10 @@ Gem::Specification.new do |s|
   s.test_files  = Dir['test/run_in_background/**/*'] & `git ls-files -z`.split("\0")
   s.add_dependency('log')
   s.add_dependency('params')
-  s.add_dependency('daemons')
-  s.add_dependency('win32-service')
-  s.add_dependency('sys-uname')
-  # Shouldn't be run from comman line
-  # #s.executables << 'run_in_background/daemon_wrapper'  
+#  Add platform dependant gems via extension
+#    Linux dependencies: daemons
+#    Windows dependencies: win32-service, sys-uname
+  s.extensions = ['ext/run_in_background/mkrf_conf.rb']
+  # Shouldn't be run from comman line, thus commented
+  # s.executables << 'run_in_background/daemon_wrapper'  
 end
