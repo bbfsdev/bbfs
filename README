@@ -5,9 +5,9 @@ A. Backup system, general workflow:
 -----------------------------------
     1. Content server monitors a set of local directories (blobs/patterns). The files in those
        directories are indexed (calculating their SHA1/file content fingerprint).
-    3. Backup server also monitors a set of local directories (blobs/patterns). Files in those
+    2. Backup server also monitors a set of local directories (blobs/patterns). Files in those
        directories are also indexed.
-    4. Backup server requests new/changed files from the Content server.
+    3. Backup server requests new/changed files from the Content server.
 
 B. User Guide
 -------------
