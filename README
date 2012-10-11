@@ -1,27 +1,89 @@
-Big brother file system (distributed file system).
+Big Brother File System (Distributed File System).
 --------------------------------------------------
 
 A. Backup system, general workflow:
+-----------------------------------
+    1. Content server monitors a set of local directories (blobs/patterns). The files in those
+       directories are indexed (calculating their SHA1/file content fingerprint).
+    3. Backup server also monitors a set of local directories (blobs/patterns). Files in those
+       directories are also indexed.
+    4. Backup server requests new/changed files from the Content server.
 
-    1. Content server monitors a set of directories (blobs/patterns).
-    2. The files in those directories are indexed (calculating their SHA1/file content
-       fingerprint).
-    3. Each unique content is backed up to the remote (backup) server.
-    4. The backup server also monitors a set of directories (blobs/patterns).
-    5. The files in those directories are also indexed.
-    6. The backup server copies new/changed files from the content server.
-    7. The backup server index those new files too and send the content data (their
-       SHA1 to the original server).
+B. User Guide
+-------------
+This manual explain how to run BBFS backup from scratch. The BBFS program is application for
+backing-up files. There are two application for BBFS system:
+    1. backup_server is server run on machine where files is backed-up
+    2. content_server is application that run on machine from where files are copied.
+So you need to prepare two computers (it can be only one computer if you want the data to be backed
+up to the same computer).
 
-How to install and run:
------------------------
+The BBFS system done on Ruby language so Ruby should be installed on both computers.
+
+1. Installing Ruby, devkit (required by 'algorithms' gem and installed only on windows) and rubygems
+    (if not installed):
+	a. Check if Ruby and rubygems installed on you computer "ruby -v", "gem -v"
+	b. Installing Ruby and gemspec
+       On Windows: go to http://rubyinstaller.org/ and download and install Ruby.
+       On Linux: sudo apt-get install ruby1.9.3
+	c. Installing devkit (Windows only)
+       On Windows: go to http://rubyinstaller.org/ and download devkit, follow instructions at
+       https://github.com/oneclick/rubyinstaller/wiki/Development-Kit
+       On Linux: no need todo it.
+
+2. On content_server machine:
+    a. Install Content server by 'gem install content_server'
+    b. Create configuration file for content server which should be located in
+       ~/.bbfs/etc/file_monitoring.yml
+       the content of the file is:
+------- begin of file_monitoring.yml --------
+paths:
+   - path: ~/.bbfs/test_files  # <=== replace with your local dir.
+     scan_period: 1
+     stable_state: 5
+------- end of file_monitoring.yml --------
+    c. run the content_server by running the following command:
+    > content_server --remote_server=<backup_address>
+
+3. On backup_server machine:
+    a. Install Backup server by 'gem install content_data'
+    b. Create configuration file for backup server which should be located
+       in ~/.bbfs/etc/backup_file_monitoring.yml
+       File content:
+------- begin of backup_file_monitoring.yml --------
+paths:
+   - path:  ~/.bbfs/backup_data  # <=== replace with your local dir.
+     scan_period: 1
+     stable_state: 5
+------- end of backup_file_monitoring.yml --------
+    c. Run the Backup server by running the following command:
+    > backup_server --remote_server=<content_server_address> --backup_destination_folder=~/.bbfs/backup_data
+
+4. Explanation about file_monitoring.yml and backup_file_monitoring.yml
+    configuration files:
+
+    "path:" - say to program which folder to scan recursively in order to find
+              new/changed files and folders.
+    "scan_period:" - how much time in seconds passed before two consecutive scans
+                     for files and directories.
+	"stable_state:" - how many scan_period passed until the file is considered
+	                  stable.
+
+Uninstalling:
+1. uninstall all gems by: 'gem list | cut -d" " -f1 | xargs gem uninstall -aIx'
+2. uninstall Ruby (from ruby193/unins000.exe) and delete ruby193 folder.
+
+
+C. Developers Guide
+-------------------
+
 A1) Installation of BBFS runtime:
-  1. Download and install ruby.
+  1. Download and install Ruby.
   2. Download and install gem.
   3. From command line: gem install content_server
 A2) Installation of BBFS development kit:
   1. Download and install git.
-  2. Download and install ruby.
+  2. Download and install Ruby.
   3. Download and unpack and install DevKit (Windows). Note that after unpacking there
      are installation instructions at
      https://github.com/oneclick/rubyinstaller/wiki/Development-Kit.
