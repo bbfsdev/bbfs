@@ -162,7 +162,7 @@ D) Run content server and backup server:
   b) Linux note: when daemon wasn't stoped in a normal way (by delete command), then it's pid file
      (<service_name>.pid) remains in the pid directory (default is: $HOME/.bbfs/pids) and system's
      functioning is undefined. It's a user's responsibility to remove such an obsolete files.
-  More informations regarding background functionality as well as instructions how to use this
+  More information regarding background functionality as well as instructions how to use this
   option on Windows7 can be found online:
   http://rubydoc.info/gems/run_in_background/0.0.9/BBFS/RunInBackground
        
