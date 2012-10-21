@@ -12,6 +12,8 @@ require 'file_monitoring'
 require 'log'
 require 'networking/tcp'
 require 'params'
+require 'monitoring_server_and_client/thread_safe_hash'
+require 'monitoring_server_and_client/monitoring'
 
 
 
@@ -32,6 +34,9 @@ module BBFS
 
     def run
       all_threads = []
+
+      #TODO (slava): Add instance of ThreadSafeHashVariables for monitoring
+      @currentMonitoringState = ThreadSafeHash::ThreadSafeHash.new
 
       # # # # # # # # # # # #
       # Initialize/Start monitoring
@@ -107,6 +112,11 @@ module BBFS
       copy_server = FileCopyServer.new(copy_files_events, Params['backup_file_listening_port'])
       all_threads.concat(copy_server.run())
 
+      # TODO(slava): Add controller thread  for monitoring
+      mon = Monitoring::Monitoring.new(@currentMonitoringState)
+      Log.add_consumer(mon)
+      all_threads << mon.thread
+
       # Finalize server threads.
       all_threads.each { |t| t.abort_on_exception = true }
       all_threads.each { |t| t.join }
@@ -116,6 +126,9 @@ module BBFS
 
     def run_backup_server
       all_threads = []
+
+      #TODO (slava): Add instance of ThreadSafeHashVariables for monitoring
+      @currentMonitoringState = ThreadSafeHash::ThreadSafeHash.new
 
       # # # # # # # # # # # #
       # Initialize/Start monitoring
@@ -162,7 +175,8 @@ module BBFS
 
       file_copy_client = FileCopyClient.new(Params['remote_server'],
                                                Params['backup_file_listening_port'],
-                                               dynamic_content_data)
+                                               dynamic_content_data,
+                                               @currentMonitoringState)
       all_threads.concat(file_copy_client.threads)
 
       # Each
@@ -177,6 +191,10 @@ module BBFS
         end
       end
 
+      # TODO(slava): Add controller thread  for monitoring
+      mon = Monitoring::Monitoring.new(@currentMonitoringState)
+      Log.add_consumer(mon)
+      all_threads << mon.thread
 
       all_threads.each { |t| t.abort_on_exception = true }
       all_threads.each { |t| t.join }

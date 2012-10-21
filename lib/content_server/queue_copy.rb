@@ -118,7 +118,7 @@ module BBFS
     end  # class QueueCopy
 
     class FileCopyClient
-      def initialize(host, port, dynamic_content_data)
+      def initialize(host, port, dynamic_content_data, hhhslava)
         @local_queue = Queue.new
         @dynamic_content_data = dynamic_content_data
         @tcp_server = Networking::TCPClient.new(host, port, method(:handle_message))
@@ -152,6 +152,7 @@ module BBFS
       end
 
       def done_copy(local_file_checksum, local_path)
+        @vrs.set('num_files_copied', @vars.get('num_files_copied')+1)
         Log.info("Done copy file: #{local_path}, #{local_file_checksum}")
       end
 
