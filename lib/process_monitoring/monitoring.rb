@@ -17,8 +17,8 @@ module BBFS
         @process_variables = process_variables
         @thread = Thread.new do
           loop do
-            sleep(Params['sleep_time_in_seconds'])
-            @passed_time_dur += Params['sleep_time_in_seconds']
+            sleep(Params['monitoring_sleep_time_in_seconds'])
+            @passed_time_dur += Params['monitoring_sleep_time_in_seconds']
             handle_logs()
             handle_monitoring_state()
           end
