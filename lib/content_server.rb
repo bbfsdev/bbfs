@@ -12,8 +12,8 @@ require 'file_monitoring'
 require 'log'
 require 'networking/tcp'
 require 'params'
-require 'monitoring_server_and_client/thread_safe_hash'
-require 'monitoring_server_and_client/monitoring'
+require 'process_monitoring/thread_safe_hash'
+require 'process_monitoring/monitoring'
 
 
 
