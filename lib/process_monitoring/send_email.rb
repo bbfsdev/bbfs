@@ -3,7 +3,7 @@ require 'net/smtp'
 module BBFS
   module SendEmail
     #class SendEmail
-    def send_email(to,opts={})
+    def SendEmail.send_email(to,opts={})
       opts[:server]      ||= 'localhost'
       opts[:from]        ||= 'BBFS@BBFS.com'
       opts[:from_alias]  ||= 'Example Emailer'
@@ -25,3 +25,4 @@ END_OF_MESSAGE
     #end
   end
 end
+

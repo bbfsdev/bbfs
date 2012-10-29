@@ -4,9 +4,9 @@ require 'thread'
 
 module BBFS
   module Monitoring
-    Params.float('monitoring_sleep_time_in_seconds', 10, 'Represents the monitoring sleeping time to check data')
-    Params.float('send_email_duration_4_monitoring_state', 60, 'Represents the duration to send email monitoring state')
-    Params.string('administrator_email', 'alexeyn66@gmail.com','Represents the email of administrator')
+    Params.float('monitoring_sleep_time_in_seconds', 10, 'Represents the monitoring sleeping time in seconds to check data')
+    Params.float('send_email_duration_4_monitoring_state', 60, 'Represents the duration in seconds to send email monitoring state')
+    Params.string('administrator_email', 'slavapas13@gmail.com','Represents the email of administrator')
 
     class Monitoring < BBFS::Log::Consumer
       attr_reader :thread
