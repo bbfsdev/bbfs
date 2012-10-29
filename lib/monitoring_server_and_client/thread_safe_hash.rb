@@ -7,15 +7,16 @@ module BBFS
         @mutex = Mutex.new
       end
 
-      #TODO (slava)
-      #def inc(key)
-      #  curVal = get(key)
-      #  if value.nil?
-      #    set(key, 1)
-      #  else
-      #    set(key, curVal + 1)
-      #  end
-      #end
+      def inc(key)
+        mutex.synchronize do
+          value = @hash_data[key]
+          if value.nil?
+            @hash_data[key] = 1
+          else
+            set(key, value + 1)
+          end
+        end
+      end
 
       def get(key)
         mutex.synchronize do
@@ -23,14 +24,9 @@ module BBFS
         end
       end
 
-      def set(key)
+      def set(key, value)
         mutex.synchronize do
-          curVal = @hash_data[key]
-          if curVal.nil?
-            @hash_data[key] = 1
-          else
-            @hash_data[key] = curVal + 1
-          end
+          @hash_data[key] = value
         end
       end
     end

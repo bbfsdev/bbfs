@@ -12,6 +12,7 @@ module BBFS
       attr_reader :thread
 
       def initialize(currentMonitoringState)
+        super(false)
         @passed_time_dur = 0
         @logQueue = Array.new()
         @currentMonitoringState = currentMonitoringState

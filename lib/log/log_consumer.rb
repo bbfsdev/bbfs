@@ -17,12 +17,13 @@ module BBFS
     class Consumer
       # Initializes the consumer queue and starts a thread. The thread waits for data
       # on the queue, and when data is popped, activates the virtual 'consume' method.
-      def initialize
+      def initialize(auto_consume=true)
         @consumer_queue = Queue.new
-        # TODO(slava): Add bool flag
-        Thread.new do
-          while (true)
-            consume @consumer_queue.pop
+        if (auto_consume)
+          Thread.new do
+            while (true)
+              consume @consumer_queue.pop
+            end
           end
         end
       end
