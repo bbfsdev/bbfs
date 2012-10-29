@@ -8,7 +8,7 @@ module BBFS
     Params.float('send_email_duration_4_monitoring_state', 60, 'Represents the duration to send email monitoring state')
     Params.string('administrator_email', 'alexeyn66@gmail.com','Represents the email of administrator')
 
-    class Monitoring < BBFS:Consumer
+    class Monitoring < BBFS::Consumer
       attr_reader :thread
 
       def initialize(currentMonitoringState)
@@ -32,7 +32,7 @@ module BBFS
             :body => log,
             :subject => 'BBFS Error Log notification',
         }
-        send_email (Params['administrator_email'], emailOpt)
+        send_email(Params['administrator_email'], emailOpt)
       end
 
       def send_monitoring_state_email
@@ -40,7 +40,7 @@ module BBFS
             :body => get_monitoring_state_body(),
             :subject => 'BBFS Current Monitoring State notification',
         }
-        send_email (Params['administrator_email'], emailOpt)
+        send_email(Params['administrator_email'], emailOpt)
       end
 
       def handle_logs
