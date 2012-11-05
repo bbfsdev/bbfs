@@ -1,0 +1,45 @@
+#!/usr/bin/env ruby
+
+# This script validates index files.
+# There two levels of validation:
+#   shallow - quick, tests instance for file existence and attributes.
+#   deep - can take more time, in addition to shallow recalculates hash sum.
+#
+# Currently implemented functionality:
+#   validation of local index file that consists content/instance data for files located on the same
+#   device
+#
+# Parameters:
+#   tested_index_path - contains path to the tested index file
+#   instance_check_level - level of instance validation (shallow/deep), see explanations above
+#
+# Example of running:
+#   index_validator --tested_index_path=$BBFS_INDEX --instance_check_level='shallow'
+#   index_validator --tested_index_path=$BBFS_INDEX --instance_check_level='deep'
+
+require 'params'
+require 'log'
+require 'content_data'
+require 'validations/index_validations'
+
+include BBFS
+
+Params.init ARGV
+Log.init
+
+Params['tested_index_path'] = File.expand_path(Params['tested_index_path'])
+index = ContentData::ContentData.new
+index.from_file(Params['tested_index_path'])
+
+if Validations::IndexValidations.validate_index(index)
+  Log.info "#{Params['tested_index_path']} is valid"
+  puts "#{Params['tested_index_path']} is valid"
+else
+  Log.info "#{Params['tested_index_path']} has problems.\n" \
+    "For more information see log #{Params['log_file_name']}."
+  puts "#{Params['tested_index_path']} has problems.\n" \
+    "For more information see log #{Params['log_file_name']}."
+end
+
+sleep(Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5)
+
