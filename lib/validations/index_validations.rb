@@ -5,12 +5,17 @@ require 'file_indexing/index_agent'
 # TODO module description
 # TODO additional params?
 # TODO are params names good enough?
-
+# TODO YARD documentation
 module BBFS
   module Validations
     Params.string('instance_check_level', 'shallow', 'Defines check level. Supported levels are: ' \
       'shallow - quick, tests instance for file existence and attributes. ' \
       'deep - can take more time, in addition to shallow recalculates hash sum.')
+
+    # TODO can be one parameter for working content_data for every script?
+    # see Params['content_data_path'] from content_server.rb
+    # content_server and index_validations have one such file each one
+    Params.string('tested_index_path', '', 'Index file should be validated')
 
     class IndexValidations
       # TODO params support
