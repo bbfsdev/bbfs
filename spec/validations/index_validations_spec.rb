@@ -65,8 +65,8 @@ module BBFS
 
           before :each do
             FileIndexing::IndexAgent.stub(:get_checksum).with(@path).and_return(@checksum)
-            IndexValidations.stub(:shallow_check).with(@instance).and_return(true)
-            IndexValidations.stub(:shallow_check).with(@instance2).and_return(true)
+            IndexValidations.stub(:shallow_check).and_return(true)
+            IndexValidations.stub(:shallow_check).and_return(true)
           end
 
           it 'succeed when for all files checksums are the same as indexed' do
