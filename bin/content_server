@@ -5,25 +5,15 @@
 # Each unique content is backed up to the remote (backup) server.
 
 begin
-  print "1"
   require 'yaml'
-  print "2"
   require 'params'
-  print "3"
   require 'run_in_background'
-  print "4"
   require 'content_server'
-  print "5"
 rescue LoadError
-  print "6"
   require 'rubygems'
-  print "7"
   require 'yaml'
-  print "8"
   require 'params'
-  print "9"
   require 'run_in_background'
-  print "0"
   require 'content_server'
 end
 include BBFS
