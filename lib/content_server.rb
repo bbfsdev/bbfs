@@ -12,6 +12,8 @@ require 'file_monitoring'
 require 'log'
 require 'networking/tcp'
 require 'params'
+require 'process_monitoring/thread_safe_hash'
+require 'process_monitoring/monitoring'
 
 
 
@@ -30,8 +32,14 @@ module BBFS
     Params.integer('remote_content_port', 3333, 'Default port for remote content copy.')
     Params.integer('backup_check_delay', 5, 'Time between two content vs backup checks.')
 
+    Params.boolean('enable_monitoring', false, 'Whether to enable process monitoring or not.')
+
+
     def run
       all_threads = []
+
+      @process_variables = ThreadSafeHash::ThreadSafeHash.new
+      @process_variables.set('server_name', 'content_server')
 
       # # # # # # # # # # # #
       # Initialize/Start monitoring
@@ -107,6 +115,12 @@ module BBFS
       copy_server = FileCopyServer.new(copy_files_events, Params['backup_file_listening_port'])
       all_threads.concat(copy_server.run())
 
+      if Params['enable_monitoring']
+        mon = Monitoring::Monitoring.new(@process_variables)
+        Log.add_consumer(mon)
+        all_threads << mon.thread
+      end
+
       # Finalize server threads.
       all_threads.each { |t| t.abort_on_exception = true }
       all_threads.each { |t| t.join }
@@ -116,6 +130,9 @@ module BBFS
 
     def run_backup_server
       all_threads = []
+
+      @process_variables = ThreadSafeHash::ThreadSafeHash.new
+      @process_variables.set('server_name', 'backup_server')
 
       # # # # # # # # # # # #
       # Initialize/Start monitoring
@@ -162,7 +179,8 @@ module BBFS
 
       file_copy_client = FileCopyClient.new(Params['remote_server'],
                                                Params['backup_file_listening_port'],
-                                               dynamic_content_data)
+                                               dynamic_content_data,
+                                               @process_variables)
       all_threads.concat(file_copy_client.threads)
 
       # Each
@@ -177,6 +195,11 @@ module BBFS
         end
       end
 
+      if Params['enable_monitoring']
+        mon = Monitoring::Monitoring.new(@process_variables)
+        Log.add_consumer(mon)
+        all_threads << mon.thread
+      end
 
       all_threads.each { |t| t.abort_on_exception = true }
       all_threads.each { |t| t.join }

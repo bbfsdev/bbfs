@@ -90,6 +90,11 @@ module BBFS
        @consumers.each { |consumer| consumer.push_data data  }
     end
 
+    # TODO(slava): Fix this hack.
+    def Log.is_error(log_msg)
+      return log_msg['ERROR'] != nil
+    end
+
     # Log warning massages
     def Log.warning msg
       Log.basic msg, 'WARNING'
