@@ -32,10 +32,14 @@ module BBFS
     Params.integer('remote_content_port', 3333, 'Default port for remote content copy.')
     Params.integer('backup_check_delay', 5, 'Time between two content vs backup checks.')
 
+    Params.boolean('enable_monitoring', false, 'Whether to enable process monitoring or not.')
+
+
     def run
       all_threads = []
 
       @process_variables = ThreadSafeHash::ThreadSafeHash.new
+      @process_variables.set('server_name', 'content_server')
 
       # # # # # # # # # # # #
       # Initialize/Start monitoring
@@ -111,9 +115,11 @@ module BBFS
       copy_server = FileCopyServer.new(copy_files_events, Params['backup_file_listening_port'])
       all_threads.concat(copy_server.run())
 
-      mon = Monitoring::Monitoring.new(@process_variables)
-      Log.add_consumer(mon)
-      all_threads << mon.thread
+      if Params['enable_monitoring']
+        mon = Monitoring::Monitoring.new(@process_variables)
+        Log.add_consumer(mon)
+        all_threads << mon.thread
+      end
 
       # Finalize server threads.
       all_threads.each { |t| t.abort_on_exception = true }
@@ -126,6 +132,7 @@ module BBFS
       all_threads = []
 
       @process_variables = ThreadSafeHash::ThreadSafeHash.new
+      @process_variables.set('server_name', 'backup_server')
 
       # # # # # # # # # # # #
       # Initialize/Start monitoring
@@ -188,9 +195,11 @@ module BBFS
         end
       end
 
-      mon = Monitoring::Monitoring.new(@process_variables)
-      Log.add_consumer(mon)
-      all_threads << mon.thread
+      if Params['enable_monitoring']
+        mon = Monitoring::Monitoring.new(@process_variables)
+        Log.add_consumer(mon)
+        all_threads << mon.thread
+      end
 
       all_threads.each { |t| t.abort_on_exception = true }
       all_threads.each { |t| t.join }
