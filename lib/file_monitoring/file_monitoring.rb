@@ -9,7 +9,7 @@ require 'file_monitoring/monitor_path'
 module BBFS
   module FileMonitoring
 
-    Params.string('default_log_path', File.expand_path('~/.bbfs/log/file_monitoring.log'),
+    Params.path('default_log_path', '~/.bbfs/log/file_monitoring.log',
                      'Default path for log file.')
 
     class FileMonitoring
