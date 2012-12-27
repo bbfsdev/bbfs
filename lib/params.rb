@@ -7,6 +7,7 @@
 #
 # Examples of definitions:
 #   Params.string('parameter_str', 'this is a string' ,'description_for_string')
+#   Params.path('parameter_path', '/Users/username/example/ect' ,'description_for_directory')
 #   Params.integer('parameter_int',1 , 'description_for_integer')
 #   Params.float('parameter_float',2.6 , 'description_for_float')
 #   Params.boolean('parameter_true', true, 'description_for_true')
@@ -104,6 +105,8 @@ module BBFS
               end
             end
           when 'String' then
+          when 'Path' then
+            # TODO(kolman): Override the type check with regexp of path in Linux and/or Windows
             if not @value.nil?
               if not value.class.eql? String
                 raise("Parameter:'#{@name}' type:'String' but value type to override " \
@@ -175,12 +178,14 @@ module BBFS
       if existing_param.nil?
         raise("Parameter:'#{name}' has not been defined and can not be overridden. " \
               "It should first be defined through Param module methods:" \
-              "Params.string, Params.integer, Params.float or Params.boolean.")
+              "Params.string, Param.path, Params.integer, Params.float or Params.boolean.")
       end
       if value.nil?
         existing_param.value = nil
       elsif existing_param.type.eql?('String')
         existing_param.value = value.to_s
+      elsif existing_param.type.eql?('Path')
+        existing_param.value = File.expand_path(value.to_s)
       else
         set_value = existing_param.value_type_check(value)
         existing_param.value = set_value
@@ -203,6 +208,13 @@ module BBFS
     def Params.string(name, value, description)
       raise_error_if_param_exists(name)
       @globals_db[name] = Param.new(name, value, 'String', description)
+    end
+
+    # Define new global parameter of type path (the only difference with string is that the path expends '~' to
+    # full user directory).
+    def Params.path(name, value, description)
+      raise_error_if_param_exists(name)
+      @globals_db[name] = Param.new(name, File.expand_path(value), 'Path', description)
     end
 
     # Define new global parameter of type Boolean.

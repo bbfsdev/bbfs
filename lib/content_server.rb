@@ -25,9 +25,9 @@ module BBFS
     Params.string('backup_username', nil, 'Backup server username.')
     Params.string('backup_password', nil, 'Backup server password.')
     Params.integer('backup_file_listening_port', 4444, 'Listening port in backup server for files')
-    Params.string('content_data_path', File.expand_path('~/.bbfs/var/content.data'),
+    Params.path('content_data_path', '~/.bbfs/var/content.data',
                      'ContentData file path.')
-    Params.string('monitoring_config_path', File.expand_path('~/.bbfs/etc/file_monitoring.yml'),
+    Params.path('monitoring_config_path', '~/.bbfs/etc/file_monitoring.yml',
                      'Configuration file for monitoring.')
     Params.integer('remote_content_port', 3333, 'Default port for remote content copy.')
     Params.integer('backup_check_delay', 5, 'Time between two content vs backup checks.')
