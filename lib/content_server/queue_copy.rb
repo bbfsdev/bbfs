@@ -90,8 +90,8 @@ module BBFS
             elsif message_type == :COPY_CHUNK
               # We open the message here for printing info and deleting copy_prepare!
               file_checksum, offset, file_size, content, content_checksum = message_content
-              Log.info("Send chunk for file #{file_checksum}, offset: #{offset} " \
-                       "filesize: #{file_size}.")
+              Log.debug1("Send chunk for file #{file_checksum}, offset: #{offset} " \
+                         "filesize: #{file_size}.")
               # Blocking send.
               @backup_tcp.send_obj([:COPY_CHUNK, message_content])
               if content.nil? and content_checksum.nil?
