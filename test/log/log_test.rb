@@ -8,8 +8,6 @@ require 'test/unit'
 require_relative '../../lib/log.rb'
 require_relative '../../lib/log/log_consumer.rb'
 
-module BBFS
-
   module Log
     # Creating a test consumer class to be able to read the data pushed
     # to the consumer by the logger
@@ -161,5 +159,4 @@ module BBFS
         assert_message pop_message, testTime, 'DEBUG-3', LOG_TEST_FILE_NAME + line_3.to_s, test_message_3
       end
     end
-  end
 end
