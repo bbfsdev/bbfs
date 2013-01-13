@@ -17,11 +17,13 @@ module BBFS
     class Consumer
       # Initializes the consumer queue and starts a thread. The thread waits for data
       # on the queue, and when data is popped, activates the virtual 'consume' method.
-      def initialize
+      def initialize(auto_consume=true)
         @consumer_queue = Queue.new
-        Thread.new do
-          while (true)
-            consume @consumer_queue.pop
+        if (auto_consume)
+          Thread.new do
+            while (true)
+              consume @consumer_queue.pop
+            end
           end
         end
       end
@@ -92,17 +94,10 @@ module BBFS
       end
 
       def consume data
-        begin
-          file_handler = File.new @file_name, 'a'
-          file_handler.puts data
-        rescue
-          Exception
-          puts "Failed to open log file:#{@file_name}"
-          puts $!.class
-          puts $!
-        ensure
-          file_handler.close
-        end
+        FileUtils.mkdir_p(File.dirname(@file_name))
+        file_handler = File.new @file_name, 'a'
+        file_handler.puts data
+        file_handler.close
       end
     end
   end

@@ -3,6 +3,7 @@ require 'thread'
 
 require 'file_indexing/index_agent'
 require 'log'
+require 'params'
 
 module BBFS
   module ContentServer
@@ -11,7 +12,7 @@ module BBFS
                    'Max number of content bytes to send in one chunk.')
     Params.integer('file_streaming_timeout', 5*60,
                    'If no action is taken on a file streamer, abort copy.')
-    Params.string('backup_destination_folder', '',
+    Params.path('backup_destination_folder', '',
                   'Backup server destination folder, default is the relative local folder.')
 
     class Stream
@@ -25,7 +26,7 @@ module BBFS
 
       def self.close_delete_stream(checksum, streams_hash)
         if streams_hash.key?(checksum)
-          Log.info("close_delete_stream #{streams_hash[checksum].file}")
+          Log.debug1("close_delete_stream #{streams_hash[checksum].file}")
           begin
             streams_hash[checksum].file.close()
           rescue IOError => e
@@ -121,7 +122,7 @@ module BBFS
             if offset > 0
               file.seek(offset)
             end
-            Log.info("File streamer: #{file.to_s}.")
+            Log.debug1("File streamer: #{file.to_s}.")
           rescue IOError => e
             Log.warning("Could not stream local file #{path}. #{e.to_s}")
           end
@@ -197,7 +198,7 @@ module BBFS
           Log.warning("File already exists (#{path}) not writing.")
           @file_abort_clb.call(file_checksum) unless @file_abort_clb.nil?
         else
-          # the file will be moved from tmp location once the transfer will be done
+          # The file will be moved from tmp location once the transfer will be done
           # system will use the checksum and some more unique key for tmp file name
           FileUtils.makedirs(File.dirname(tmp_path)) unless File.directory?(File.dirname(tmp_path))
           tmp_file = file = File.new(tmp_path, 'wb')
@@ -227,6 +228,11 @@ module BBFS
       # remove temp file
       # check written file
       def handle_last_chunk(file_checksum)
+
+        # Handle the case of backup empty file.
+        handle_new_stream(file_checksum, 0) if !@streams.key?(file_checksum)
+
+        # Should always be true, unless file creation failed.
         if @streams.key?(file_checksum)
           # Make the directory if does not exists.
           path = FileReceiver.destination_filename(Params['backup_destination_folder'],

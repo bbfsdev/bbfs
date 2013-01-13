@@ -31,7 +31,7 @@ module BBFS
         end
 
         it 'should raise an error for wrong parameter type definition.' do
-          expect { Params::Param.new 'bad_type', nil, 'non_existing_type', 'desc_bad_type' }.should raise_error
+          expect { Params::Param.new 'bad_type', 5, 'non_existing_type', 'desc_bad_type' }.to raise_error
         end
 
         it 'should raise an error when trying to define twice the same parameter' do
