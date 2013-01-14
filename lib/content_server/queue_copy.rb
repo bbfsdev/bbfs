@@ -90,8 +90,8 @@ module BBFS
             elsif message_type == :COPY_CHUNK
               # We open the message here for printing info and deleting copy_prepare!
               file_checksum, offset, file_size, content, content_checksum = message_content
-              Log.info("Send chunk for file #{file_checksum}, offset: #{offset} " \
-                       "filesize: #{file_size}.")
+              Log.debug1("Send chunk for file #{file_checksum}, offset: #{offset} " \
+                         "filesize: #{file_size}.")
               # Blocking send.
               @backup_tcp.send_obj([:COPY_CHUNK, message_content])
               if content.nil? and content_checksum.nil?
@@ -118,7 +118,7 @@ module BBFS
     end  # class QueueCopy
 
     class FileCopyClient
-      def initialize(host, port, dynamic_content_data)
+      def initialize(host, port, dynamic_content_data, process_variables)
         @local_queue = Queue.new
         @dynamic_content_data = dynamic_content_data
         @tcp_server = Networking::TCPClient.new(host, port, method(:handle_message))
@@ -131,6 +131,7 @@ module BBFS
           end
         end
         @local_thread.abort_on_exception = true
+        @process_variables = process_variables
       end
 
       def threads
@@ -152,7 +153,12 @@ module BBFS
       end
 
       def done_copy(local_file_checksum, local_path)
+        add_process_variables_info()
         Log.info("Done copy file: #{local_path}, #{local_file_checksum}")
+      end
+
+      def add_process_variables_info()
+        @process_variables.inc('num_files_received')
       end
 
       def handle_message(message)

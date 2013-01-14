@@ -10,7 +10,7 @@ Gem::Specification.new do |s|
   s.authors     = ['Genady Petelko']
   s.email       = 'nukegluk@gmail.com'
   s.homepage    = 'http://github.com/kolmanv/bbfs'
-  s.files       = Dir['lib/run_in_background.rb', 'lib/run_in_background/**/*'] \
+  s.files       = Dir['lib/run_in_background.rb', 'lib/run_in_background/**/*', 'bin/run_in_background/daemon_wrapper'] \
                   & `git ls-files -z`.split("\0")
   s.test_files  = Dir['test/run_in_background/**/*'] & `git ls-files -z`.split("\0")
   s.add_dependency('log')
