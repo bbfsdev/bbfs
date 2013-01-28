@@ -5,7 +5,5 @@ require 'file_indexing/indexer_patterns'
 
 # Data structure for an abstract layer over files.
 # Each binary sequence is a content, each file is content instance.
-module BBFS
-  module FileIndexing
-  end
+module FileIndexing
 end

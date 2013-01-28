@@ -26,7 +26,6 @@ rescue LoadError
   print "0"
   require 'content_server'
 end
-include BBFS
 
 Params.init ARGV
 Log.init

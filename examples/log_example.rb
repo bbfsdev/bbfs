@@ -51,9 +51,9 @@ require 'log'
 #   When either the size limit or time limits are exceeded, the data will be flushed to the file.
 #   If your messages size is less then 1 mega byte and\or your execution time is less then 1 second
 #   Then you are recommended to set those values to 0 as in the following setup:
-BBFS::Params.log_write_to_console = 'true' # We will also enable the console for this example run.
-BBFS::Params.log_param_number_of_mega_bytes_stored_before_flush = 0
-BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 0
+Params.log_write_to_console = 'true' # We will also enable the console for this example run.
+Params.log_param_number_of_mega_bytes_stored_before_flush = 0
+Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 0
 #   Also, if your execution time is less then 1 second it is recommended to add a sleep 0.1
 #   to avoid loosing the flush action due to program termination.
 
@@ -62,7 +62,7 @@ BBFS::Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 0
 # This method MUST be called from the BBFS project executable init sequence.
 # if user does not use the project init sequence in an executable, such as
 # when user run tests, then user MUST call the init method from his own code.
-BBFS::Log.init
+Log.init
 
 # 4. use one of the following log messages methods.
 # Log.info 'this is an info msg example'
@@ -71,7 +71,7 @@ BBFS::Log.init
 # Log.debug1 'this is a debug1 msg example'  # depends on debug level (see ahead)
 # Log.debug2 'this is a debug2 msg example'  # depends on debug level (see ahead)
 # Log.debug3 'this is a debug3 msg example'  # depends on debug level (see ahead)
-BBFS::Log.info 'this is an info msg example'
+Log.info 'this is an info msg example'
 
 # 5. log debug levels.
 # Will Log.debug1 , Log.debug2 and Log.debug3 methods will actual log ?
@@ -79,10 +79,10 @@ BBFS::Log.info 'this is an info msg example'
 # if Params.log_debug_level is set to 1 then only Log.debug1 will log.
 # if Params.log_debug_level is set to 2 then Log.debug1 and Log.debug2 will log.
 # if Params.log_debug_level is set to 3 or greater then all debug methods will log.
-BBFS::Log.debug1 'this debug1 msg will not be logged since debug level default is 0'
-BBFS::Params.log_debug_level = 1  # set new debug level from now on.
-BBFS::Log.debug1 'this debug1 msg will be logged since debug level is 1'
-BBFS::Log.debug2 'this debug2 msg will not be logged since debug level is 1'
+Log.debug1 'this debug1 msg will not be logged since debug level default is 0'
+Params.log_debug_level = 1  # set new debug level from now on.
+Log.debug1 'this debug1 msg will be logged since debug level is 1'
+Log.debug2 'this debug2 msg will not be logged since debug level is 1'
 
 # 6. When to use Sleep ?
 # When your execution time is less then 1 second it is recommended to add a sleep 0.1

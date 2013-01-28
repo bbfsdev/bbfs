@@ -10,5 +10,5 @@ rescue LoadError
   require 'file_utils'
 end
 
-BBFS::Params.init ARGV
-BBFS::FileUtils::FileUtils.run
+Params.init ARGV
+FileUtils::FileUtils.run

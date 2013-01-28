@@ -1,5 +1,3 @@
-module BBFS
-  module FileUtils
-    VERSION = "0.0.9"
-  end
+module FileUtils
+  VERSION = "0.0.9"
 end
