@@ -1,5 +1,3 @@
-module BBFS
-  module Log
-    VERSION = "0.0.10"
-  end
+module Log
+  VERSION = "0.0.10"
 end
