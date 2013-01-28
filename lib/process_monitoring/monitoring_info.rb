@@ -15,6 +15,8 @@ EventMachine.schedule do
   end
 end
 
+# This module export process info to http port, that way the user may access with the
+# browser to the process to see what is happening inside, what is it's state and parameters.
 module MonitoringInfo
   Params.integer('process_monitoring_web_port', 5555,
                  'The port from which monitoring data will be served as http.')

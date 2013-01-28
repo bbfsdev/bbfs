@@ -5,6 +5,8 @@ require 'params'
 
 require 'process_monitoring/send_email'
 
+# This module purpose it to alert the user on different behaviour such as no space left
+# or other error cases. The module will send email to the user to notify him on those cases.
 module Monitoring
   Params.float('monitoring_sleep_time_in_seconds', 10,
                'Represents the monitoring sleeping time in seconds to check data')
@@ -23,13 +25,13 @@ module Monitoring
       @process_variables = process_variables
       @thread = Thread.new do
         loop do
-          Log.info 'Sleeping in process monitoring.'
+          Log.debug3 'Sleeping in process monitoring.'
           sleep(Params['monitoring_sleep_time_in_seconds'])
-          Log.info 'Awake in process monitoring.'
+          Log.debug3 'Awake in process monitoring.'
           @passed_time_dur += Params['monitoring_sleep_time_in_seconds']
-          Log.info 'handle_logs in process monitoring.'
+          Log.debug3 'handle_logs in process monitoring.'
           handle_logs()
-          Log.info 'handle_monitoring_state in process monitoring.'
+          Log.debug3 'handle_monitoring_state in process monitoring.'
           handle_monitoring_state()
           @process_variables.inc('monitoring_loop_count')
         end
@@ -40,23 +42,13 @@ module Monitoring
 
     private
     # To keep thread safe state all methods should be private and executed only from @thread
-    def send_log_email(log)
+    def send_email(subject, body)
       SendEmail.send_email({
                                :to => Params['monitoring_email'],
                                :from => Params['monitoring_email'],
                                :password => Params['monitoring_password'],
-                               :body => log,
-                               :subject => 'BBFS Error Log notification',
-                           })
-    end
-
-    def send_monitoring_state_email
-      SendEmail.send_email({
-                               :to => Params['monitoring_email'],
-                               :from => Params['monitoring_email'],
-                               :password => Params['monitoring_password'],
-                               :body => get_monitoring_state_body(),
-                               :subject => 'BBFS Current Monitoring State notification',
+                               :body => body,
+                               :subject => subject,
                            })
     end
 
@@ -69,7 +61,7 @@ module Monitoring
 
     def handle_monitoring_state
       if @passed_time_dur > Params['send_email_duration_4_monitoring_state']
-        send_monitoring_state_email()
+        send_email('BBFS Current Monitoring State notification', get_monitoring_state_body())
         @passed_time_dur = 0
       end
     end
