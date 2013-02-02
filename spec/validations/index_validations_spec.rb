@@ -1,82 +1,97 @@
 require 'rspec'
-require 'file_indexing/index_agent'
-
 require_relative '../../lib/validations.rb'
 
 module BBFS
   module Validations
     module Spec
-      describe 'Index validations' do
+      describe 'Index validation' do
+        context 'of index from other file system' do
         before :all do
           @size = 100
           @path = '/dir1/dir2/file'
           @path2 = '/dir3/dir4/file'
+          @path3 = '/dir5/dir6/file'
+          @path4 = '/dir7/dir8/file'
           @mod_time = 123456
           @checksum = 'abcde987654321'
           @checksum2 = '987654321abcde'
         end
 
         before :each do
-          @instance = double :instance, :checksum => @checksum, \
+          @index = ContentData::ContentData.new
+          @remote_index = ContentData::ContentData.new
+
+          @content = double :content, :checksum => @checksum,
+            :size => @size, :first_appearance_time => @mod_time
+          @content2 = double :content2, :checksum => @checksum2,
+            :size => @size, :first_appearance_time => @mod_time
+
+          @instance = double :instance, :checksum => @checksum, :global_path => @path,
             :size => @size, :full_path => @path, :modification_time => @mod_time
-          @instance2 = double :instance2, :checksum => @checksum2, \
+          @instance2 = double :instance2, :checksum => @checksum2, :global_path => @path2,
             :size => @size, :full_path => @path2, :modification_time => @mod_time
-          @instances = Hash.new
-          @instances[@checksum] = @instance
-          @instances[@checksum2] = @instance2
-          @index = double(:index, :instances => @instances)
+          @instance3 = double :instance3, :checksum => @checksum, :global_path => @path3,
+            :size => @size, :full_path => @path3, :modification_time => @mod_time
+          @instance4 = double :instance4, :checksum => @checksum2, :global_path => @path4,
+            :size => @size, :full_path => @path4, :modification_time => @mod_time
+
+          @index.add_content @content
+          @index.add_content @content2
+          @index.add_instance @instance
+          @index.add_instance @instance2
+
+          @remote_index.add_content @content
+          @remote_index.add_content @content2
+          @remote_index.add_instance @instance3
+          @remote_index.add_instance @instance4
+
+          File.stub(:exists?).and_return(true)
+          File.stub(:size).and_return(@size)
+          File.stub(:mtime).and_return(@mod_time)
+#ContentData::ContentData.stub(:format_time).with(@mod_time).and_return(@mod_time)
+          Params['instance_check_level'] = 'shallow'
         end
 
-        context 'with shallow check' do
-          before :each do
-            File.stub(:exists?).with(@path).and_return(true)
-            File.stub(:size).with(@path).and_return(@size)
-            File.stub(:mtime).with(@path).and_return(@mod_time)
-
-            File.stub(:exists?).with(@path2).and_return(true)
-            File.stub(:size).with(@path2).and_return(@size)
-            File.stub(:mtime).with(@path2).and_return(@mod_time)
+          it 'succeeds when all remote contents has valid local instance' do
+            IndexValidations.validate_remote_index(@remote_index, @index).should be_true
           end
 
-          it 'succeed when files exist and their attributes the same as in the index' do
-            IndexValidations.validate_index(@index).should be_true
+          it 'fails when remote content is absent' do
+            absent_checksum = '123'
+            absent_content = double :absent_content, :checksum => absent_checksum, \
+              :size => @size, :first_appearance_time => @mod_time
+            @remote_index.add_content absent_content
+            IndexValidations.validate_remote_index(@remote_index, @index).should be_false
           end
 
-          it 'fail when there is a file that doesn\'t exist' do
-            File.stub(:exists?).with(@path).and_return(false)
-            IndexValidations.validate_index(@index).should be_false
+          it 'fails when local instance of remote content is invalid' do
+            modified_mtime = @mod_time + 10
+            File.stub(:mtime).with(@path).and_return(modified_mtime)
+#ContentData::ContentData.stub(:format_time).with(modified_mtime).and_return(modified_mtime)
+            IndexValidations.validate_remote_index(@remote_index, @index).should be_false
           end
 
-          it 'fail when there is a file with size different from indexed' do
-            File.stub(:size).with(@path).and_return(@size + 10)
-            IndexValidations.validate_index(@index).should be_false
-          end
+          it ':failed param returns index of absent contents or contents without valid instances' do
+            absent_checksum = '123'
+            absent_path = '/dir9/dir10/absent_file'
+            absent_content = double :absent_content, :checksum => absent_checksum, \
+              :size => @size, :first_appearance_time => @mod_time
+            absent_instance = double :instance, :checksum => absent_checksum, :global_path => absent_path,
+              :size => @size, :full_path => absent_path, :modification_time => @mod_time
+            @remote_index.add_content absent_content
+            @remote_index.add_instance absent_instance
 
-          it 'fail when there is a file with  modification time different from indexed' do
-            File.stub(:mtime).with(@path).and_return(@mod_time + 10)
-            IndexValidations.validate_index(@index).should be_false
-          end
-        end
+            # invalid instance has @path2 path on local and @path4 on remote
+            modified_mtime = @mod_time + 10
+            File.stub(:mtime).with(@path2).and_return(modified_mtime)
+#ContentData::ContentData.stub(:format_time).with(modified_mtime).and_return(modified_mtime)
 
-        context 'with deep check (shallow check assumed succeeded)' do
-          before :all do
-            Params['instance_check_level'] = 'deep'
-          end
-
-          before :each do
-            FileIndexing::IndexAgent.stub(:get_checksum).with(@path).and_return(@checksum)
-            IndexValidations.stub(:shallow_check).and_return(true)
-            IndexValidations.stub(:shallow_check).and_return(true)
-          end
-
-          it 'succeed when for all files checksums are the same as indexed' do
-            FileIndexing::IndexAgent.stub(:get_checksum).with(@path2).and_return(@checksum2)
-            IndexValidations.validate_index(@index).should be_true
-          end
-
-          it 'fail when there is a file with checksum different from indexed' do
-            FileIndexing::IndexAgent.stub(:get_checksum).with(@path2).and_return(@checksum2 + 'a')
-            IndexValidations.validate_index(@index).should be_false
+            failed = ContentData::ContentData.new
+            IndexValidations.validate_remote_index(@remote_index, @index, :failed => failed)
+            failed.contents.should have(2).items
+            failed.contents.keys.should include(absent_checksum, @checksum2)
+            failed.instances.should have(2).items
+            failed.instances.keys.should include(@path4)
           end
         end
       end

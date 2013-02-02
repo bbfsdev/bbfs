@@ -61,7 +61,7 @@ module Log
     def consume data
       @buffer.push data if not data.nil?
       if (@buffer.inspect.size >= @buffer_size_in_bytes) or
-          ((Time.now.to_i - @time_at_last_flush) >= @buffer_time_out_in_seconds) then
+        ((Time.now.to_i - @time_at_last_flush) >= @buffer_time_out_in_seconds) then
         flush_to_consumers
       end
     end
@@ -92,7 +92,8 @@ module Log
     end
 
     def consume data
-      FileUtils.mkdir_p(File.dirname(@file_name))
+      # Uncommenting line below prevents log from been written
+      #FileUtils.mkdir_p(File.dirname(@file_name))
       file_handler = File.new @file_name, 'a'
       file_handler.puts data
       file_handler.close

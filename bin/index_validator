@@ -1,21 +1,26 @@
 #!/usr/bin/env ruby
 
 # This script validates index files.
-# There two levels of validation:
-#   shallow - quick, tests instance for file existence and attributes.
-#   deep - can take more time, in addition to shallow recalculates hash sum.
-#
-# Currently implemented functionality:
-#   validation of local index file that consists content/instance data for files located on the same
-#   device
+# There are two levels of validation:
+#   shallow - Tests instances for file existence and file attributes. Quick. Is a default.
+#   deep - In addition to shallow recalculates hash sum. Can take more time.
 #
 # Parameters:
-#   tested_index_path - contains path to the tested index file
-#   instance_check_level - level of instance validation (shallow/deep), see explanations above
+#   local_index - Path to index file that consists data about local files (located on the same device).
+#   remote_index - Path to index file that consists data about remote files.
+#   instance_check_level - Level of instance validation (shallow/deep), see explanations above.
 #
-# Example of running:
-#   index_validator --tested_index_path=$BBFS_INDEX --instance_check_level='shallow'
-#   index_validator --tested_index_path=$BBFS_INDEX --instance_check_level='deep'
+# Currently implemented functionality:
+#   1. Validation of local index file that consists content/instance data for files located on the same
+#   device
+#   Example of running:
+#     index_validator --local_index=$BBFS_INDEX
+#     index_validator --local_index=$BBFS_INDEX --instance_check_level='deep'
+#   2. Validation that every content in the remote index has valid instance according to local index.
+#   Local instances corresponding to remote contents will be verified against file system.
+#   Example of running:
+#     index_validator --remote_index=$BACKUP/remote/master.data --local_index=$BBFS_INDEX
+#     index_validator --remote_index=$BACKUP/remote/master.data --local_index=$BBFS_INDEX --instance_check_level='deep'
 
 require 'params'
 require 'log'
@@ -24,22 +29,71 @@ require 'validations/index_validations'
 
 include BBFS
 
+Params.string('local_index', '', 'Path to index file that consists data about local files (located on the same device)')
+Params.string('remote_index', '', 'Path to index file that consists data about remote files')
+
 Params.init ARGV
 Log.init
 
-Params['tested_index_path'] = File.expand_path(Params['tested_index_path'])
-index = ContentData::ContentData.new
-index.from_file(Params['tested_index_path'])
-
-if Validations::IndexValidations.validate_index(index)
-  Log.info "#{Params['tested_index_path']} is valid"
-  puts "#{Params['tested_index_path']} is valid"
-else
-  Log.info "#{Params['tested_index_path']} has problems.\n" \
-    "For more information see log #{Params['log_file_name']}."
-  puts "#{Params['tested_index_path']} has problems.\n" \
-    "For more information see log #{Params['log_file_name']}."
+unless Params['local_index'].empty?  
+  Params['local_index'] = File.expand_path(Params['local_index'])
+end
+unless Params['remote_index'].empty?  
+  Params['remote_index'] = File.expand_path(Params['remote_index'])
 end
 
+def run
+  if !Params['remote_index'].empty? && !Params['local_index'].empty?
+    remote_index_validation
+  elsif !Params['local_index'].empty?
+    local_index_validation
+  else
+    err_msg = "Incorrect input: parameters missing"
+    Log.error err_msg
+    #raise ArgumentError.new err_msg
+    puts err_msg
+    exit 1
+  end
+end
+
+def local_index_validation
+  index = ContentData::ContentData.new
+  index.from_file(Params['local_index'])
+
+  if index.validate
+    valid_msg = "#{Params['local_index']} is valid"
+    Log.info valid_msg
+    puts valid_msg
+  else
+    invalid_msg = "#{Params['local_index']} has problems.\n"\
+      "For more information see log #{Params['log_file_name']}."
+    Log.error invalid_msg
+    puts invalid_msg
+  end
+end 
+
+def remote_index_validation
+  local_index = ContentData::ContentData.new
+  local_index.from_file(Params['local_index'])
+  remote_index = ContentData::ContentData.new
+  remote_index.from_file(Params['remote_index'])
+
+  if Validations::IndexValidations.validate_remote_index remote_index, local_index
+    valid_msg = "All contents from #{Params['remote_index']} have valid instances on " \
+      "#{Params['local_index']}" 
+    Log.info valid_msg
+    puts valid_msg
+  else
+    invalid_msg = "#{Params['remote_index']} has contents absent or without valid instances on "\
+      "local index #{Params['local_index']}\n"\
+      "For more information see log #{Params['log_file_name']}."
+    Log.error invalid_msg
+    puts invalid_msg
+  end
+end
+
+# starts here
+run
+# give a log system time to flush data
 sleep(Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5)
 
