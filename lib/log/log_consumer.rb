@@ -94,7 +94,8 @@ module BBFS
       end
 
       def consume data
-        FileUtils.mkdir_p(File.dirname(@file_name))
+        # Uncommenting line below prevents log from been written
+        #FileUtils.mkdir_p(File.dirname(@file_name))
         file_handler = File.new @file_name, 'a'
         file_handler.puts data
         file_handler.close
