@@ -152,6 +152,7 @@ module ContentServer
       end
     end
 
+    Params['backup_destination_folder'] = File.expand_path(Params['monitoring_paths'][0]['path'])
     content_server_dynamic_content_data = ContentData::DynamicContentData.new
     remote_content = ContentServer::RemoteContent.new(content_server_dynamic_content_data,
                                                       Params['remote_server'],

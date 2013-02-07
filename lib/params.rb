@@ -53,8 +53,8 @@
 #
 # More examples in bbfs/examples/params/rb
 
-require 'json'
 require 'optparse'
+require 'stringio'
 require 'yaml'
 
 module Params
@@ -199,12 +199,10 @@ module Params
     elsif existing_param.type.eql?('Path')
       existing_param.value = File.expand_path(value.to_s)
     elsif existing_param.type.eql?('Complex')
-      puts value
-      puts value.to_s
       if value.class.eql?(Hash) || value.class.eql?(Array)
         existing_param.value = value
       else
-        existing_param.value = JSON.parse(value.to_s)
+        existing_param.value = YAML::load(StringIO.new(value.to_s))
       end
     else
       set_value = existing_param.value_type_check(value)
