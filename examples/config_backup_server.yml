@@ -1,0 +1,24 @@
+# Backup server parameters
+remote_server: 'localhost' # Default is localhost
+backup_file_listening_port: 4444 # TCP/IP port to send backup files to.
+remote_content_port: 3333 # TCP/IP port to send content data to.
+
+# Local files and logs
+log_file_name: '~/.bbfs/log/content_server.log' # General log
+default_monitoring_log_path: '~/.bbfs/log/file_monitoring.log' # Log for file changes
+content_data_path: '~/.bbfs/var/content.data' # File to store all contents, i.e., state of content server.
+
+# Logging options
+log_write_to_console: true # Will print all log messages to standard output. Default is false.
+log_debug_level: 0 # Verbosity of logging. Default is 0, max is 3.
+
+# Configuration for the file monitoring module.
+# This module go over a directory, and monitor all sub files and directories.
+monitoring_paths:
+  - path: '/Users/kolman/.bbfs/test_files' # Directory to monitor.
+    scan_period: 1 # Number of seconds before initiating another directory scan.
+    stable_state: 5 # Number of scan times for a file to be unchanged before his state becomes stable.
+  - path: '/Users/kolman/.bbfs/test_files2' # Another directory
+    scan_period: 3
+    stable_state: 7
+

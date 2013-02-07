@@ -16,8 +16,6 @@ require 'process_monitoring/thread_safe_hash'
 require 'process_monitoring/monitoring'
 require 'process_monitoring/monitoring_info'
 
-
-
 # Content server. Monitors files, index local files, listen to backup server content,
 # copy changes and new files to backup server.
 module ContentServer
@@ -27,8 +25,6 @@ module ContentServer
   Params.integer('backup_file_listening_port', 4444, 'Listening port in backup server for files')
   Params.path('content_data_path', '~/.bbfs/var/content.data',
               'ContentData file path.')
-  Params.path('monitoring_config_path', '~/.bbfs/etc/file_monitoring.yml',
-              'Configuration file for monitoring.')
   Params.integer('remote_content_port', 3333, 'Default port for remote content copy.')
   Params.integer('backup_check_delay', 5, 'Time between two content vs backup checks.')
 
@@ -44,7 +40,6 @@ module ContentServer
     # Initialize/Start monitoring
     monitoring_events = Queue.new
     fm = FileMonitoring::FileMonitoring.new
-    fm.set_config_path(Params['monitoring_config_path'])
     fm.set_event_queue(monitoring_events)
     # Start monitoring and writing changes to queue
     all_threads << Thread.new do
@@ -126,7 +121,6 @@ module ContentServer
     # Initialize/Start monitoring
     monitoring_events = Queue.new
     fm = FileMonitoring::FileMonitoring.new
-    fm.set_config_path(Params['monitoring_config_path'])
     fm.set_event_queue(monitoring_events)
     # Start monitoring and writing changes to queue
     all_threads << Thread.new do

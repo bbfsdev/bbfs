@@ -1,0 +1,5 @@
+log_write_to_console: true
+monitoring_paths:
+  - path: /Users/kolman/.bbfs/test_files
+    scan_period: 1
+    stable_state: 5
