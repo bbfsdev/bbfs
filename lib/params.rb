@@ -277,8 +277,8 @@ module Params
     # http://ruby.about.com/od/advancedruby/a/optionparser2.htm
     opts = OptionParser.new do |opts|
       @globals_db.values.each do |param|
-        tmp_name_long = "--" + param.name + "=MANDATORY"  # Define a command with single mandatory parameter
-        tmp_value = "Default value:" + param.value.to_s  #  Description and Default value
+        tmp_name_long = '--' + param.name  # Define a command with single mandatory parameter
+        tmp_value = param.desc + " Default value:" + param.value.to_s  #  Description and Default value
 
         # Define type of the mandatory value
         # It can be integer, float or String(for all other types).
@@ -299,6 +299,41 @@ module Params
           end
         end
       end
+
+      # Define introduction text for help command
+      opts.banner =
+          "Usage: content_serve [options] or \n"  +
+          "     : backup_server [options] \n\n" +
+          "Description: This application for backuping files and folders\n" +
+          "There is two application: \n" +
+          "backup_server is server run on machine where files is backuped,\n" +
+          "content_server is application that run on machine from where files is copied.\n\n" +
+          "Before run applications:" +
+          "Before running backup_server and content server you need to prepare two configuration files\n" +
+          "Create configuration file for content server which should be located at ~/.bbfs/etc/file_monitoring.yml\n" +
+          "the content of the file is:
+------- begin of file_monitoring.yml --------
+paths:
+- path: ~/.bbfs/test_files  # <=== replace with your local dir.
+scan_period: 1
+stable_state: 5
+------- end of file_monitoring.yml --------\n" +
+            "Create configuration file for backup server which should be located at \n" +
+            "~/.bbfs/etc/backup_file_monitoring.yml\n" +
+            "File content:
+------- begin of backup_file_monitoring.yml --------
+paths:
+   - path:  ~/.bbfs/backup_data  # <=== replace with your local dir.
+     scan_period: 1
+     stable_state: 5
+------- end of backup_file_monitoring.yml --------\n\n" +
+            "Explanation about file_monitoring.yml and backup_file_monitoring.yml configuration files:
+
+\"path:\" - say to program which folder to scan recursively in order to find  new/changed files and folders.
+\"scan_period:\" - how much time in seconds passed before two consecutive scans for files and directories.
+\"stable_state:\" - how many scan_period passed until the file is considered stable.\n\n" +
+             "List of options:"
+
 
       # Define help command for available options
       # executing --help will printout all pre-defined switch options
