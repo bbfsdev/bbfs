@@ -16,7 +16,6 @@ rescue LoadError
   require 'run_in_background'
   require 'content_server'
 end
-include BBFS
 
 Params.init ARGV
 Log.init

@@ -2,7 +2,7 @@ require File.expand_path('../lib/file_indexing/version', __FILE__)
 
 Gem::Specification.new do |s|
   s.name        = 'file_indexing'
-  s.version     = BBFS::FileIndexing::VERSION
+  s.version     = FileIndexing::VERSION
   s.summary     = 'Indexes files.'
   s.description = 'Indexes files, treats files with same binary sequence as one content.'
   s.authors     = ['Gena Petelko, Kolman Vornovitsky']

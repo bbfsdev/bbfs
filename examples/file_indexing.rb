@@ -10,10 +10,10 @@ FILES_DIR = File.join(LOCAL_PATH, 'file_indexing')
 
 # Problem: Suppose we want to calculate SHA1 of a set of files. This action is called indexing.
 # Solution: Lets create an index_agent
-index_agent = BBFS::FileIndexing::IndexAgent.new
+index_agent = FileIndexing::IndexAgent.new
 # and index_patters which are set of positive and negative globs.
 # What is glob: http://www.ruby-doc.org/core-1.9.3/Dir.html#method-c-glob
-indexer_patterns = BBFS::FileIndexing::IndexerPatterns.new
+indexer_patterns = FileIndexing::IndexerPatterns.new
 indexer_patterns.add_pattern File.join(FILES_DIR, '/*')
 # If you want to filter out (remove) some files and not index them you can use similar glob
 # with is_positive variable set to false.

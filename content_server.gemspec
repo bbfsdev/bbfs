@@ -2,7 +2,7 @@ require File.expand_path('../lib/content_server/version', __FILE__)
 
 Gem::Specification.new do |s|
   s.name        = 'content_server'
-  s.version     = BBFS::ContentServer::VERSION
+  s.version     = ContentServer::VERSION
   s.summary     = 'Servers for backing up content.'
   s.description = 'Monitor and Index a directory and back it up to backup server.'
                   'Backups content as opposed to files. Two identical files are considered'
