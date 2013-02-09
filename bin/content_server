@@ -20,4 +20,4 @@ end
 Params.init ARGV
 Log.init
 
-RunInBackground.run { ContentServer.run }
+RunInBackground.run { ContentServer.run_content_server }

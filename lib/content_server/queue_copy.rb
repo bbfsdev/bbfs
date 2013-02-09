@@ -121,7 +121,7 @@ module ContentServer
     def initialize(host, port, dynamic_content_data, process_variables)
       @local_queue = Queue.new
       @dynamic_content_data = dynamic_content_data
-      @tcp_server = Networking::TCPClient.new(host, port, method(:handle_message))
+      @tcp_client = Networking::TCPClient.new(host, port, method(:handle_message))
       @file_receiver = FileReceiver.new(method(:done_copy),
                                         method(:abort_copy),
                                         method(:reset_copy))
@@ -136,7 +136,7 @@ module ContentServer
 
     def threads
       ret = [@local_thread]
-      ret << @tcp_server.tcp_thread if @tcp_server != nil
+      ret << @tcp_client.tcp_thread if @tcp_client != nil
       return ret
     end
 
@@ -173,26 +173,26 @@ module ContentServer
       if message_type == :SEND_COPY_MESSAGE
         Log.debug1("Requesting file (content data) to copy.")
         Log.debug3("File requested: #{message_content.to_s}")
-        bytes_written = @tcp_server.send_obj([:COPY_MESSAGE, message_content])
+        bytes_written = @tcp_client.send_obj([:COPY_MESSAGE, message_content])
         Log.debug1("Sending copy message succeeded? bytes_written: #{bytes_written}.")
       elsif message_type == :COPY_CHUNK
         Log.debug1('Chunk received.')
         if @file_receiver.receive_chunk(*message_content)
           file_checksum, offset, file_size, content, content_checksum = message_content
-          @tcp_server.send_obj([:COPY_CHUNK_FROM_REMOTE, file_checksum])
+          @tcp_client.send_obj([:COPY_CHUNK_FROM_REMOTE, file_checksum])
         end
       elsif message_type == :ACK_MESSAGE
         checksum, timestamp = message_content
         # Here we should check file existence
         Log.debug1("Returning ack for: #{checksum}, timestamp: #{timestamp}")
         Log.debug1("Ack: #{!@dynamic_content_data.exists?(checksum)}")
-        @tcp_server.send_obj([:ACK_MESSAGE, [timestamp,
+        @tcp_client.send_obj([:ACK_MESSAGE, [timestamp,
                                              !@dynamic_content_data.exists?(checksum),
                                              checksum]])
       elsif message_type == :ABORT_COPY
-        @tcp_server.send_obj([:ABORT_COPY, message_content])
+        @tcp_client.send_obj([:ABORT_COPY, message_content])
       elsif message_type == :RESET_RESUME_COPY
-        @tcp_server.send_obj([:RESET_RESUME_COPY, message_content])
+        @tcp_client.send_obj([:RESET_RESUME_COPY, message_content])
       else
         Log.error("Unexpected message type: #{message_type}")
       end

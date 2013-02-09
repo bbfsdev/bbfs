@@ -11,7 +11,7 @@ module ContentServer
   Params.integer('max_content_timeout', 60*60, 'Remote content force refresh in seconds.')
 
   # TODO(kolman): Use only one tcp/ip socket by utilizing one NQueue for many queues!
-  class RemoteContent
+  class RemoteContentClient
     def initialize(dynamic_content_data, host, port, local_backup_folder)
       @dynamic_content_data = dynamic_content_data
       @remote_tcp = Networking::TCPClient.new(host, port, method(:receive_content))
@@ -73,7 +73,7 @@ module ContentServer
     end
   end
 
-  class RemoteContentClient
+  class RemoteContentServer
     def initialize(dynamic_content_data, port)
       @dynamic_content_data = dynamic_content_data
       @tcp_server = Networking::TCPServer.new(port, method(:content_requested))
