@@ -122,8 +122,8 @@ module Params
             end
           end
         when 'Complex' then
-          if not @value.nil?
-            if not((value.class.eql? Hash) or (value.class.eql? Array))
+          unless @value.nil?
+            unless (value.class.eql? Hash) or (value.class.eql? Array)
               raise("Parameter:'#{@name}' type:'Complex' but value type to override " \
                       "is:'#{value.class}'.")
             end
