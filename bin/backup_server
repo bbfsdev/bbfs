@@ -7,18 +7,10 @@
 
 # NOTE this file mainly is a copy of content_server
 
-begin
-  require 'yaml'
-  require 'params'
-  require 'run_in_background'
-  require 'content_server'
-rescue LoadError
-  require 'rubygems'
-  require 'yaml'
-  require 'params'
-  require 'run_in_background'
-  require 'content_server'
-end
+require 'yaml'
+require 'params'
+require 'run_in_background'
+require 'content_server'
 
 Params.init ARGV
 Log.init

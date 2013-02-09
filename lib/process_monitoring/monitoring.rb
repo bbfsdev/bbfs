@@ -13,8 +13,9 @@ module Monitoring
   Params.float('send_email_duration_4_monitoring_state', 60*60,  # Once per hour.
                'Represents the duration in seconds to send email monitoring state')
 
-  Params.string('monitoring_email', 'bbfsdev@gmail.com','Represents the email for monitoring.')
-  Params.string('monitoring_password', 'rndnorth1','Password for monitoring.')
+  # Username and Password for gmail account to send monitoting emails.
+  Params.string('gmail_username', nil, 'Backup server gmail username.')
+  Params.string('gmail_password', nil, 'Backup server gmail password.')
 
   class Monitoring < Log::Consumer
     attr_reader :thread
@@ -44,9 +45,9 @@ module Monitoring
     # To keep thread safe state all methods should be private and executed only from @thread
     def send_email(subject, body)
       SendEmail.send_email({
-                               :to => Params['monitoring_email'],
-                               :from => Params['monitoring_email'],
-                               :password => Params['monitoring_password'],
+                               :to => Params['gmail_username'],
+                               :from => Params['gmail_username'],
+                               :password => Params['gmail_password'],
                                :body => body,
                                :subject => subject,
                            })
