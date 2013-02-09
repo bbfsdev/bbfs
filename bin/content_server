@@ -4,30 +4,12 @@
 # The files in those directories are indexed (calculating their SHA1).
 # Each unique content is backed up to the remote (backup) server.
 
-begin
-  print "1"
-  require 'yaml'
-  print "2"
-  require 'params'
-  print "3"
-  require 'run_in_background'
-  print "4"
-  require 'content_server'
-  print "5"
-rescue LoadError
-  print "6"
-  require 'rubygems'
-  print "7"
-  require 'yaml'
-  print "8"
-  require 'params'
-  print "9"
-  require 'run_in_background'
-  print "0"
-  require 'content_server'
-end
+require 'yaml'
+require 'params'
+require 'run_in_background'
+require 'content_server'
 
 Params.init ARGV
 Log.init
 
-RunInBackground.run { ContentServer.run }
+RunInBackground.run { ContentServer.run_content_server }
