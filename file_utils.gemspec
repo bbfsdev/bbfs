@@ -2,7 +2,7 @@ require File.expand_path('../lib/file_utils/version', __FILE__)
 
 Gem::Specification.new do |s|
   s.name        = 'file_utils'
-  s.version     = BBFS::FileUtils::VERSION
+  s.version     = FileUtils::VERSION
   s.summary     = 'Executable for operating on bbfs files.'
   s.description = 'Executable for operating on bbfs files, locally and remotely.'
   s.authors     = ['Gena Petelko, Kolman Vornovitsky']

@@ -2,7 +2,7 @@ require File.expand_path('../lib/networking/version', __FILE__)
 
 Gem::Specification.new do |s|
   s.name        = 'networking'
-  s.version     = BBFS::Networking::VERSION
+  s.version     = Networking::VERSION
   s.summary     = 'Easy to use simple tools for networking (tcp/ip, ect,...).'
   s.description = 'Easy to use simple tools for networking (tcp/ip, ect,...).'
   s.authors     = ['Kolman Vornovitsky']
