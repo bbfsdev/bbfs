@@ -27,8 +27,6 @@ require 'log'
 require 'content_data'
 require 'validations/index_validations'
 
-include BBFS
-
 Params.string('local_index', '', 'Path to index file that consists data about local files (located on the same device)')
 Params.string('remote_index', '', 'Path to index file that consists data about remote files')
 
