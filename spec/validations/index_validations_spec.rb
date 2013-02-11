@@ -91,6 +91,7 @@ module Validations
           failed.contents.keys.should include(absent_checksum, @checksum2)
           failed.instances.should have(2).items
           failed.instances.keys.should include(@path4)
+
         end
       end
     end

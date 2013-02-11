@@ -110,4 +110,3 @@ module Validations
 
   end  # class IndexValidations
 end  # module Validations
-

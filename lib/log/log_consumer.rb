@@ -100,4 +100,3 @@ module Log
     end
   end
 end
-
