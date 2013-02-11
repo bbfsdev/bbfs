@@ -1,5 +1,4 @@
 require 'validations/index_validations'
 
-  module Validations
-  end
+module Validations
 end
