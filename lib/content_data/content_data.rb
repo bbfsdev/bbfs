@@ -407,6 +407,7 @@ module ContentData
     #     Supported key/value combinations:
     #     * key is <tt>:failed</tt> value is <tt>ContentData</tt> used to return failed instances
     # @return [Boolean] true when index is correct, false otherwise
+    # @raise [ArgumentError] when instance_check_level is incorrect
     def validate(params = nil)
       # used to answer whether specific param was set
       param_exists = Proc.new do |param|
@@ -482,6 +483,7 @@ module ContentData
       end
     end
 
+    # @raise [ArgumentError] when instance_check_level is incorrect
     def check_instance(instance)
       case Params['instance_check_level']
       when 'deep'
@@ -551,6 +553,6 @@ module ContentData
       result_index
     end
 
-    private :shallow_check, :deep_check, :check_instance
+    private :shallow_check, :deep_check, :check_instance, :get_query
   end
 end

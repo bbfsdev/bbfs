@@ -24,6 +24,7 @@ module Validations
     #     Supported key/value combinations:
     #     * key is <tt>:failed</tt> value is <tt>ContentData</tt> used to return failed instances
     # @return [Boolean] true when every remote content has at least one valid local instance, false otherwise
+    # @raise [ArgumentError] when instance_check_level is incorrect
     def IndexValidations.validate_remote_index(remote_index, local_index, params = nil)
       raise ArgumentError 'remote_index must be defined' if remote_index.nil?
       raise ArgumentError 'local index must be defined' if local_index.nil?
