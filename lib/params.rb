@@ -12,6 +12,7 @@
 #   Params.float('parameter_float',2.6 , 'description_for_float')
 #   Params.boolean('parameter_true', true, 'description_for_true')
 #   Params.boolean('parameter_false',false , 'description_for_false')
+#   Params.complex('parameter_complex', [a,b,{b=>c}], 'description for dict or list of strings.')
 #   Note. Parameters have to be defined before they are accessed.
 #
 # Examples of usages (get\set access is through the [] operator).
@@ -53,12 +54,13 @@
 # More examples in bbfs/examples/params/rb
 
 require 'optparse'
+require 'stringio'
 require 'yaml'
 
 module Params
 
   @init_debug_messages = []
-  @help_messages = []
+  @show_help_and_exit = false
 
   def Params.get_init_messages
     return @init_debug_messages
@@ -119,6 +121,13 @@ module Params
                       "is:'#{value.class}'.")
             end
           end
+        when 'Complex' then
+          unless @value.nil?
+            unless (value.class.eql? Hash) or (value.class.eql? Array)
+              raise("Parameter:'#{@name}' type:'Complex' but value type to override " \
+                      "is:'#{value.class}'.")
+            end
+          end
         else
           raise("Parameter:'#{@name}' type:'#{@value.class}' but parameter " \
                   "type to override:'#{value.class}' is not supported. " + \
@@ -127,7 +136,7 @@ module Params
       return value
     end
 
-    # supported types are: String, Integer, Float and Boolean
+    # supported types are: String, Integer, Float, Boolean, Path or Complex
     def initialize(name, value, type, desc)
       @name = name
       @type = type
@@ -161,6 +170,10 @@ module Params
     @globals_db[name].value
   end
 
+  def Params.each(&block)
+    @globals_db.each(&block)
+  end
+
   # Write global param value by other modules.
   # Note that this operator should only be used, after parameter has been defined through
   # one of Param module methods: Params.string, Params.integer,
@@ -185,6 +198,12 @@ module Params
       existing_param.value = value.to_s
     elsif existing_param.type.eql?('Path')
       existing_param.value = File.expand_path(value.to_s)
+    elsif existing_param.type.eql?('Complex')
+      if value.class.eql?(Hash) || value.class.eql?(Array)
+        existing_param.value = value
+      else
+        existing_param.value = YAML::load(StringIO.new(value.to_s))
+      end
     else
       set_value = existing_param.value_type_check(value)
       existing_param.value = set_value
@@ -216,6 +235,11 @@ module Params
     @globals_db[name] = Param.new(name, File.expand_path(value), 'Path', description)
   end
 
+  def Params.complex(name, value, description)
+    raise_error_if_param_exists(name)
+    @globals_db[name] = Param.new(name, value, 'Complex', description)
+  end
+
   # Define new global parameter of type Boolean.
   def Params.boolean(name, value, description)
     raise_error_if_param_exists(name)
@@ -238,7 +262,9 @@ module Params
     else
       if File.exist?(Params['conf_file'])
         @init_debug_messages << "Loading parameters from configuration file:'#{Params['conf_file']}'"
-        read_yml_params(File.open(Params['conf_file'], 'r'))
+        if not read_yml_params(File.open(Params['conf_file'], 'r'))
+          @init_debug_messages << "Bad configuration file #{Params['conf_file']}."
+        end
       else
         @init_debug_messages << "Configuration file path:'#{Params['conf_file']}' does not exist. " + \
                                 "Skipping loading file parameters."
@@ -253,18 +279,26 @@ module Params
     print_global_parameters
 
     # Prints help and parameters if needed.
-    puts @help_messages unless @help_messages.empty?
+    if @show_help_and_exit
+      # Print parameters + description and exit.
+      puts "Full list of parameters:"
+      Params.each do |name, param|
+        puts "--#{name}, #{param.type}, default:#{param.value}\n\t#{param.desc}"
+      end
+      exit
+    end
     puts @init_debug_messages if Params['print_params_to_stdout']
-    exit unless @help_messages.empty?
   end
 
   # Load yml params and override default values.
   # raise exception if a loaded yml param does not exist. or if types mismatch occurs.
   def Params.read_yml_params(yml_input_io)
     proj_params = YAML::load(yml_input_io)
+    return false unless proj_params.is_a?(Hash)
     proj_params.keys.each do |param_name|
       override_param(param_name, proj_params[param_name])
     end
+    true
   end
 
   #  Parse command line arguments
@@ -338,7 +372,7 @@ paths:
       # Define help command for available options
       # executing --help will printout all pre-defined switch options
       opts.on_tail("-h", "--help", "Show this message") do
-        @help_messages << opts
+        @show_help_and_exit = true
       end
 
       opts.parse(args)  # Parse command line

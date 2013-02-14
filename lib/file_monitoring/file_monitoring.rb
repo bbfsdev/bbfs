@@ -2,43 +2,35 @@ require 'algorithms'
 require 'fileutils'
 require 'log'
 require 'params'
-require 'yaml'
 
 require 'file_monitoring/monitor_path'
 
 module FileMonitoring
 
-  Params.path('default_log_path', '~/.bbfs/log/file_monitoring.log',
+  Params.path('default_monitoring_log_path', '~/.bbfs/log/file_monitoring.log',
               'Default path for log file.')
+  Params.complex('monitoring_paths', nil, 'Array of Hashes with 3 fields: ' \
+                 'path, scan_period and stable_state.')
 
   class FileMonitoring
-
-    def set_config_path(config_path)
-      @config_path = config_path
-    end
 
     def set_event_queue(queue)
       @event_queue = queue
     end
 
     def monitor_files
-      config_yml = YAML::load_file(@config_path)
-
-      conf_array = config_yml['paths']
+      conf_array = Params['monitoring_paths']
 
       pq = Containers::PriorityQueue.new
       conf_array.each { |elem|
         priority = (Time.now + elem['scan_period']).to_i
-        dir_stat = DirStat.new(elem['path'], elem['stable_state'])
+        dir_stat = DirStat.new(File.expand_path(elem['path']), elem['stable_state'])
         dir_stat.set_event_queue(@event_queue) if @event_queue
         Log.info [priority, elem, dir_stat]
         pq.push([priority, elem, dir_stat], -priority)
       }
 
-      log_path = Params['default_log_path']
-      if config_yml.key?('log_path')
-        log_path = File.expand_path(config_yml['log_path'])
-      end
+      log_path = Params['default_monitoring_log_path']
 
       Log.info 'Log path:' + log_path
       FileUtils.mkdir_p(File.dirname(log_path))
