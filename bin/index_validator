@@ -22,36 +22,32 @@
 #     index_validator --remote_index=$BACKUP/remote/master.data --local_index=$BBFS_INDEX
 #     index_validator --remote_index=$BACKUP/remote/master.data --local_index=$BBFS_INDEX --instance_check_level='deep'
 
+# TODO test
+# TODO help/usage should be printed on demand or when incorrectly used
+ 
 require 'params'
 require 'log'
 require 'content_data'
 require 'validations/index_validations'
 
-include BBFS
-
-Params.string('local_index', '', 'Path to index file that consists data about local files (located on the same device)')
-Params.string('remote_index', '', 'Path to index file that consists data about remote files')
+Params.path('local_index', 'not set', 'Path to index file that consists data about local files (located on the same device)')
+Params.path('remote_index', 'not set', 'Path to index file that consists data about remote files')
 
 Params.init ARGV
 Log.init
 
-unless Params['local_index'].empty?  
-  Params['local_index'] = File.expand_path(Params['local_index'])
-end
-unless Params['remote_index'].empty?  
-  Params['remote_index'] = File.expand_path(Params['remote_index'])
-end
-
+# TODO more easy way to define in what mode script should be run
+# TODO more easy way to define whether parameter was set
 def run
-  if !Params['remote_index'].empty? && !Params['local_index'].empty?
+  if File.file?(Params['remote_index']) && File.file?(Params['local_index'])
     remote_index_validation
-  elsif !Params['local_index'].empty?
+  elsif File.file?(Params['local_index']) && !File.exists?(Params['remote_index'])
     local_index_validation
   else
     err_msg = "Incorrect input: parameters missing"
-    Log.error err_msg
-    #raise ArgumentError.new err_msg
     puts err_msg
+    Log.error err_msg
+    wait_to_log
     exit 1
   end
 end
@@ -60,15 +56,24 @@ def local_index_validation
   index = ContentData::ContentData.new
   index.from_file(Params['local_index'])
 
-  if index.validate
-    valid_msg = "#{Params['local_index']} is valid"
-    Log.info valid_msg
-    puts valid_msg
-  else
-    invalid_msg = "#{Params['local_index']} has problems.\n"\
-      "For more information see log #{Params['log_file_name']}."
-    Log.error invalid_msg
-    puts invalid_msg
+  begin  
+    if index.validate
+      valid_msg = "#{Params['local_index']} is valid"
+      Log.info valid_msg
+      puts valid_msg
+    else
+      invalid_msg = "#{Params['local_index']} has problems.\n"\
+        "For more information see log #{Params['log_file_name']}"
+      Log.error invalid_msg
+      puts invalid_msg
+    end
+  rescue ArgumentError => err
+    puts err.message
+    Log.error err.message
+    Log.debug1 'Backtrace: '
+    err.backtrace.each { |a| Log.debug1 a } 
+    wait_to_log
+    exit 1
   end
 end 
 
@@ -78,22 +83,35 @@ def remote_index_validation
   remote_index = ContentData::ContentData.new
   remote_index.from_file(Params['remote_index'])
 
-  if Validations::IndexValidations.validate_remote_index remote_index, local_index
-    valid_msg = "All contents from #{Params['remote_index']} have valid instances on " \
-      "#{Params['local_index']}" 
-    Log.info valid_msg
-    puts valid_msg
-  else
-    invalid_msg = "#{Params['remote_index']} has contents absent or without valid instances on "\
-      "local index #{Params['local_index']}\n"\
-      "For more information see log #{Params['log_file_name']}."
-    Log.error invalid_msg
-    puts invalid_msg
+  begin
+    if Validations::IndexValidations.validate_remote_index remote_index, local_index
+      valid_msg = "All contents from #{Params['remote_index']} have valid instances on " \
+        "#{Params['local_index']}" 
+      Log.info valid_msg
+      puts valid_msg
+    else
+      invalid_msg = "#{Params['remote_index']} has contents absent or without valid instances on "\
+        "local index #{Params['local_index']}\n"\
+        "For more information see log #{Params['log_file_name']}."
+      Log.error invalid_msg
+      puts invalid_msg
+    end
+  rescue ArgumentError => err
+    puts err.message
+    Log.error err.message
+    Log.debug1 'Backtrace:'
+    err.backtrace.each { |a| Log.debug1 a } 
+    wait_to_log
+    exit 1
   end
+end
+
+# give a log system time to flush data
+def wait_to_log
+  sleep(Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5)
 end
 
 # starts here
 run
-# give a log system time to flush data
-sleep(Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5)
+wait_to_log
 

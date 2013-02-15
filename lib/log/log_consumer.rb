@@ -61,7 +61,7 @@ module Log
     def consume data
       @buffer.push data if not data.nil?
       if (@buffer.inspect.size >= @buffer_size_in_bytes) or
-          ((Time.now.to_i - @time_at_last_flush) >= @buffer_time_out_in_seconds) then
+        ((Time.now.to_i - @time_at_last_flush) >= @buffer_time_out_in_seconds) then
         flush_to_consumers
       end
     end
@@ -99,4 +99,3 @@ module Log
     end
   end
 end
-
