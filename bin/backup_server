@@ -7,7 +7,7 @@
 
 # NOTE this file mainly is a copy of content_server
 
-require 'yaml'
+require 'log'
 require 'params'
 require 'run_in_background'
 require 'content_server'

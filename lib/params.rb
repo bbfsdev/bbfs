@@ -311,12 +311,12 @@ module Params
     # http://ruby.about.com/od/advancedruby/a/optionparser2.htm
     opts = OptionParser.new do |opts|
       @globals_db.values.each do |param|
-        tmp_name_long = '--' + param.name  # Define a command with single mandatory parameter
+        tmp_name_long = "--#{param.name} #{param.name.upcase}"  # Define a command with single mandatory parameter
         tmp_value = param.desc + " Default value:" + param.value.to_s  #  Description and Default value
 
         # Define type of the mandatory value
         # It can be integer, float or String(for all other types).
-        case( param.type )
+        case(param.type)
           when 'Integer' then value_type = Integer
           when 'Float' then value_type = Float
           else value_type = String

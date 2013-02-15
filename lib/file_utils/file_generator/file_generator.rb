@@ -6,13 +6,15 @@ require 'fileutils'
 require 'params'
 require 'yaml'
 
+require 'log'
+
 module FileGenerator
-  Params.string('target_path', '~/.bbfs/test_files', 'Represents the target path for files generation')
+  Params.path('target_path', '~/.bbfs/test_files', 'Represents the target path for files generation')
   Params.string('file_name_prefix', 'auto_generated_file_4_backup_server',
                 'Represents the file name template for generated file')
   Params.string('dir_name_prefix', 'test_dir_4_backup_server',
                 'Represents the directory name template for generated file')
-  Params.integer('file_size_in_mb', 500,
+  Params.integer('file_size_in_bytes', 500,
                  'Represents the required file size in MB. Not relevant if random calculation is triggered')
   Params.integer('total_created_directories', -1,
                  'Represents the total created directories. Use any negative value or zero for Infinity.
@@ -20,8 +22,8 @@ module FileGenerator
   Params.integer('total_files_in_dir', 10,
                  'Represents the total files in directory. Use any negative value or zero for Infinity')
   Params.float('sleep_time_in_seconds', 10, 'Represents the sleeping time for generation files')
-  Params.integer('upper_size_in_mb', 500, 'Represents the upper limit file size in MB for random size calculation')
-  Params.integer('down_size_in_mb', 50, 'Represents the Lower limit file size in MB for random size calculation')
+  Params.float('upper_size_in_bytes', 500, 'Represents the upper limit file size in MB for random size calculation')
+  Params.float('down_size_in_bytes', 50, 'Represents the Lower limit file size in MB for random size calculation')
   Params.integer('lower_limit_4_files_in_dir', 10,
                  'Represents the Lower limit for total files in directory for random calculation')
   Params.integer('upper_limit_4_files_in_dir', 20,
@@ -32,12 +34,12 @@ module FileGenerator
 
   #Generates files with random content with random file size according to the given Params
   class FileGenerator
-    attr_reader :one_mb_string
+    attr_reader :one_bytes_string
     FILE_EXT = 'txt'
 
     #Gets one MB string
-    def one_mb_string
-      @one_mb_string ||= prepare_one_mb_string
+    def one_bytes_string
+      @one_bytes_string ||= prepare_one_bytes_string
     end
 
     #Gets the some random string
@@ -66,18 +68,18 @@ module FileGenerator
     end
 
     #Gets the required file size im MB
-    def get_file_mb_size
+    def get_file_bytes_size
       if Params['is_use_random_size']
-        rand(Params['upper_size_in_mb'] - Params['down_size_in_mb']) +
-            Params['down_size_in_mb']
+        rand(Params['upper_size_in_bytes'] - Params['down_size_in_bytes']) +
+            Params['down_size_in_bytes']
       else
-        Params['file_size_in_mb']
+        Params['file_size_in_bytes']
       end
     end
 
     #Generates one MB string with random content
-    def prepare_one_mb_string
-      get_random_letter * (1024 * 1024)
+    def prepare_one_bytes_string
+      get_random_letter
     end
 
     #Determines whether to generate new directory or not
@@ -111,6 +113,7 @@ module FileGenerator
     #Generates files with random content with random file size according to the given Params
     def run
       dir_counter = 0
+      rand = Random.new(1234)
       while is_generate_dir dir_counter
         new_dir_name = File.expand_path(File.join Params['target_path'], get_new_directory_name)
         ::FileUtils.mkdir_p new_dir_name unless File.directory?(new_dir_name)
@@ -120,7 +123,7 @@ module FileGenerator
         while is_generate_file file_counter
           new_file_name = get_new_file_name
           File.open(File.join(new_dir_name, new_file_name), "w") do |f|
-            f.write (one_mb_string * get_file_mb_size)
+            f.write ('a' * get_file_bytes_size)
             f.write new_file_name #To make file content unique
           end
           file_counter += 1
