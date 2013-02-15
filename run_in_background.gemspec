@@ -2,7 +2,7 @@ require File.expand_path('../lib/run_in_background/version', __FILE__)
 
 Gem::Specification.new do |s|
   s.name        = 'run_in_background'
-  s.version     = BBFS::RunInBackground::VERSION
+  s.version     = RunInBackground::VERSION
   s.summary     = 'Cross-platform library for daemons management.'
   s.description = "This library provides a basic cross-platform functionality to run" \
                   "arbitrary ruby scripts in background and control them." \

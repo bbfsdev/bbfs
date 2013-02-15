@@ -2,13 +2,8 @@
 
 # This utility executable is used to easily execute BBFS operations on files.
 
-begin
-  require 'file_utils'
-  require 'params'
-rescue LoadError
-  require 'rubygems'
-  require 'file_utils'
-end
+require 'file_utils'
+require 'params'
 
-BBFS::Params.init ARGV
-BBFS::FileUtils::FileUtils.run
+Params.init ARGV
+FileUtils::FileUtils.run
