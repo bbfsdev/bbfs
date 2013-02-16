@@ -1,5 +1,3 @@
-module BBFS
-  module Validations
-    VERSION = "0.0.1"
-  end
+module Validations
+  VERSION = "0.0.1"
 end
