@@ -5,6 +5,8 @@
 
 require 'thread'
 require 'params'
+require 'fileutils'
+
 
 module Log
   Params.float 'log_param_thread_sleep_time_in_seconds', 0.5 , \
@@ -29,6 +31,9 @@ module Log
     # push incoming data to the consumer queue
     def push_data data
       @consumer_queue.push data.clone
+    end
+
+    def close
     end
   end
 
@@ -89,13 +94,17 @@ module Log
       if File.exist? @file_name then
         File.delete @file_name
       end
+      FileUtils.mkdir_p(File.dirname(@file_name))
+      @file_handler = File.new @file_name, 'a'
     end
 
     def consume data
-      FileUtils.mkdir_p(File.dirname(@file_name))
-      file_handler = File.new @file_name, 'a'
-      file_handler.puts data
-      file_handler.close
+      @file_handler.puts data
+      @file_handler.flush
+    end
+
+    def close
+      @file_handler.close
     end
   end
 end
