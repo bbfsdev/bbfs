@@ -36,8 +36,9 @@ module TestingServer
       # Assumes configuration file exists in place.
       Log.info("Generating files remotely on #{Params['master_host']} with configuration file " \
                "#{Params['master_file_generator_config']}")
-      fg_ret = execute_remotely("file_utils --conf_file=#{Params['master_file_generator_config']} --command=generate_files")
-      Log.info("Generating files result: #{fg_ret}")
+      command = "file_utils --conf_file=#{Params['master_file_generator_config']} --command=generate_files"
+      fg_ret = execute_remotely(command)
+      Log.info("#{command}: #{fg_ret}")
 
       # Wait some time.
       Log.info("Done, sleeping #{Params['sleep_seconds_after_file_generation']} seconds.")
@@ -48,7 +49,7 @@ module TestingServer
       command = "index_validator --local_index=#{Params['remote_master_content_data']}"
       Log.info("Remotely validating index: #{command}")
       iv_ret = execute_remotely(command)
-      Log.info("Validation result: #{iv_ret}")
+      Log.info("#{command}: #{iv_ret}")
 
       # Validate backup local files.
       Log.info("Localy validating index: #{Params['backup_content_data']}")
@@ -75,10 +76,10 @@ Master index ok: #{iv_ret}
 Backup index ok: #{local_ret}
 Backup includes all master files: #{remote_ret}
 EOF
-        Email.send_attachments_email(Params['from_email'],
-                                     Params['from_email_password'],
-                                     Params['to_email'],
-                                     'Testing server update.', msg)
+        Email.send_email(Params['from_email'],
+                         Params['from_email_password'],
+                         Params['to_email'],
+                         msg)
       end
       Log.info("Done.")
     end
@@ -99,7 +100,7 @@ EOF
       username=Params['master_username'])
     ret = nil
     Net::SSH.start(host, username) do |ssh|
-      ssh.exec(cmd) do |ch, stream, data|
+      ssh.exec!(cmd) do |ch, stream, data|
         ret = data
       end
     end

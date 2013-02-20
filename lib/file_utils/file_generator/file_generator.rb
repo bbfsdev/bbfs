@@ -19,6 +19,7 @@ module FileGenerator
   Params.integer('total_created_directories', -1,
                  'Represents the total created directories. Use any negative value or zero for Infinity.
                       Not relevant if random calculation is triggered')
+  Params.integer('max_total_files', 0, 'Maximum number of files to generate, 0 for no limit.')
   Params.integer('total_files_in_dir', 10,
                  'Represents the total files in directory. Use any negative value or zero for Infinity')
   Params.float('sleep_time_in_seconds', 10, 'Represents the sleeping time for generation files')
@@ -83,7 +84,11 @@ module FileGenerator
     end
 
     #Determines whether to generate new directory or not
-    def is_generate_dir(dir_counter)
+    def is_generate_dir(dir_counter, total_file_counter)
+      if Params['max_total_files'] > 0 && total_file_counter > Params['max_total_files']
+        return false
+      end
+
       if Params['total_created_directories'] < 1 || #Any negative value or zero will be indication for Infinity
           dir_counter < Params['total_created_directories'] then
         return true
@@ -93,17 +98,22 @@ module FileGenerator
     end
 
     #Determines whether to generate new file or not
-    def is_generate_file(file_counter)
+    def is_generate_file(file_counter, total_file_counter)
+      if Params['max_total_files'] > 0 && total_file_counter > Params['max_total_files']
+        return false
+      end
+
+      total_files_in_dir = Params['total_files_in_dir']
       if file_counter == 0 && Params['is_tot_files_in_dir_random']  then
-        Params['total_files_in_dir'] =
+        total_files_in_dir =
             rand(Params['upper_limit_4_files_in_dir'] -
                      Params['lower_limit_4_files_in_dir']) +
                 Params['lower_limit_4_files_in_dir']
       end
 
       #When total_files_in_dir < 1 it will be treated as unlimited files creation in directory
-      if Params['total_files_in_dir'] < 1 ||
-          file_counter < Params['total_files_in_dir'] then
+      if total_files_in_dir < 1 ||
+          file_counter < total_files_in_dir then
         return true
       else
         return false
@@ -113,20 +123,21 @@ module FileGenerator
     #Generates files with random content with random file size according to the given Params
     def run
       dir_counter = 0
-      rand = Random.new(1234)
-      while is_generate_dir dir_counter
+      total_file_count = 0
+      while is_generate_dir dir_counter, total_file_counter
         new_dir_name = File.expand_path(File.join Params['target_path'], get_new_directory_name)
         ::FileUtils.mkdir_p new_dir_name unless File.directory?(new_dir_name)
         dir_counter += 1
         file_counter = 0
 
-        while is_generate_file file_counter
+        while is_generate_file file_counter, total_file_counter
           new_file_name = get_new_file_name
           File.open(File.join(new_dir_name, new_file_name), "w") do |f|
             f.write ('a' * get_file_bytes_size)
             f.write new_file_name #To make file content unique
           end
           file_counter += 1
+          total_file_count += 1
 
           sleep Params['sleep_time_in_seconds'] if Params['sleep_time_in_seconds'] > 0
         end
