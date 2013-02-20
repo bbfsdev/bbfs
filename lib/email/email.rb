@@ -2,12 +2,37 @@ require 'net/smtp'
 
 module Email
 
-  def Email.send_email(from, password, to, mail_text)
+  def Email.send_raw_email(from, password, to, mail_text)
     smtp = Net::SMTP.new('smtp.gmail.com', 587)
     smtp.enable_starttls
     smtp.start(from.split('@')[-1], from, password, :login) do
       smtp.send_message(mail_text, from, to)
     end
+  end
+
+  def Email.send_email(from, password, to, subject, body)
+    marker = (0...50).map{ ('a'..'z').to_a[rand(26)] }.join
+    parts = []
+    parts << <<EOF
+From: #{from}
+To: #{to}
+Subject: #{subject}
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary=#{marker}
+--#{marker}
+EOF
+
+    # Define the message action
+    parts << <<EOF
+Content-Type: text/plain
+Content-Transfer-Encoding:8bit
+
+#{body}
+--#{marker}
+EOF
+
+    mailtext = parts.join('')
+    send_raw_email(from, password, to, mailtext)
   end
 
   def Email.send_attachments_email(from, password, to, subject, body, attachments)
@@ -56,7 +81,7 @@ EOF
     end
 
     mailtext = parts.join('')
-    send_email(from, password, to, mailtext)
+    send_raw_email(from, password, to, mailtext)
   end
 
 end

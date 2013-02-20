@@ -72,14 +72,18 @@ module TestingServer
         # Send email.
         Log.info("Sending email...")
         msg =<<EOF
+
 Master index ok: #{iv_ret}
 Backup index ok: #{local_ret}
 Backup includes all master files: #{remote_ret}
+
 EOF
         Email.send_email(Params['from_email'],
                          Params['from_email_password'],
                          Params['to_email'],
+                         'Testing server update',
                          msg)
+        email_timestamp_sent = Time.now.to_i
       end
       Log.info("Done.")
     end

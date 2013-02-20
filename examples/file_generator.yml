@@ -39,11 +39,13 @@ lower_limit_4_files_in_dir: 3
 # parameter:'is_tot_files_in_dir_random' is true.
 upper_limit_4_files_in_dir: 100
 
+# Maximum number of files to generate, 0 for no limit.
+max_total_files: 0
+
 # Represents the total files in directory. Use any
 # negative value or zero for Infinity. Active only if
 # parameter:'is_tot_files_in_dir_random' is false.
 total_files_in_dir: -1
-
 
 # Indicates that file size will be calculated randomly.
 # If false then value will be taken from
