@@ -134,7 +134,6 @@ module FileGenerator
           new_file_name = get_new_file_name
           File.open(File.join(new_dir_name, new_file_name), "w") do |f|
             f.write ('a' * get_file_bytes_size)
-            f.write new_file_name #To make file content unique
           end
           file_counter += 1
           total_file_count += 1
