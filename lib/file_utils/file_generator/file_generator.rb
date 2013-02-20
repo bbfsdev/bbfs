@@ -124,13 +124,13 @@ module FileGenerator
     def run
       dir_counter = 0
       total_file_count = 0
-      while is_generate_dir dir_counter, total_file_counter
+      while is_generate_dir dir_counter, total_file_count
         new_dir_name = File.expand_path(File.join Params['target_path'], get_new_directory_name)
         ::FileUtils.mkdir_p new_dir_name unless File.directory?(new_dir_name)
         dir_counter += 1
         file_counter = 0
 
-        while is_generate_file file_counter, total_file_counter
+        while is_generate_file file_counter, total_file_count
           new_file_name = get_new_file_name
           File.open(File.join(new_dir_name, new_file_name), "w") do |f|
             f.write ('a' * get_file_bytes_size)
