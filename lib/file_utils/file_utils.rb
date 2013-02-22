@@ -198,67 +198,85 @@ module FileUtils
     #             There is no check what device they are belong - only the check of server name.
     #             It is a user responsibility (meanwhile) to provide a correct input
     #             If file has a modification time attribute that doesn't present in the input db,
-    #             then the assumption is that this file wasnt indexized and it will not be treated
-    #             (e.i. we do nothing with it)
-    def self.unify_time(db)
-      mod_db = ContentData::ContentData.unify_time(db)
-      mod_db.instances.each_value do |instance|
-        next unless db.instances.has_key? instance.global_path
-        if (File.exists?(instance.full_path))
-          file_mtime, file_size = File.open(instance.full_path) { |f| [f.mtime, f.size] }
-          Log.info "file:#{instance.full_path} file_mtime:#{file_mtime}."
-          Log.info "update mtime:#{instance.modification_time}"
-          Log.info "original instance mtime:#{db.instances[instance.global_path].modification_time}."
-          Log.info "unify instance mtime:#{instance.modification_time}."
-          Log.info "unify instance mtime:#{instance.modification_time.to_i}."
-          Log.info "Comparison: #{file_mtime <=> instance.modification_time}"
-          if (file_mtime == db.instances[instance.global_path].modification_time \
-                and file_size == instance.size \
-                and (file_mtime <=> instance.modification_time) > 0)
-            Log.info ("Comparison success.")
-            File.utime File.atime(instance.full_path), instance.modification_time, instance.full_path
-            file_mtime = File.open(instance.full_path) { |f| f.mtime }
-            Log.info "file mtime:#{file_mtime}."
-            Log.info "file mtime:#{file_mtime.to_i}."
-          end
-        end
+      #             then the assumption is that this file wasnt indexized and it will not be treated
+      #             (e.i. we do nothing with it)
+      def self.unify_time(cd)
+        unified_cd = ContentData.unify_time(cd)
+        unified_cd.private_db.keys.each {|checksum|
+          cd_instances = cd.private_db[checksum]
+          unified_cd_instances = unified_cd.private_db[checksum]
+          unified_cd_size = unified_cd_instances[0]
+          unified_cd_instances[1].keys.each {|full_path|
+            unified_inst_mod_time =  unified_cd_instances[1][full_path]
+            orig_inst_mod_time =  cd_instances[1][full_path]
+            local_path = full_path.split(',')[2]
+            file_mtime, file_size = File.open(local_path) { |f| [f.mtime, f.size] }
+            Log.info "file:#{local_path} file_mtime:#{file_mtime}."
+            Log.info "update mtime:#{unified_inst_mod_time}"
+            Log.info "original instance mtime:#{orig_inst_mod_time}."
+            Log.info "unify instance mtime:#{unified_inst_mod_time}."
+            Log.info "Comparison: Real file = unified? #{file_mtime.to_i == unified_inst_mod_time}"
+            if (file_mtime.to_i == orig_inst_mod_time) \
+                and file_size == unified_cd_size \
+                and (file_mtime.to_i != unified_inst_mod_time)
+              Log.info ("Comparison results: File actual time is same as instance time before unification. Need to modify file time")
+              File.utime(File.atime(local_path), unified_inst_mod_time, local_path)
+              file_mtime = File.open(local_path) { |f| f.mtime }
+              Log.info "new file mtime:#{file_mtime}."
+              Log.info "new file mtime in seconds:#{file_mtime.to_i}."
+            end
+          }
+        }
+        unified_cd
       end
-      mod_db
-    end
 
-    # Creates directory structure and symlinks with ref_cd structure to the base_cd files and dest as a root dir
-    # Parameters: ref_cd [ContentData]
-    #             base_cd [ContentData]
-    #             dest [String]
-    # Output: ContentData object consists of contents/instances from ref_cd that have no target in base_cd
-    def self.mksymlink(ref_cd, base_cd, dest)
-      # symlinks are not implemented in Windows
-      raise NotImplementedError.new if (RUBY_PLATFORM =~ /mingw/ or RUBY_PLATFORM =~ /ms/ or RUBY_PLATFORM =~ /win/)
+      # Creates directory structure and symlinks with ref_cd structure to the base_cd files and dest as a root dir
+      # Parameters: ref_cd [ContentData]
+      #             base_cd [ContentData]
+      #             dest [String]
+      # Output: ContentData object consists of contents/instances from ref_cd that have no target in base_cd
 
-      not_found = ContentData::ContentData.new
-      inverted_index = Hash.new
-      base_cd.instances.values.each{ |instance|
-        inverted_index[instance.checksum] = instance
-      }
+      def self.mksymlink(ref_cd, base_cd, dest)
+        # symlinks are not implemented in Windows
+        raise NotImplementedError.new if (RUBY_PLATFORM =~ /mingw/ or RUBY_PLATFORM =~ /ms/ or RUBY_PLATFORM =~ /win/)
 
-      warnings = Array.new
+        not_found = Hash.new
+        not_found_cd = ContentData::ContentData.new
+        inverted_index = Hash.new
+        warnings = Array.new
+        dest.chop! if (dest.end_with?("/") or dest.end_with?("\\"))
 
-      dest.chop! if (dest.end_with?("/") or dest.end_with?("\\"))
+        base_cd.private_db.keys.each {|checksum|
+          instances = base_cd.private_db[checksum]
+          instances[1].keys.each {|full_path|
+            inverted_index[checksum] = full_path.split(',')[2]
+          }
+        }
 
-      ref_cd.instances.values.each { |instance|
-        if inverted_index.key? instance.checksum
-          symlink_path = dest + instance.full_path
-          ::FileUtils.mkdir_p(File.dirname(symlink_path)) unless (Dir.exists?(File.dirname(symlink_path)))
-          File.symlink(inverted_index[instance.checksum].full_path, symlink_path)
-        else
-          not_found.add_content(ref_cd.contents[instance.checksum])
-          not_found.add_instance(instance)
-          warnings << "Warning: base content does not contains:'%s'" % instance.checksum
-        end
-      }
-      Log.warning (warnings)
-      return not_found
-    end
+        ref_cd.private_db.keys.each {|checksum|
+          instances = ref_cd.private_db[checksum]
+          if inverted_index.key? checksum
+            # handle all instances
+            instances[1].keys.each {|full_path|
+              symlink_path = dest + full_path
+              ::FileUtils.mkdir_p(File.dirname(symlink_path)) unless (Dir.exists?(File.dirname(symlink_path)))
+              File.symlink(inverted_index[checksum], symlink_path)
+            }
+          else
+            # add content to not_found cd
+            size = instances[0]
+            instances_db_cloned = instances[1].clone  # this shallow clone will work
+            content_time = instances[2]
+            not_found[checksum] = [size,
+                                  instances_db_cloned,
+                                  content_time]
+            warnings << "Warning: base content does not contains:'%s'" % checksum
+          end
+        }
+        not_found_cd.set_db(not_found)
+        Log.warning (warnings)
+        return not_found_cd
+      end
   end
 
 end

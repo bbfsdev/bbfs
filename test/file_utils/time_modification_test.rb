@@ -9,14 +9,20 @@ require 'log'
 require 'params'
 
 module FileUtils
+  def FileUtils.parse_time time_str
+    return nil unless time_str.instance_of? String
+    seconds_from_epoch = Integer time_str  # Not using to_i here because it does not check string is integer.
+    time = Time.at seconds_from_epoch
+  end
+
   module Test
     class TestTimeModification < ::Test::Unit::TestCase
       # directory where tested files will be placed: __FILE__/time_modification_test
       RESOURCES_DIR = File.expand_path(File.dirname(__FILE__) + "/time_modification_test")
       # minimal time that will be inserted in content
-      MOD_TIME_CONTENTS = ContentData::ContentData.parse_time("1306527039")
+      MOD_TIME_CONTENTS = FileUtils.parse_time("1306527039")
       # minimal time that will be inserted in instance
-      MOD_TIME_INSTANCES = ContentData::ContentData.parse_time("1306527039")
+      MOD_TIME_INSTANCES = FileUtils.parse_time("1306527039")
       #time_str =  "2002/02/01 02:23:59.000"
       #MOD_TIME_INSTANCES = Time.strftime( time_str, '%Y/%m/%d %H:%M:%S.%L' )
       DEVICE_NAME = "hd1"
@@ -101,31 +107,31 @@ module FileUtils
         Log.info "==============="
 
         # checking that content was modified according to the instance with minimal time
-        mod_db.contents.each_value do |content|
-          if (content.checksum == @mod_instance_checksum)
-            assert_equal(MOD_TIME_INSTANCES, content.first_appearance_time)
-            break
-          end
-        end
-
-        # checking that instances were modified according to the instance and content with minimal time
-        mod_db.instances.each_value do |instance|
-          if (instance.checksum == @mod_content_checksum)
-            assert_equal(MOD_TIME_CONTENTS, instance.modification_time)
-          elsif (instance.checksum == @mod_instance_checksum)
-            assert_equal(MOD_TIME_INSTANCES, instance.modification_time)
-          end
+        instances = mod_db.private_db[@mod_instance_checksum]
+        unless instances.nil?
+          content_time =  FileUtils.parse_time(instances[2].to_s)
+          assert_equal(MOD_TIME_INSTANCES, content_time)
+          instances[1].keys.each {|path|
+            instance_time =  FileUtils.parse_time(instances[1][path].to_s)
+            assert_equal(MOD_TIME_INSTANCES, instance_time)
+          }
         end
 
         # checking that files were actually modified
-        instance = mod_db.instances.values[0]
-        indexer = FileIndexing::IndexAgent.new  # (instance.server_name, instance.device)
-        patterns = FileIndexing::IndexerPatterns.new
-        patterns.add_pattern(File.dirname(instance.full_path) + '/*')     # this pattern index all files
-        indexer.index(patterns, mod_db)
-        p mod_db.to_s
-        p indexer.indexed_content.to_s
-        assert_equal(indexer.indexed_content, mod_db)
+        mod_db.private_db.values.each {|instances|
+          instances[1].keys.each {|path|
+            file_path = path.split(',')[2]
+            indexer = FileIndexing::IndexAgent.new  # (instance.server_name, instance.device)
+            patterns = FileIndexing::IndexerPatterns.new
+            patterns.add_pattern(File.dirname(file_path) + '/*')     # this pattern index all files
+            indexer.index(patterns, mod_db)
+            p mod_db.to_s
+            p indexer.indexed_content.to_s
+            assert_equal(indexer.indexed_content, mod_db)
+            break
+          }
+          break
+        }
       end
     end
   end
