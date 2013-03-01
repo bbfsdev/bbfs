@@ -323,7 +323,7 @@ module ContentData
         if File.mtime(path).to_i != instance_mtime
           is_valid = false
           err_msg = "#{path} modification time #{File.mtime(path).to_i} differs from " \
-            + "indexed #{instance.modification_time}"
+            + "indexed #{instance_mtime}"
           Log.warning err_msg
         end
       else
