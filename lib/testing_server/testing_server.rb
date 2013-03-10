@@ -2,7 +2,8 @@ require 'net/sftp'
 require 'net/ssh'
 
 require 'email'
-require 'log'
+require 'log4r'
+require 'log4r/outputter/emailoutputter'
 require 'params'
 require 'validations'
 
@@ -28,64 +29,100 @@ module TestingServer
   Params.integer('email_delay_in_seconds', 60*60*6, 'Number of seconds before sending email again.')
 
   def run_testing_server
-    email_timestamp_sent = Time.now.to_i
+    log = Log4r::Logger.new 'mylog'
+    log.trace = true
+
+    formatter = Log4r::PatternFormatter.new(:pattern => "[%l] %d #{self.class} %t :: %m")
+
+    stdout_outputtter = Log4r::Outputter.stdout
+    stdout_outputtter.formatter = formatter
+
+    file_outputter = Log4r::FileOutputter.new('file_log', :filename =>  Params['log_file_name'])
+    file_outputter.formatter = formatter
+
+    email_outputter = Log4r::EmailOutputter.new('email_log',
+        :server => 'smtp.gmail.com',
+        :port => 587,
+        :subject => 'Error happened in Testing server.',
+        :acct => Params['from_email'],
+        :from => Params['from_email'],
+        :passwd => Params['from_email_password'],
+        :to => Params['to_email'],
+        :immediate_at => "FATAL,ERROR",
+        :authtype => :plain,
+        :tls => true
+    )
+    email_outputter.formatter = formatter
+
+    log.outputters << stdout_outputtter
+    log.outputters << file_outputter
+    log.outputters << email_outputter
+
+    email_timestamp_sent = -1
     while(true) do
-      # Generate files in remote content server (master).
-      # Assumes file_utils gem is installed.
-      # Assumes run finishes after some time.
-      # Assumes configuration file exists in place.
-      Log.info("Generating files remotely on #{Params['master_host']} with configuration file " \
-               "#{Params['master_file_generator_config']}")
-      command = "file_utils --conf_file=#{Params['master_file_generator_config']} --command=generate_files"
-      fg_ret = execute_remotely(command)
-      Log.info("#{command}: #{fg_ret}")
+      begin  # Handle any type
+        # Generate files in remote content server (master).
+        # Assumes file_utils gem is installed.
+        # Assumes run finishes after some time.
+        # Assumes configuration file exists in place.
+        log.info("Generating files remotely on #{Params['master_host']} with configuration file " \
+                 "#{Params['master_file_generator_config']}")
+        command = "file_utils --conf_file=#{Params['master_file_generator_config']} --command=generate_files"
+        fg_ret = execute_remotely(command)
+        log.info("#{command}: #{fg_ret}")
 
-      # Wait some time.
-      Log.info("Done, sleeping #{Params['sleep_seconds_after_file_generation']} seconds.")
-      sleep(Params['sleep_seconds_after_file_generation'])
+        # Wait some time.
+        log.info("Done, sleeping #{Params['sleep_seconds_after_file_generation']} seconds.")
+        sleep(Params['sleep_seconds_after_file_generation'])
 
-      # Validate master local files.
-      # Assumes index_validator gem installed.
-      command = "index_validator --local_index=#{Params['remote_master_content_data']}"
-      Log.info("Remotely validating index: #{command}")
-      iv_ret = execute_remotely(command)
-      Log.info("#{command}: #{iv_ret}")
+        # Validate master local files.
+        # Assumes index_validator gem installed.
+        command = "index_validator --local_index=#{Params['remote_master_content_data']}"
+        log.info("Remotely validating index: #{command}")
+        iv_ret = execute_remotely(command)
+        log.info("#{command}: #{iv_ret}")
 
-      # Validate backup local files.
-      Log.info("Localy validating index: #{Params['backup_content_data']}")
-      index = ContentData::ContentData.new
-      index.from_file(Params['backup_content_data'])
-      local_ret = index.validate
-      Log.info("Validation result: #{local_ret}")
+        # Validate backup local files.
+        log.info("Locally validating index: #{Params['backup_content_data']}")
+        index = ContentData::ContentData.new
+        index.from_file(Params['backup_content_data'])
+        local_ret = index.validate
+        log.info("Validation result: #{local_ret}")
 
-      # Validate existence of master files in backup.
-      Log.info("Copy remote master index: #{Params['remote_master_content_data']} to " \
-               "#{Params['local_master_content_data']}")
-      copy_master_index(Params['remote_master_content_data'], Params['local_master_content_data'])
-      Log.info("Validating remote index locally (#{Params['local_master_content_data']})}")
-      remote_index = ContentData::ContentData.new
-      remote_index.from_file(Params['local_master_content_data'])
-      remote_ret = Validations::IndexValidations.validate_remote_index remote_index, index
-      Log.info("Validation result: #{remote_ret}")
+        # Validate existence of master files in backup.
+        log.info("Copy remote master index: #{Params['remote_master_content_data']} to " \
+                 "#{Params['local_master_content_data']}")
+        copy_master_index(Params['remote_master_content_data'], Params['local_master_content_data'])
+        log.info("Validating remote index locally (#{Params['local_master_content_data']})}")
+        remote_index = ContentData::ContentData.new
+        remote_index.from_file(Params['local_master_content_data'])
+        remote_ret = Validations::IndexValidations.validate_remote_index remote_index, index
+        log.info("Validation result: #{remote_ret}")
 
-      if (Time.now.to_i - email_timestamp_sent > Params['email_delay_in_seconds'])
-        # Send email.
-        Log.info("Sending email...")
-        msg =<<EOF
-
+        if (email_timestamp_sent == -1 ||
+            Time.now.to_i - email_timestamp_sent > Params['email_delay_in_seconds'])
+          # Send email.
+          log.info("Sending email...")
+          msg =<<EOF
 Master index ok: #{iv_ret}
 Backup index ok: #{local_ret}
 Backup includes all master files: #{remote_ret}
-
 EOF
-        Email.send_email(Params['from_email'],
-                         Params['from_email_password'],
-                         Params['to_email'],
-                         'Testing server update',
-                         msg)
-        email_timestamp_sent = Time.now.to_i
+          Email.send_email(Params['from_email'],
+                           Params['from_email_password'],
+                           Params['to_email'],
+                           'Testing server update',
+                           msg)
+          email_timestamp_sent = Time.now.to_i
+        end
+        log.info("Done.")
+      rescue SystemExit, SignalException, Interrupt => exc
+        log.error("Interrupt or Exit happened in testing server: #{exc.class}, stopping process.\nBacktrace:\n#{exc.backtrace.join("\n")}")
+        raise
+      rescue Exception => exc
+        log.error("Exception happened in testing server: #{exc.class}:#{exc.message}, restarting testing loop.\nBacktrace:\n#{exc.backtrace.join("\n")}")
+        email_timestamp_sent = -1
       end
-      Log.info("Done.")
     end
   end
   module_function :run_testing_server

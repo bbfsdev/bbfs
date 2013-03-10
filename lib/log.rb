@@ -35,7 +35,7 @@ module Log
       'If true then the logger will write the messages to a file.'
   Params.boolean 'log_write_to_console', false , \
       'If true then the logger will write the messages to the console.'
-  Params.string 'log_file_name', File.expand_path("~/.bbfs/log/#{Log.executable_name}.log") , \
+  Params.path 'log_file_name', File.expand_path("~/.bbfs/log/#{Log.executable_name}.log") , \
       'Default log file name: ~/.bbfs/log/<executable_name>.log'
 
   @consumers = []
