@@ -121,7 +121,9 @@ module ContentData
     end
 
 
-    def instance_exists(location, checksum=nil)
+    # TODO (genadyp) consider about using hash for optional defining of parameters
+    def instance_exists(path, server, device, checksum=nil)
+      location = "%s,%s,%s" % [server, device, path]
       if checksum.nil?
         @contents_info.values.any? { |content_db|
           content_db[1].has_key?(location)

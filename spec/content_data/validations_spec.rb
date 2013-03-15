@@ -105,8 +105,8 @@ module ContentData
           failed.content_exists(@checksum2).should be_true
           failed.instances_size(absent_checksum).should eq(1)
           failed.instances_size(@checksum2).should eq(1)
-          failed.instance_exists("%s,%s,%s" % [@server, @device, absent_path], absent_checksum).should be_true
-          failed.instance_exists("%s,%s,%s" % [@server, @device, @path2], @checksum2).should be_true
+          failed.instance_exists(absent_path, @server, @device, absent_checksum).should be_true
+          failed.instance_exists(@path2, @server, @device, @checksum2).should be_true
         end
       end
     end

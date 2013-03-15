@@ -117,7 +117,7 @@ module FileIndexing
       files.each do |file|
         file_stats = File.lstat(file)
         file_mtime = IndexAgent.get_correct_mtime(file)
-        tmp_location = "%s,%s,%s" % [local_server_name, file_stats.dev.to_s, file]
+        device = file_stats.dev.to_s
 
         # index only files
         next if file_stats.directory?
@@ -132,7 +132,7 @@ module FileIndexing
         # from further processing (save checksum calculation)
         file_match = false
         otherDB_updated.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
-          if otherDB_updated.instance_exists(tmp_location, checksum)
+          if otherDB_updated.instance_exists(file, local_server_name, device, checksum)
             if size == file_stats.size and instance_mod_time == file_mtime.to_i
               @indexed_content.add_instance(checksum, size, server, file_stats.dev.to_s, file, instance_mod_time)
               file_match = true
