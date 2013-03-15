@@ -22,35 +22,27 @@ module ContentServer
         #Loop over instances from file
         #  If file time and size matches then add it to DB
         #  Else, monitor the path again
-        tmp_content_data.private_db.keys.each { |checksum|
-          instances_db = tmp_content_data.private_db[checksum][1]
-          instance_size = tmp_content_data.private_db[checksum][0]
-          instances_db.keys.each { |full_path|
-            instance_mod_time = instances_db[full_path]
-            full_path_arr = full_path.split(',')
-            local_path = full_path_arr[2]
-            if File.exists?(local_path)
-              file_mtime, file_size = File.open(local_path) { |f| [f.mtime, f.size] }
-              if ((file_size == instance_size) &&
-                  (file_mtime.to_i == instance_mod_time))
-                Log.info("file exists: #{local_path}")
-                # add instance to local DB
-                server_name = full_path_arr[0]
-                device_name = full_path_arr[1]
-                server_content_data.add_instance(checksum, instance_size, server_name,
-                                                 device_name, local_path, instance_mod_time)
-              else
-                Log.info("changed: #{local_path}")
-                # Add non existing and changed files to index queue.
-                @input_queue.push([FileMonitoring::FileStatEnum::STABLE, local_path])
-              end
-            else  # File.exists?(local_path) TODO: need to change code
-              Log.info("changed: #{local_path}")
+        tmp_content_data.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+          if File.exists?(path)
+            file_mtime, file_size = File.open(path) { |f| [f.mtime, f.size] }
+            if ((file_size == size) &&
+                (file_mtime.to_i == instance_mod_time))
+              Log.info("file exists: #{local_path}")
+              # add instance to local DB
+              server_content_data.add_instance(checksum, size, server_name,
+                                               device, path, instance_mod_time)
+            else
+              Log.info("changed: #{path}")
               # Add non existing and changed files to index queue.
-              @input_queue.push([FileMonitoring::FileStatEnum::STABLE, local_path])
+              @input_queue.push([FileMonitoring::FileStatEnum::STABLE, path])
             end
-          }
+          else  # File.exists?(path) TODO: need to change code
+            Log.info("changed: #{path}")
+            # Add non existing and changed files to index queue.
+            @input_queue.push([FileMonitoring::FileStatEnum::STABLE, path])
+          end
         }
+
 
         # Start indexing on demand and write changes to queue
         thread = Thread.new do
@@ -74,33 +66,21 @@ module ContentServer
               # merge indexed content into server content data
               ContentData.merge_override_b(index_agent.indexed_content, server_content_data)
             elsif ((state == FileMonitoring::FileStatEnum::NON_EXISTING ||
-              state == FileMonitoring::FileStatEnum::CHANGED) && !is_dir)
+                state == FileMonitoring::FileStatEnum::CHANGED) && !is_dir)
               # If file content changed, we should remove old instance.
-              key = FileIndexing::IndexAgent.global_path(path)
+              candidate_location = FileIndexing::IndexAgent.global_path(path)
               # Check if deleted file exists at content data.
-              Log.info("Instance to remove: #{key}")
-              server_content_data.private_db.keys.each { |checksum|
-                instances = server_content_data.private_db[checksum]
-                file_size = instances[0]
-                instances[1].keys.each {|full_path|
-                  if (full_path == key)
-                    file_mod_time = instances[1][full_path]
-                    full_path_arr = full_path.split(',')
-                    file_name = full_path_arr[2]
-                    if !shallow_check(file_name, file_size, file_mod_time)
-                      server_name = full_path_arr[0]
-                      device_name = full_path_arr[1]
-                      content_data_to_remove = ContentData::ContentData.new
-                      content_data_to_remove.add_instance(checksum, file_size, server_name,
-                                                          device_name, file_name, file_mod_time)
-                      server_content_data = ContentData.remove_instances(
-                          content_data_to_remove, server_content_data)
-                    else
-                      Log.error("Code should not reach this point")
-                    end
-                    break
+              Log.info("Instance candidate to remove: #{candidate_location}")
+              server_content_data.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+                tmp_location = "%s,%s,%s" % [server, device, path]
+                if (tmp_location == candidate_location)
+                  if !shallow_check(path, size, instance_mod_time)
+                    server_content_data.remove_instance(tmp_location, checksum)
+                  else
+                    Log.error("Code should not reach this point")
                   end
-                }
+                  break
+                end
               }
             elsif state == FileMonitoring::FileStatEnum::NON_EXISTING && is_dir
               Log.info("NonExisting/Changed: #{path}")

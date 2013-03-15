@@ -15,7 +15,7 @@ module FileIndexing
 
         indexer.index(patterns)
           # ./index_agent_test/lib/libexslt.lib
-          Log.info "Contents: #{indexer.indexed_content.private_db}."
+          Log.info "Contents: #{indexer.indexed_content}."
           assert(indexer.indexed_content.content_exists('c6d9d837659e38d906a4bbdcc6703bc37e9ac7e8'))
           # .index_agent_test/include/libexslt/exsltexports.h
         assert_equal(false, indexer.indexed_content.content_exists('5c87a31b0106b3c4bb1768e43f5b8c41139882c2'))

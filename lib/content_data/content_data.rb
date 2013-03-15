@@ -1,130 +1,179 @@
 require 'log'
 require 'params'
-require 'zlib'
 
 module ContentData
   Params.string('instance_check_level', 'shallow', 'Defines check level. Supported levels are: ' \
                 'shallow - quick, tests instance for file existence and attributes. ' \
                 'deep - can take more time, in addition to shallow recalculates hash sum.')
 
-  # aka compress
-  def self.deflate(string, level)
-    z = Zlib::Deflate.new(level)
-    dst = z.deflate(string, Zlib::FINISH)
-    z.close
-    dst
-  end
-
-
-  # aka decompress
-  def self.inflate(string)
-    zstream = Zlib::Inflate.new
-    buf = zstream.inflate(string)
-    zstream.finish
-    zstream.close
-    buf
-  end
-
-  # Unfortunately this class is used as mutable for now. So need to be carefull.
-  # TODO(kolman): Make this class imutable, but add indexing structure to it.
-  # TODO(kolman): Add wrapper to the class to enable dynamic content data
-  # (with easy access indexes)
+  # Content Data(CD) object holds files information as contents and instances
+  # Files info retrieved from hardware: checksum, size, time modification, server, device and path
+  # Those attributes are divided into content and instance attributes:
+  #   unique checksum, size are content attributes
+  #   time modification, server, device and path are instance attributes
+  # The relationship between content and instances is 1:many meaning that
+  # a content can have instances in many servers.
+  # content also has time attribute, which has the value of the time of the first instance.
+  # This can be changed by using unify_time method  which sets all time attributes for a content and it's
+  # instances to the min time off all.
+  # Different files(instances) with same content(checksum), are grouped together under that content.
+  # Interface methods include:
+  #   iterate over contents and instances info,
+  #   unify time, add/remove instance, queries, merge, remove directory and more.
+  # Content info data structure:
+  #   @contents_info = { Checksum -> [size, *instances*, content_modification_time] }
+  #     *instances* = {'server,device,path' -> instance_modification_time }
+  # Notes:
+  #   1. content_modification_time is the instance_modification_time of the first
+  #      instances which was added to @contents_info
   class ContentData
 
-    def initialize(copy = nil)
-      if copy.nil?
-        @db = Hash.new  # Checksum --> [size, paths-->time(instance), time(content)]
+    def initialize(other = nil)
+      if other.nil?
+        @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
       else
-        @db = copy.db  # db is cloned
+        @contents_info = other.clone_contents_info
       end
     end
 
     # getting a cloned data base
-    def db
-      clone_db = Hash.new
-      @db.keys.each { |checksum|
-        instances = @db[checksum]
+    def clone_contents_info
+      @contents_info.keys.inject({}) { |clone_contents_info, checksum|
+        instances = @contents_info[checksum]
         size = instances[0]
         instances_db_cloned = instances[1].clone  # this shallow clone will work
         content_time = instances[2]
-        clone_db[checksum] = [size,
+        clone_contents_info[checksum] = [size,
                               instances_db_cloned,
                               content_time]
+        clone_contents_info
       }
-      clone_db
     end
 
-    def private_db
-      @db
-    end
-
-    def set_db(db)
-      @db = db
-    end
-
-    def add_content(checksum, size, time)
-      @db[checksum] = [size, Hash.new, time] unless @db.has_key?(checksum)
-    end
-
-    def add_instance(checksum, size, server_name, device, full_path, modification_time)
-      full_path = "%s,%s,%s" % [server_name, device, full_path]
-      # remove instance from all contents except from the given checksum
-      # if no more instances then remove also the content data
-      @db.keys.each { |db_checksum|
-        unless db_checksum.eql?(checksum)
-          instances_db =  @db[db_checksum][1]
-          instances_db.delete(full_path)
-          #@db.delete(db_checksum) if instances_db.empty?
-        end
+    # iterator over @contents_info data structure (not including instances)
+    # block is provided with: checksum, size and content modification time
+    def each_content(&block)
+      @contents_info.keys.each { |checksum|
+        content_val = @contents_info[checksum]
+        # provide checksum, size and content modification time to the block
+        block.call(checksum,content_val[0], content_val[2])
       }
-      instances = @db[checksum]
+    end
 
-      if instances.nil?
-        #TODO new appraoch - use this method without add_content?
-        #Log.warning sprintf("Adding instance while it's" +
-        #                        " checksum %s does not exists.\n", checksum)
-        #Log.warning sprintf("instance full path:'%s'\n", full_path)
-        #Log.warning sprintf("instances time:'%d'\n", modification_time)
-        @db[checksum] = [size,
-                         {full_path => modification_time},
-                         modification_time]
-      elsif size != instances[0]
+    # iterator over @contents_info data structure (including instances)
+    # block is provided with: checksum, size, content modification time,
+    #   instance modification time, server, device and file path
+    def each_instance(&block)
+      @contents_info.keys.each { |checksum|
+        content_info = @contents_info[checksum]
+        content_info[1].keys.each {|location|
+          # provide checksum, size, content modification time,instance modification time,
+          #   server, device and path to the block
+          instance_modification_time = content_info[1][location]
+          location_arr = location.split(',')
+          block.call(checksum,content_info[0], content_info[2], instance_modification_time,
+                     location_arr[0], location_arr[1], location_arr[2])
+        }
+      }
+    end
+
+    def contents_size()
+      @contents_info.size
+    end
+
+    def instances_size(checksum)
+      content_info = @contents_info[checksum]
+      return 0 if content_info.nil?
+      content_info[1].size
+    end
+
+    def instance_mod_time(checksum, location)
+      content_info = @contents_info[checksum]
+      return nil if content_info.nil?
+      instances = content_info[1]
+      instance_time = instances[location]
+    end
+
+    def add_instance(checksum, size, server, device, path, modification_time)
+      location = "%s,%s,%s" % [server, device, path]
+      content_info = @contents_info[checksum]
+      if content_info.nil?
+        @contents_info[checksum] = [size,
+                                    {location => modification_time},
+                                    modification_time]
+      elsif size != content_info[0]
         Log.warning 'File size different from content size while same checksum'
-        Log.warning sprintf("instance full path:'%s'\n", full_path)
+        Log.warning sprintf("instance location:'%s'\n", location)
         Log.warning sprintf("instance mod time:'%d'\n", modification_time)
       else
         #override file if needed
-        instances[1][full_path] = modification_time
+        instances = content_info[1]
+        instances[location] = modification_time
       end
     end
 
     def empty?
-      @db.empty?
+      @contents_info.empty?
     end
 
     def content_exists(checksum)
-      @db.has_key?(checksum)
+      @contents_info.has_key?(checksum)
     end
 
-    def instance_exists(full_path)
-      @db.values.each { |content_db|
-        return true if content_db[1].has_key?(full_path)
-      }
-      false
+
+    def instance_exists(location, checksum=nil)
+      if checksum.nil?
+        @contents_info.values.any? { |content_db|
+          content_db[1].has_key?(location)
+        }
+      else
+        content_info = @contents_info[checksum]
+        return false if content_info.nil?
+        content_info[1].has_key?(location)
+      end
     end
 
-    def remove_instance(full_path)
-      @db.keys.each { |checksum|
-        instances_db =  @db[checksum][1]
-        instances_db.delete(full_path)
-        @db.delete(checksum) if instances_db.empty?
-      }
+
+    # removes an instance from known content (faster then unknown content)
+    # remove also the content, if content becomes empty
+    def remove_instance(location, checksum=nil)
+      if checksum.nil?
+        @contents_info.keys.each { |checksum|
+          instances =  @contents_info[checksum][1]
+          instances.delete(location)
+          @contents_info.delete(checksum) if instances.empty?
+        }
+      else
+        content_info = @contents_info[checksum]
+        unless content_info.nil?
+          instances =  content_info[1]
+          instances.delete(location)
+          @contents_info.delete(checksum) if instances.empty?
+        end
+      end
     end
 
     def ==(other)
-      return false if other == nil
-      return false unless @db.size == other.private_db.size
-      @db.hash == other.private_db.hash
+      return false if other.nil?
+      return false if @contents_info.size != other.contents_size
+      other.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+        local_content_info = @contents_info[checksum]
+        return false if local_content_info.nil?
+        return false if local_content_info[0] != size
+        return false if local_content_info[2] != content_mod_time
+        #check instances
+        local_instances =  local_content_info[1]
+        return false if other.instances_size(checksum) != local_instances.size
+        location = "%s,%s,%s" % [server, device, path]
+        local_instance_mod_time = local_instances[location]
+        return false if local_instance_mod_time.nil?
+        return false if local_instance_mod_time != instance_mod_time
+      }
+      true
+    end
+
+    def remove_content(checksum)
+      @contents_info.delete(checksum)
     end
 
     def to_s
@@ -132,22 +181,15 @@ module ContentData
       contents_str = ""
       instances_str = ""
       instances_counter = 0
-
-      # contents loop
-      keys = @db.keys
-      keys.each { |checksum|
-        instances_per_content = @db[checksum]
-        size = instances_per_content[0]
-        content_mod_time = instances_per_content[2]
-        instances_counter += instances_per_content[1].size
+      each_content { |checksum, size, content_mod_time|
         contents_str << "%s,%d,%d\n" % [checksum, size, content_mod_time]
-        # instances loop
-        instances_per_content[1].keys.each { |global_path|
-          instance_mod_time = instances_per_content[1][global_path]
-          instances_str <<  "%s,%d,%s,%d\n" % [checksum, size, global_path, instance_mod_time]
-        }
       }
-      return_str << "%d\n" % [keys.size]
+      instances_counter = 0
+      each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+        instances_counter += 1
+        instances_str <<  "%s,%d,%s,%s,%s,%d\n" % [checksum, size, server, device, path, instance_mod_time]
+      }
+      return_str << "%d\n" % [@contents_info.size]
       return_str << contents_str
       return_str << "%d\n" % [instances_counter]
       return_str << instances_str
@@ -156,8 +198,8 @@ module ContentData
 
     def to_a
       returned_arr = []
-      @db.keys.each { |checksum|
-        instance = @db[checksum]
+      @contents_info.keys.each { |checksum|
+        instance = @contents_info[checksum]
         returned_arr.push(checksum)
         returned_arr.push(instance[0])
         instances_keys = instance[1].keys
@@ -172,11 +214,8 @@ module ContentData
     end
 
     def from_a(arr)
-      if arr.nil?
-        @db = nil
-        return
-      end
-      @db = Hash.new
+      @contents_info = nil and return if arr.nil?
+      @contents_info = {}
       tmp_ind = 0;
       while tmp_ind < arr.size
         checksum = arr[tmp_ind]
@@ -192,7 +231,7 @@ module ContentData
           instance_db[instance_full_path]=instance_time
         end
         content_time = next_elem
-        @db[checksum] = [content_size,instance_db, content_time]
+        @contents_info[checksum] = [content_size,instance_db, content_time]
         tmp_ind+=1
       end
     end
@@ -205,18 +244,19 @@ module ContentData
 
     def from_file(filename)
       lines = IO.readlines(filename)
-      i = 0
-      number_of_contents = lines[i].to_i
-      i += 1
-      number_of_contents.times {
-        parameters = lines[i].split(",")
+      #i = 0
+      #number_of_contents = lines[i].to_i
+      #i += 1
+      #number_of_contents.times {
+      #  parameters = lines[i].split(",")
 
-        add_content(parameters[0],
-                    parameters[1].to_i,
-                    parameters[2].to_i)
-        i += 1
-      }
-
+      #  add_content(parameters[0],
+      #              parameters[1].to_i,
+      #              parameters[2].to_i)
+      #  i += 1
+      #}
+      number_of_contents = lines[0].to_i
+      i = 1 + number_of_contents
       number_of_instances = lines[i].to_i
       i += 1
       number_of_instances.times {
@@ -241,6 +281,27 @@ module ContentData
       }
     end
 
+    # for each content, all time fields (content and instances) are replaced with the
+    # min time found, while going through all time fields.
+    def unify_time()
+      @contents_info.keys.each { |checksum|
+        content_info = @contents_info[checksum]
+        min_time_per_checksum = content_info[2]
+        instances = content_info[1]
+        instances.keys.each { |location|
+          instance_mod_time = instances[location]
+          if instance_mod_time < min_time_per_checksum
+            min_time_per_checksum = instance_mod_time
+          end
+        }
+        # update all instances with min time
+        instances.keys.each { |location|
+          instances[location] = min_time_per_checksum
+        }
+        # update content time with min time
+        content_info[2] = min_time_per_checksum
+      }
+    end
     # Validates index against file system that all instances hold a correct data regarding files
     # that they represents.
     #
@@ -279,8 +340,8 @@ module ContentData
       end
 
       is_valid = true
-      @db.keys.each { |checksum|
-        instances = @db[checksum]
+      @contents_info.keys.each { |checksum|
+        instances = @contents_info[checksum]
         content_size = instances[0]
         content_mtime = instances[2]
         instances[1].keys.each { |unique_path|
@@ -433,101 +494,24 @@ module ContentData
   end
   # merges content data a and content data b to a new content data and returns it.
   def self.merge(a, b)
-    if a.nil?
-      if b.nil?
-        #A is nil. B is nil.
-        return nil
-      else
-        # A is nil. B is active.
-        return ContentData.new(b)
-      end
-    else
-      if b.nil?
-        # A is active. B is nil.
-        return ContentData.new(a)
-      else
-        # A is active. B is active. Start merge
-        a_db = a.private_db  #db is not cloned
-        b_db = b.db  #db is cloned
-                             #loop over contents of A and add non existing contents of A in B to B
-        a_db.keys.each { |a_checksum|
-          a_instances = a_db[a_checksum]
-          b_instances = b_db[a_checksum]
-          if b_instances.nil?
-            #B does not contain current A content.
-            # Add A content to B db
-            b_db[a_checksum] = [a_instances[0],
-                                a_instances[1].clone,
-                                a_instances[2]]
-          else
-            #checksum exists in both A and B.
-            #Loop over instances and add non existing instances of A in B to B
-            # TODO: do something with contents time stamps?
-            a_instances[1].keys.each { |a_instance_global_path|
-              a_time = a_instances[1][a_instance_global_path]
-              b_time = b_instances[1][a_instance_global_path]
-              if b_time.nil?
-                # A instance does not exist in B.
-                # Add instance to B
-                b_instances[1][a_instance_global_path] = a_time
-              end
-            }
-          end
-        }
-        return_cd = ContentData.new()
-        return_cd.set_db(b_db)
-        return return_cd
-      end
-    end
+    return ContentData.new(a) if b.nil?
+    return ContentData.new(b) if a.nil?
+    c = ContentData.new(b)
+    # Add A instances to content data c
+    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+      c.add_instance(checksum, size, server, device, path, instance_mod_time)
+    }
+    c
   end
 
   def self.merge_override_b(a, b)
-    if a.nil?
-      if b.nil?
-        #A is nil. B is nil.
-        return nil
-      else
-        # A is nil. B is active.
-        return ContentData.new(b)
-      end
-    else
-      if b.nil?
-        # A is active. B is nil.
-        return ContentData.new(a)
-      else
-        # A is active. B is active. Start merge
-        a_db = a.private_db  #db is not cloned
-        b_db = b.private_db  #db is not cloned
-                             #loop over contents of A and add non existing contents of A in B to B
-        a_db.keys.each { |a_checksum|
-          a_instances = a_db[a_checksum]
-          b_instances = b_db[a_checksum]
-          if b_instances.nil?
-            #B does not contain current A content.
-            # Add A content to B db
-            b_db[a_checksum] = [a_instances[0],
-                                a_instances[1].clone,
-                                a_instances[2]]
-          else
-            #checksum exists in both A and B.
-            #Loop over instances and add non existing instances of A in B to B
-            # TODO: do something with contents time stamps?
-            a_instances[1].keys.each { |a_instance_global_path|
-              a_time = a_instances[1][a_instance_global_path]
-              b_time = b_instances[1][a_instance_global_path]
-              if b_time.nil?
-                # A instance does not exist in B.
-                # Add instance to B
-                b_instances[1][a_instance_global_path] = a_time
-              end
-            }
-          end
-        }
-        return_cd = ContentData.new()
-        return_cd.set_db(b_db)
-        return return_cd
-      end
-    end
+    return ContentData.new(a) if b.nil?
+    return ContentData.new(b) if a.nil?
+    # Add A instances to content data B
+    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+      b.add_instance(checksum, size, server, device, path, instance_mod_time)
+    }
+    b
   end
 
   # B - A : Remove contents of A from B and return the new content data.
@@ -555,42 +539,16 @@ module ContentData
   #   Content_3 ->
   #                   Instance_5
   def self.remove(a, b)
-    if a.nil?
-      if b.nil?
-        #A is nil. B is nil.
-        return nil
-      else
-        # A is nil. B is active. Return B.
-        return ContentData.new(b)
-      end
-    else
-      if b.nil?
-        # A is active. B is nil.
-        return nil
-      else
-
-        # A is active. B is active. Start merge
-        a_db = a.private_db  #db is not cloned
-        b_db = b.private_db  #db is not cloned
-        c_db = Hash.new  # this is the result hash to be returned
-                             #loop over contents of B and add non existing contents of B in A to C
-        b_db.keys.each { |b_checksum|
-          a_instances = a_db[b_checksum]
-          if a_instances.nil?
-            #B content is not found in A. Add to C
-            b_instances = b_db[b_checksum]
-            c_db[b_checksum] = [b_instances[0],
-                                b_instances[1].clone,
-                                b_instances[2]]
-          end
-        }
-        return_cd = ContentData.new()
-        return_cd.set_db(c_db)
-        return return_cd
-
-      end
-    end
+    return nil if b.nil?
+    return ContentData.new(b) if a.nil?
+    c = ContentData.new(b)  # create new cloned content C from B
+    # remove contents of A from newly cloned content A
+    a.each_content { |checksum, size, content_mod_time|
+      c.remove_content(checksum)
+    }
+    c
   end
+
   # B - A : Remove instances of A content from B content data B and return the new content data.
   # If all instances are removed then the content record itself will be removed
   # e.g
@@ -614,131 +572,35 @@ module ContentData
   #   Content_2 ->
   #                   Instance_4
   def self.remove_instances(a, b)
-    if a.nil?
-      if b.nil?
-        #A is nil. B is nil.
-        return nil
-      else
-        # A is nil. B is active.
-        return ContentData.new(b)  #db is cloned
-      end
-    else
-      if b.nil?
-        # A is active. B is nil.
-        return nil
-      else
-        # A is active. B is active. Start merge
-        a_db = a.private_db  #db is cloned
-        b_db = b.private_db  #db is cloned
-        c_db = Hash.new  # this is the result hash to be returned
-                             #loop over contents of B and add non existing contents of B in A to C
-        b_db.keys.each { |b_checksum|
-          a_instances = a_db[b_checksum]
-          b_instances = b_db[b_checksum]
-          if a_instances.nil?
-            #A does not contain current B content.
-            # Add B content to C db
-            c_db[b_checksum] = [b_instances[0],
-                                b_instances[1].clone,
-                                b_instances[2]]
-
-          else
-            #checksum exists in both A and B.
-            #Loop over instances and add non existing instances of B in A to C
-            b_instances[1].keys.each { |b_instance_global_path|
-              a_time = a_instances[1][b_instance_global_path]
-              if a_time.nil?
-                # B instance does not exist in A.
-                # Add instance to C
-                b_time = b_instances[1][b_instance_global_path]
-                c_instances = c_db[b_checksum]
-                if (c_instances.nil?)
-                  c_db[b_checksum] = [b_instances[0], {b_instance_global_path => b_time}, b_instances[2]]
-                else
-                  c_instances[1][b_instance_global_path] = b_time
-                end
-              end
-            }
-          end
-        }
-        return_cd = ContentData.new()
-        return_cd.set_db(c_db)
-        return return_cd
-      end
-    end
+    return nil if b.nil?
+    return ContentData.new(b) if a.nil?
+    c = ContentData.new(b)  # create new cloned content C from B
+    # remove contents of A from newly cloned content A
+    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+      location = "%s,%s,%s" % [server, device, path]
+      c.remove_instance(location, checksum)
+    }
+    c
   end
 
-  def self.remove_directory(cd, global_dir_path)
-    return nil if cd.nil?
-    ret_cd = ContentData.new()
-    return ret_cd if cd.private_db.nil?
-    ret_db = Hash.new
-    ret_cd.set_db(ret_db)
-    return ret_cd if cd.private_db.size == 0
-    #puts "remove_directory: checking dir:#{global_dir_path}"
-    # return_cd is a shallow copy (no instances) of input db and is not empty
-    # for each instances, check if global_dir_path is a directory in its full path
-    # keep only instances with valid dirs
-    cd.private_db.keys.each { |checksum|
-      instances = cd.private_db[checksum]
-      ret_instances = ret_db[checksum]
-      #ret_instances[1] = Hash.new.clear  # Replace the shallow copy
-      instances[1].keys.each { |full_path|
-        #puts "  at instance:#{full_path}"
-        if full_path.scan(global_dir_path).size == 0
-          # insert only valid instance to the returned db
-          if ret_instances.nil?
-            ret_db[checksum] = [instances[0],
-                                {full_path => instances[1][full_path]},
-                                instances[2]]
-            ret_instances = ret_db[checksum]
-          else
-            ret_instances[1][full_path] = instances[1][full_path]
-          end
-          #puts "    Added valid path:#{full_path}"
-        end
-      }
+  def self.remove_directory(content_data, dir_to_remove)
+    return nil if content_data.nil?
+    result_content_data = ContentData.new()
+    content_data.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+      location = "%s,%s,%s" % [server, device, path]
+      if location.scan(dir_to_remove).size == 0
+        # instance location is valid
+        result_content_data.add_instance(checksum, size, server, device, path, instance_mod_time)
+      end
     }
-    ret_cd
+    result_content_data
   end
 
   # returns the common content in both a and b
   def self.intersect(a, b)
+    return nil if a.nil?
+    return nil if b.nil?
     b_minus_a = remove(a, b)
     b_minus_b_minus_a  = remove(b_minus_a, b)
-    return b_minus_b_minus_a
-  end
-
-  def self.unify_time(cd)
-    return nil if cd.nil?
-    ret_db = cd.db  # clone db
-    ret_cd = ContentData.new()
-    ret_cd.set_db(ret_db)
-    return ret_cd if cd.private_db.nil?
-    return ret_cd if cd.private_db.size == 0
-
-    # ret_cd is a clone of input cd and is not empty
-    # for each checksum, find the min time of both content and instances
-    # then, update content and instances with this min time
-    ret_db.keys.each { |checksum|
-      instances = ret_db[checksum]
-      min_time_per_checksum = instances[2]
-      #puts "min_time_per_checksum:#{min_time_per_checksum}"
-      instances[1].keys.each { |full_path|
-        instance_time = instances[1][full_path]
-        if instance_time < min_time_per_checksum
-          min_time_per_checksum = instance_time
-          #puts "updating min instance_time:#{instance_time}"
-        end
-      }
-      #puts "min found:#{min_time_per_checksum}"
-      # update all instances with min time
-      instances[1].keys.each { |full_path|
-        instances[1][full_path] = min_time_per_checksum
-      }
-      # update content time with min time
-      instances[2] = min_time_per_checksum
-    }
-    ret_cd
   end
 end

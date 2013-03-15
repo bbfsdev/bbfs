@@ -63,30 +63,18 @@ module FileUtils
         @base_db = indexer.indexed_content
         @ref_db = ContentData::ContentData.new
 
-        @base_db.private_db.keys.each { |checksum|
-          instances = @base_db.private_db[checksum]
-          content_size = instances[0]
-          content_time = instances[2]
-          @ref_db.add_content(checksum, content_size, content_time)
-          #hanlde instances
-          instances[1].keys.each { |path|
-            path_arr = path.split(',')
-            file_path = path_arr[2]
-            unless only_in_base.include?(file_path)
-              file_name = File.basename(file_path)
-              base_dir = File.dirname(file_path)
-              ref_full_path = String.new(REF_DIR)
-              if (base_dir == RESOURCES_DIR)
-                ref_full_path << "/dir/#{file_name}"
-              else
-                ref_full_path << "/#{file_name}"
-              end
-              server_name = path_arr[0]
-              device = path_arr[1]
-              instance_modification_time = instances[1][path]
-              @ref_db.add_instance(checksum, content_size, server_name, device, file_path, instance_modification_time)
+        @base_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+          unless only_in_base.include?(path)
+            file_name = File.basename(path)
+            base_dir = File.dirname(path)
+            ref_full_path = String.new(REF_DIR)
+            if (base_dir == RESOURCES_DIR)
+              ref_full_path << "/dir/#{file_name}"
+            else
+              ref_full_path << "/#{file_name}"
             end
-          }
+            @ref_db.add_instance(checksum, size, server, device, path, instance_mod_time)
+          end
         }
         @ref_db.add_instance(NOT_FOUND_CHECKSUM, 500, `hostname`.chomp, DEVICE_NAME, "/not/exist/path/file", Time.now.utc.to_i)
       end
@@ -102,40 +90,29 @@ module FileUtils
         end
 
         base_path2checksum = Hash.new
-        @base_db.private_db.keys.each {|checksum|
-          instances = @base_db.private_db[checksum]
-          instances[1].keys.each {|path|
-            file_path = path.split(',')[2]
-            base_path2checksum[file_path] = checksum
-          }
+        @base_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+          base_path2checksum[path] = checksum
         }
 
-        not_found_path2checksum = Hash.new
+        not_found_path2checksum = {}
         not_found_db_contents_size = 0
         not_found_db_instances_size = 0
-        not_found_db.private_db.keys.each { |checksum|
-          not_found_db_contents_size += 1
-          instances = not_found_db.private_db[checksum]
-          instances[1].keys.each {|path|
-            not_found_db_instances_size += 1
-            file_path = path.split(',')[2]
-            not_found_path2checksum[file_path] = checksum
-          }
+        not_found_db.each_content { |checksum, size, content_mod_time| not_found_db_contents_size += 1}
+        not_found_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+          not_found_path2checksum[path] = checksum
+          not_found_db_instances_size += 1
         }
 
-        @ref_db.private_db.keys.each { |checksum|
-          instances = @ref_db.private_db[checksum]
-          instances[1].keys.each {|path|
-            file_path = path.split(',')[2]
-            ref_path = DEST_DIR + file_path
-            next if not_found_path2checksum.has_key?(file_path)
-            assert(File.exists?(ref_path))
-            assert(File.symlink?(ref_path))
-            base_file = File.expand_path(File.readlink(ref_path))
-            base_checksum = base_path2checksum[base_file]
-            assert_equal(checksum, base_checksum)
-          }
+        @ref_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+          next if not_found_path2checksum.has_key?(path)
+          ref_path = DEST_DIR + path
+          assert(File.exists?(ref_path))
+          assert(File.symlink?(ref_path))
+          base_file = File.expand_path(File.readlink(ref_path))
+          base_checksum = base_path2checksum[base_file]
+          assert_equal(checksum, base_checksum)
         }
+
         if (not_found_db == nil)
           assert_not_nil(not_found_db)
         else

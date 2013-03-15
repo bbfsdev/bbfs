@@ -100,36 +100,30 @@ module FileUtils
 
       def test_modify
         # modified ContentData. Test files also were modified.
-        mod_db = FileUtils.unify_time @input_db
+        mod_db = FileUtils.unify_time(@input_db)
 
         Log.info "==============="
         Log.info @input_db.to_s
         Log.info "==============="
 
         # checking that content was modified according to the instance with minimal time
-        instances = mod_db.private_db[@mod_instance_checksum]
-        unless instances.nil?
-          content_time =  FileUtils.parse_time(instances[2].to_s)
+        mod_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+          next unless checksum.eql?(@mod_instance_checksum)
+          content_time =  FileUtils.parse_time(content_mod_time.to_s)
           assert_equal(MOD_TIME_INSTANCES, content_time)
-          instances[1].keys.each {|path|
-            instance_time =  FileUtils.parse_time(instances[1][path].to_s)
-            assert_equal(MOD_TIME_INSTANCES, instance_time)
-          }
-        end
+          instance_time =  FileUtils.parse_time(instance_mod_time.to_s)
+          assert_equal(MOD_TIME_INSTANCES, instance_time)
+        }
 
         # checking that files were actually modified
-        mod_db.private_db.values.each {|instances|
-          instances[1].keys.each {|path|
-            file_path = path.split(',')[2]
-            indexer = FileIndexing::IndexAgent.new  # (instance.server_name, instance.device)
-            patterns = FileIndexing::IndexerPatterns.new
-            patterns.add_pattern(File.dirname(file_path) + '/*')     # this pattern index all files
-            indexer.index(patterns, mod_db)
-            p mod_db.to_s
-            p indexer.indexed_content.to_s
-            assert_equal(indexer.indexed_content, mod_db)
-            break
-          }
+        mod_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+          indexer = FileIndexing::IndexAgent.new  # (instance.server_name, instance.device)
+          patterns = FileIndexing::IndexerPatterns.new
+          patterns.add_pattern(File.dirname(path) + '/*')     # this pattern index all files
+          indexer.index(patterns, mod_db)
+          p mod_db.to_s
+          p indexer.indexed_content.to_s
+          assert_equal(indexer.indexed_content, mod_db)
           break
         }
       end

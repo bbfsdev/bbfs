@@ -53,16 +53,12 @@ module ContentServer
             if message_type == :COPY_MESSAGE
               Log.info "Copy file event: #{message_content}"
               # Prepare source,dest map for copy.
-              message_content.private_db.keys.each {|checksum|
-                instances = message_content.private_db[checksum]
-                instances[1].keys.each {|path|
-                  file_path = path.split(',')[2]
-                  if !@copy_prepare.key?(checksum) || !@copy_prepare[checksum][1]
-                    @copy_prepare[checksum] = [file_path, false]
-                    Log.info("Sending ack for: #{checksum}")
-                    @backup_tcp.send_obj([:ACK_MESSAGE, [checksum, Time.now.to_i]])
-                  end
-                }
+              message_content.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+                if !@copy_prepare.key?(checksum) || !@copy_prepare[checksum][1]
+                  @copy_prepare[checksum] = [path, false]
+                  Log.info("Sending ack for: #{checksum}")
+                  @backup_tcp.send_obj([:ACK_MESSAGE, [checksum, Time.now.to_i]])
+                end
               }
             elsif message_type == :ACK_MESSAGE
               # Received ack from backup, copy file if all is good.

@@ -200,34 +200,29 @@ module FileUtils
     #             If file has a modification time attribute that doesn't present in the input db,
       #             then the assumption is that this file wasnt indexized and it will not be treated
       #             (e.i. we do nothing with it)
-      def self.unify_time(cd)
-        unified_cd = ContentData.unify_time(cd)
-        unified_cd.private_db.keys.each {|checksum|
-          cd_instances = cd.private_db[checksum]
-          unified_cd_instances = unified_cd.private_db[checksum]
-          unified_cd_size = unified_cd_instances[0]
-          unified_cd_instances[1].keys.each {|full_path|
-            unified_inst_mod_time =  unified_cd_instances[1][full_path]
-            orig_inst_mod_time =  cd_instances[1][full_path]
-            local_path = full_path.split(',')[2]
-            file_mtime, file_size = File.open(local_path) { |f| [f.mtime, f.size] }
-            Log.info "file:#{local_path} file_mtime:#{file_mtime}."
-            Log.info "update mtime:#{unified_inst_mod_time}"
-            Log.info "original instance mtime:#{orig_inst_mod_time}."
-            Log.info "unify instance mtime:#{unified_inst_mod_time}."
-            Log.info "Comparison: Real file = unified? #{file_mtime.to_i == unified_inst_mod_time}"
-            if (file_mtime.to_i == orig_inst_mod_time) \
-                and file_size == unified_cd_size \
+      def self.unify_time(content_data)
+        orig_content_data = ContentData::ContentData.new(content_data)
+        content_data.unify_time
+        content_data.each_instance { |checksum, size, content_mod_time, unified_inst_mod_time, server, device, path|
+          location = "%s,%s,%s" % [server, device, path]
+          orig_inst_mod_time = orig_content_data.instance_mod_time(checksum, location)
+          file_mtime, file_size = File.open(path) { |f| [f.mtime, f.size] }
+          Log.info "file:#{path} file_mtime:#{file_mtime}."
+          Log.info "update mtime:#{unified_inst_mod_time}"
+          Log.info "original instance mtime:#{orig_inst_mod_time}."
+          Log.info "unify instance mtime:#{unified_inst_mod_time}."
+          Log.info "Comparison: Real file = unified? #{file_mtime.to_i == unified_inst_mod_time}"
+          if (file_mtime.to_i == orig_inst_mod_time) \
+                and file_size == size \
                 and (file_mtime.to_i != unified_inst_mod_time)
-              Log.info ("Comparison results: File actual time is same as instance time before unification. Need to modify file time")
-              File.utime(File.atime(local_path), unified_inst_mod_time, local_path)
-              file_mtime = File.open(local_path) { |f| f.mtime }
-              Log.info "new file mtime:#{file_mtime}."
-              Log.info "new file mtime in seconds:#{file_mtime.to_i}."
-            end
-          }
+            Log.info ("Comparison results: File actual time is same as instance time before unification. Need to modify file time")
+            File.utime(File.atime(path), unified_inst_mod_time, path)
+            file_mtime = File.open(path) { |f| f.mtime }
+            Log.info "new file mtime:#{file_mtime}."
+            Log.info "new file mtime in seconds:#{file_mtime.to_i}."
+          end
         }
-        unified_cd
+        content_data
       end
 
       # Creates directory structure and symlinks with ref_cd structure to the base_cd files and dest as a root dir
@@ -240,42 +235,24 @@ module FileUtils
         # symlinks are not implemented in Windows
         raise NotImplementedError.new if (RUBY_PLATFORM =~ /mingw/ or RUBY_PLATFORM =~ /ms/ or RUBY_PLATFORM =~ /win/)
 
-        not_found = Hash.new
+        not_found = {}
         not_found_cd = ContentData::ContentData.new
-        inverted_index = Hash.new
-        warnings = Array.new
+        warnings = []
         dest.chop! if (dest.end_with?("/") or dest.end_with?("\\"))
 
-        base_cd.private_db.keys.each {|checksum|
-          instances = base_cd.private_db[checksum]
-          instances[1].keys.each {|full_path|
-            inverted_index[checksum] = full_path.split(',')[2]
-          }
-        }
-
-        ref_cd.private_db.keys.each {|checksum|
-          instances = ref_cd.private_db[checksum]
-          if inverted_index.key? checksum
-            # handle all instances
-            instances[1].keys.each {|full_path|
-              symlink_path = dest + full_path
-              ::FileUtils.mkdir_p(File.dirname(symlink_path)) unless (Dir.exists?(File.dirname(symlink_path)))
-              File.symlink(inverted_index[checksum], symlink_path)
-            }
+        ref_cd.each_instance { |checksum, size, content_mod_time, inst_mod_time, server, device, path|
+          if base_cd.content_exists(checksum)
+            symlink_path = dest + path
+            ::FileUtils.mkdir_p(File.dirname(symlink_path)) unless (Dir.exists?(File.dirname(symlink_path)))
+            File.symlink(inverted_index[checksum], symlink_path)
           else
-            # add content to not_found cd
-            size = instances[0]
-            instances_db_cloned = instances[1].clone  # this shallow clone will work
-            content_time = instances[2]
-            not_found[checksum] = [size,
-                                  instances_db_cloned,
-                                  content_time]
+            # add instance to not_found cd
+            not_found_cd.add_instance(checksum, size, server, device, path, inst_mod_time)
             warnings << "Warning: base content does not contains:'%s'" % checksum
           end
         }
-        not_found_cd.set_db(not_found)
         Log.warning (warnings)
-        return not_found_cd
+        not_found_cd
       end
   end
 
