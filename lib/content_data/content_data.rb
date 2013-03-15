@@ -322,7 +322,6 @@ module ContentData
 
       # used to process method parameters centrally
       process_params = Proc.new do |values|
-        # values is a Hash with keys: :content, :instance and value appropriate to key
         if param_exists.call(:failed)
           info = values[:details]
           unless info.nil?
@@ -333,7 +332,6 @@ module ContentData
             server = info[4]
             device = info[5]
             file_path = info[6]
-            params[:failed].add_content(checksum, size, content_mtime)
             params[:failed].add_instance(checksum, size, server, device, file_path, inst_mtime)
           end
         end
@@ -492,6 +490,7 @@ module ContentData
 
     private :shallow_check, :deep_check, :check_instance, :get_query
   end
+
   # merges content data a and content data b to a new content data and returns it.
   def self.merge(a, b)
     return ContentData.new(a) if b.nil?

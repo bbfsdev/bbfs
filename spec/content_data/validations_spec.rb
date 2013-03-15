@@ -99,11 +99,14 @@ module ContentData
 
           failed = ContentData.new
           @index.validate(:failed => failed).should be_false
-          failed.private_db.size.should eq(2)  # number of falling contents
-          failed.private_db.keys.should include(absent_checksum, @checksum2)
-          failed.private_db.each do |checksum, instances|
-            instances[1].size.should eq(1)  # only one falling instance per content
-          end
+          # should be two failed contents, with one instance per content
+          failed.contents_size.should eq(2)
+          failed.content_exists(absent_checksum).should be_true
+          failed.content_exists(@checksum2).should be_true
+          failed.instances_size(absent_checksum).should eq(1)
+          failed.instances_size(@checksum2).should eq(1)
+          failed.instance_exists("%s,%s,%s" % [@server, @device, absent_path], absent_checksum).should be_true
+          failed.instance_exists("%s,%s,%s" % [@server, @device, @path2], @checksum2).should be_true
         end
       end
     end
