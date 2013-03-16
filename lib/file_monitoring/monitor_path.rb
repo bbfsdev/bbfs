@@ -54,8 +54,8 @@ module FileMonitoring
       @@log = log
     end
 
-    #  Checks whether file was changed from the last iteration.
-    #  For files size and modification time are checked.
+    # Checks whether file was changed from the last iteration.
+    # For files, size and modification time are checked.
     def monitor
       file_stats = File.lstat(@path) rescue nil
       new_state = nil
@@ -126,7 +126,7 @@ module FileMonitoring
     end
 
     #  Reports current state with identification.
-    #  # This format used by log file.
+    #  NOTE This format used by log file.
     def cur_stat
       # TODO what output format have to be ?
       Time.now.utc.to_s + " : " + self.state + " : " + self.path
@@ -176,7 +176,7 @@ module FileMonitoring
       @files.has_key?(path)
     end
 
-    #  Returns string with contains path and state of this directory as well as it's structure.
+    #  Returns string which contains path and state of this directory as well as it's structure.
     def to_s(indent = 0)
       indent_increment = 2
       child_indent = indent + indent_increment
@@ -190,8 +190,8 @@ module FileMonitoring
       res
     end
 
-    #  Checks that directory structure (i.e. files and directories located directly under this directory)
-    #  wasn't changed since the last iteration.
+    # Checks that directory structure (i.e. files and directories located directly under this directory)
+    # wasn't changed since the last iteration.
     def monitor
       was_changed = false
       new_state = nil

@@ -1,8 +1,27 @@
 require 'file_monitoring/file_monitoring'
 
-# TODO add description
+# Daemon for monitoring directories for changes.
+# Paths are checked for changes per user-defined period of time.
+#
+# Directory defined changed when:
+# 1. Directory structure changed, i.e. sub-directories or files were added/removed
+# 2. One of the files located in the directory or one of its sub-directories was changed
+# 3. One of sub-directories changed (see 1. and 2. above)
+#
+# File monitoring controled by following configuration parameters:
+# * <tt>default_monitoring_log_path</tt> - holds path of file monitoring log.
+#   This log containd track of changes found during monitoring
+# * <tt>monitoring_paths</tt> - path and file monitoring configuration data
+#   regarding these paths.
+
 module FileMonitoring
-  # The main method. Loops on all paths each time span and monitors them.
+  Params.path('default_monitoring_log_path', '~/.bbfs/log/file_monitoring.log',
+              'Default path for file monitoring log file. ' \
+              'This log containd track of changes found during monitoring')
+  Params.complex('monitoring_paths', nil, 'Array of Hashes with 3 fields: ' \
+                 'path, scan_period and stable_state.')
+
+  # @see FileMonitoring#monitor_files
   def monitor_files
     fm = FileMonitoring.new
     fm.monitor_files
