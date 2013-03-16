@@ -37,7 +37,7 @@ module TestingServer
     stdout_outputtter = Log4r::Outputter.stdout
     stdout_outputtter.formatter = formatter
 
-    file_outputter = Log4r::FileOutputter.new('file_log', :filename =>  Params['log_file_name'])
+    file_outputter = Log4r::FileOutputter.new('file_log', :filename =>  "#{Params['log_file_name']}.log4r")
     file_outputter.formatter = formatter
 
     email_outputter = Log4r::EmailOutputter.new('email_log',

@@ -7,15 +7,16 @@ require 'params'
 
 module ContentServer
 
-  Params.integer('remote_content_timeout', 10, 'Remote content desired freshness in seconds.')
-  Params.integer('max_content_timeout', 60*60, 'Remote content force refresh in seconds.')
+  Params.integer('remote_content_fetch_timeout', 10, 'Remote content desired freshness in seconds.')
+  Params.integer('remote_content_save_timeout', 60*60, 'Remote content force refresh in seconds.')
 
   # TODO(kolman): Use only one tcp/ip socket by utilizing one NQueue for many queues!
   class RemoteContentClient
     def initialize(dynamic_content_data, host, port, local_backup_folder)
       @dynamic_content_data = dynamic_content_data
       @remote_tcp = Networking::TCPClient.new(host, port, method(:receive_content))
-      @last_update_timestamp = nil
+      @last_fetch_timestamp = nil
+      @last_save_timestamp = nil
       @content_server_content_data_path = File.join(local_backup_folder, 'remote',
                                                     host + '_' + port.to_s)
     end
@@ -24,19 +25,17 @@ module ContentServer
       Log.debug1("Remote content data received: #{message.to_s}")
       ref = @dynamic_content_data.last_content_data
       @dynamic_content_data.update(message)
+      @last_fetch_timestamp = Time.now.to_i
 
-      max_time_span = Params['max_content_timeout']
-      if !@last_update_timestamp.nil?
-        max_time_span = Time.now.to_i - @last_update_timestamp
+      save_time_span = Params['remote_content_save_timeout']
+      if !@last_save_timestamp.nil?
+        save_time_span = Time.now.to_i - @last_save_timestamp
       end
 
-      @last_update_timestamp = Time.now.to_i
-
-      if ref != message || max_time_span >= Params['max_content_timeout']
-        Log.debug2("Remote content data changed or max time span is large, writing.")
-        Log.debug3("max_time_span: #{max_time_span}")
+      if save_time_span >= Params['remote_content_save_timeout']
+      	@last_save_timestamp = Time.now.to_i
         write_to = File.join(@content_server_content_data_path,
-                             @last_update_timestamp.to_s + '.cd')
+                             @last_save_timestamp.to_s + '.cd')
         FileUtils.makedirs(@content_server_content_data_path) unless \
               File.directory?(@content_server_content_data_path)
         count = File.open(write_to, 'wb') { |f| f.write(message.to_s) }
@@ -46,27 +45,22 @@ module ContentServer
     end
 
     def run()
+      Log.debug1("Running remote content client.")
       threads = []
       threads << @remote_tcp.tcp_thread if @remote_tcp != nil
       threads << Thread.new do
+        Log.debug1("New thread.")
         loop do
           # if need content data
-          if @last_update_timestamp.nil?
-            sleep_time_span = Params['remote_content_timeout']
-          else
-            sleep_time_span = Time.now.to_i - @last_update_timestamp
+          sleep_time_span = Params['remote_content_save_timeout']
+          if !@last_fetch_timestamp.nil?
+            sleep_time_span = Time.now.to_i - @last_fetch_timestamp
           end
-
-          if sleep_time_span >= Params['remote_content_timeout']
+          Log.debug1("sleep_time_span: #{sleep_time_span}")
+          if sleep_time_span >= Params['remote_content_save_timeout']
             # Send ping!
-            Log.debug2('Sending remote contend request.')
             bytes_written = @remote_tcp.send_obj(nil)
-            Log.debug3("Bytes written #{bytes_written}.")
           end
-
-          sleep_time_span = Time.now.to_i - @last_update_timestamp \
-                unless @last_update_timestamp.nil?
-          Log.debug2("sleep_time_span: #{sleep_time_span}")
           sleep(sleep_time_span) if sleep_time_span > 0
         end
       end

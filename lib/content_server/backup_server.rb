@@ -27,6 +27,7 @@ module ContentServer
   Params.integer('backup_check_delay', 5, 'Delay in seconds between two content vs backup checks.')
 
   def run_backup_server
+    Thread.abort_on_exception = true
     all_threads = []
 
     @process_variables = ThreadSafeHash::ThreadSafeHash.new
