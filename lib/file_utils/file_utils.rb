@@ -244,7 +244,7 @@ module FileUtils
           if base_cd.content_exists(checksum)
             symlink_path = dest + path
             ::FileUtils.mkdir_p(File.dirname(symlink_path)) unless (Dir.exists?(File.dirname(symlink_path)))
-            File.symlink(inverted_index[checksum], symlink_path)
+            File.symlink(path, symlink_path)
           else
             # add instance to not_found cd
             not_found_cd.add_instance(checksum, size, server, device, path, inst_mod_time)
