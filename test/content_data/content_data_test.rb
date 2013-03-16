@@ -65,8 +65,8 @@ require_relative '../../lib/content_data/content_data.rb'
         content_data = ContentData::ContentData.new
         content_data.add_instance("A1", 50, "server_1", "dev_1",
                                   "/home/file_1", 2222222222)
-        assert_equal(true, content_data.instance_exists('server_1,dev_1,/home/file_1'))
-        assert_equal(false, content_data.instance_exists('server_1,dev_1,/home/file_2'))
+        assert_equal(true, content_data.instance_exists('/home/file_1', 'server_1', 'dev_1'))
+        assert_equal(false, content_data.instance_exists('/home/file_1', 'server_1', 'dev_2'))
 
       end
 
@@ -76,9 +76,9 @@ require_relative '../../lib/content_data/content_data.rb'
         content_data.add_instance("A1", 50, "server_1", "dev_1",
                                   "/home/file_1", 2222222222)
         assert_equal(true, content_data.content_exists('A1'))
-        assert_equal(true, content_data.instance_exists('server_1,dev_1,/home/file_1'))
+        assert_equal(true, content_data.instance_exists('/home/file_1', 'server_1', 'dev_1'))
         content_data.remove_instance('server_1,dev_1,/home/file_1')
-        assert_equal(false, content_data.instance_exists('server_1,dev_1,/home/file_1'))
+        assert_equal(false, content_data.instance_exists('/home/file_1', 'server_1', 'dev_1'))
         assert_equal(false, content_data.content_exists('A1'))
 
 
@@ -88,14 +88,14 @@ require_relative '../../lib/content_data/content_data.rb'
         content_data.add_instance("A1", 50, "server_1", "dev_1",
                                   "/home/file_2", 3333333333)
         assert_equal(true, content_data.content_exists('A1'))
-        assert_equal(true, content_data.instance_exists('server_1,dev_1,/home/file_1'))
+        assert_equal(true, content_data.instance_exists('/home/file_1', 'server_1', 'dev_1'))
         content_data.remove_instance('server_1,dev_1,/home/file_1')
-        assert_equal(false, content_data.instance_exists('server_1,dev_1,/home/file_1'))
+        assert_equal(false, content_data.instance_exists('/home/file_1', 'server_1', 'dev_1'))
         assert_equal(true, content_data.content_exists('A1'))
 
         #remove also removes content
         content_data.remove_instance('server_1,dev_1,/home/file_2')
-        assert_equal(false, content_data.instance_exists('server_1,dev_1,/home/file_2'))
+        assert_equal(false, content_data.instance_exists('/home/file_1', 'server_1', 'dev_2'))
         assert_equal(false, content_data.content_exists('A1'))
       end
 
