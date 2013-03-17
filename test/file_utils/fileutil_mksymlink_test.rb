@@ -118,7 +118,7 @@ module FileUtils
         else
           assert_equal(not_found_db_contents_size, 1)
           assert_equal(not_found_db_instances_size, 1)
-          assert(not_found_db.content_exists?NOT_FOUND_CHECKSUM)
+          assert(not_found_db.content_exists NOT_FOUND_CHECKSUM)
         end
       end
     end
