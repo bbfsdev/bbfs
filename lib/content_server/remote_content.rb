@@ -15,7 +15,6 @@ module ContentServer
     def initialize(dynamic_content_data, host, port, local_backup_folder)
       @dynamic_content_data = dynamic_content_data
       @remote_tcp = Networking::TCPClient.new(host, port, method(:receive_content))
-      @last_fetch_timestamp = nil
       @last_save_timestamp = nil
       @content_server_content_data_path = File.join(local_backup_folder, 'remote',
                                                     host + '_' + port.to_s)
@@ -25,7 +24,6 @@ module ContentServer
       Log.debug1("Remote content data received: #{message.to_s}")
       ref = @dynamic_content_data.last_content_data
       @dynamic_content_data.update(message)
-      @last_fetch_timestamp = Time.now.to_i
 
       save_time_span = Params['remote_content_save_timeout']
       if !@last_save_timestamp.nil?
@@ -45,23 +43,14 @@ module ContentServer
     end
 
     def run()
-      Log.debug1("Running remote content client.")
+      Log.debug2("Running remote content client.")
       threads = []
       threads << @remote_tcp.tcp_thread if @remote_tcp != nil
       threads << Thread.new do
-        Log.debug1("New thread.")
+        Log.debug3("New thread.")
         loop do
-          # if need content data
-          sleep_time_span = Params['remote_content_save_timeout']
-          if !@last_fetch_timestamp.nil?
-            sleep_time_span = Time.now.to_i - @last_fetch_timestamp
-          end
-          Log.debug1("sleep_time_span: #{sleep_time_span}")
-          if sleep_time_span >= Params['remote_content_save_timeout']
-            # Send ping!
-            bytes_written = @remote_tcp.send_obj(nil)
-          end
-          sleep(sleep_time_span) if sleep_time_span > 0
+          bytes_written = @remote_tcp.send_obj(nil)
+          sleep(Params['remote_content_fetch_timeout'])
         end
       end
     end
