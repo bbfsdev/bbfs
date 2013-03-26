@@ -41,8 +41,8 @@ module ContentData
 
     def ==(other)
       return (self.checksum.eql? other.checksum and
-              self.size.eql? other.size and
-              self.first_appearance_time.to_i.eql? other.first_appearance_time.to_i)
+          self.size.eql? other.size and
+          self.first_appearance_time.to_i.eql? other.first_appearance_time.to_i)
     end
   end
 
@@ -101,16 +101,16 @@ module ContentData
 
     def to_s
       "%s,%d,%s,%s,%s,%s" % [@checksum, @size, @server_name,
-        @device, @full_path, ContentData.format_time(@modification_time)]
+                             @device, @full_path, ContentData.format_time(@modification_time)]
     end
 
     def ==(other)
       return (self.checksum.eql? other.checksum and
-              self.size.eql? other.size and
-              self.server_name.eql? other.server_name and
-              self.device.eql? other.device and
-              self.full_path.eql? other.full_path and
-              self.modification_time.to_i.eql? other.modification_time.to_i)
+          self.size.eql? other.size and
+          self.server_name.eql? other.server_name and
+          self.device.eql? other.device and
+          self.full_path.eql? other.full_path and
+          self.modification_time.to_i.eql? other.modification_time.to_i)
     end
   end
 
@@ -140,7 +140,7 @@ module ContentData
     def add_instance(instance)
       if (not @contents.key?(instance.checksum))
         Log.warning sprintf("Adding instance while it's" +
-                            " checksum %s does not exists.\n", instance.checksum)
+                                " checksum %s does not exists.\n", instance.checksum)
         Log.warning sprintf("%s\n", instance.to_s)
         return false
       elsif (@contents[instance.checksum].size != instance.size)
@@ -159,6 +159,7 @@ module ContentData
       @contents.empty?
     end
 
+    # TODO rename method with finishing '?', cause it returns a boolean
     def content_exists(checksum)
       @contents.key? checksum
     end
@@ -212,6 +213,7 @@ module ContentData
       File.open(filename, 'w') {|f| f.write(to_s) }
     end
 
+    # TODO validation that file indeed contains ContentData missing
     def from_file(filename)
       lines = IO.readlines(filename)
       i = 0
@@ -228,6 +230,11 @@ module ContentData
       number_of_instances = lines[i].to_i
       i += 1
       number_of_instances.times {
+        if lines[i].nil?
+          Log.info "lines[i] if nil !!!, Backing filename: #{filename} to #{filename}.bad"
+          FileUtils.cp(filename, "#{filename}.bad")
+          Log.info lines[i].join("\n")
+        end
         parameters = lines[i].split(',')
         # bugfix: if file name consist a comma then parsing based on comma separating fails
         if (parameters.size > 6)
@@ -407,7 +414,6 @@ module ContentData
     #     Supported key/value combinations:
     #     * key is <tt>:failed</tt> value is <tt>ContentData</tt> used to return failed instances
     # @return [Boolean] true when index is correct, false otherwise
-    # @raise [ArgumentError] when instance_check_level is incorrect
     def validate(params = nil)
       # used to answer whether specific param was set
       param_exists = Proc.new do |param|
@@ -456,7 +462,7 @@ module ContentData
         if File.mtime(path).to_i != instance.modification_time.to_i
           is_valid = false
           err_msg = "#{path} modification time #{File.mtime(path)} differs from " \
-            + "indexed #{instance.modification_time}"
+              + "indexed #{instance.modification_time}"
           Log.warning err_msg
         end
       else
@@ -483,16 +489,15 @@ module ContentData
       end
     end
 
-    # @raise [ArgumentError] when instance_check_level is incorrect
     def check_instance(instance)
       case Params['instance_check_level']
-      when 'deep'
-        deep_check instance
-      when 'shallow'
-        shallow_check instance
-      else
-        # TODO remove it when params will support set of values
-        throw ArgumentError.new "Unsupported check level #{Params['instance_check_level']}"
+        when 'deep'
+          deep_check instance
+        when 'shallow'
+          shallow_check instance
+        else
+          # TODO remove it when params will support set of values
+          throw ArgumentError.new "Unsupported check level #{Params['instance_check_level']}"
       end
     end
 
@@ -525,7 +530,7 @@ module ContentData
 
       # FIXME add support for from/to for Strings
       if ((!from.nil? && !from.kind_of?(Numeric.new.class))\
-          || (!to.nil? && to.kind_of?(Numeric.new.class)))
+            || (!to.nil? && to.kind_of?(Numeric.new.class)))
         raise ArgumentError 'from and to options supported only for numeric values'
       end
 
@@ -553,6 +558,166 @@ module ContentData
       result_index
     end
 
-    private :shallow_check, :deep_check, :check_instance, :get_query
+    private :shallow_check, :deep_check, :check_instance
   end
+
+  # Validates index against file system that all instances hold a correct data regarding files
+  # that they represrents.
+  #
+  # There are two levels of validation, controlled by instance_check_level system parameter:
+  # * shallow - quick, tests instance for file existence and attributes.
+  # * deep - can take more time, in addition to shallow recalculates hash sum.
+  # @param [Hash] params hash of parameters of validation, can be used to return additional data.
+  #
+  #     Supported key/value combinations:
+  #     * key is <tt>:failed</tt> value is <tt>ContentData</tt> used to return failed instances
+  # @return [Boolean] true when index is correct, false otherwise
+  # @raise [ArgumentError] when instance_check_level is incorrect
+  def validate(params = nil)
+    # used to answer whether specific param was set
+    param_exists = Proc.new do |param|
+      !(params.nil? || params[param].nil?)
+    end
+
+    # used to process method parameters centrally
+    process_params = Proc.new do |values|
+      # values is a Hash with keys: :content, :instance and value appropriate to key
+      if param_exists.call :failed
+        unless values[:content].nil?
+          params[:failed].add_content values[:content]
+        end
+        unless values[:instance].nil?
+          # appropriate content should be already added
+          params[:failed].add_instance values[:instance]
+        end
+      end
+    end
+
+    is_valid = true
+    instances.each_value do |instance|
+      unless check_instance instance
+        is_valid = false
+
+        unless params.nil? || params.empty?
+          process_params.call :content => contents[instance.checksum], :instance => instance
+        end
+      end
+    end
+
+    is_valid
+  end
+
+  def shallow_check(instance)
+    path = instance.full_path
+    is_valid = true
+
+    if (File.exists?(path))
+      if File.size(path) != instance.size
+        is_valid = false
+        err_msg = "#{path} size #{File.size(path)} differs from indexed size #{instance.size}"
+        Log.warning err_msg
+      end
+      #if ContentData.format_time(File.mtime(path)) != instance.modification_time
+      if File.mtime(path).to_i != instance.modification_time.to_i
+        is_valid = false
+        err_msg = "#{path} modification time #{File.mtime(path)} differs from " \
+            + "indexed #{instance.modification_time}"
+        Log.warning err_msg
+      end
+    else
+      is_valid = false
+      err_msg = "Indexed file #{path} doesn't exist"
+      Log.warning err_msg
+    end
+    is_valid
+  end
+
+  def deep_check(instance)
+    if shallow_check(instance)
+      path = instance.full_path
+      current_checksum = FileIndexing::IndexAgent.get_checksum(path)
+      if instance.checksum == current_checksum
+        true
+      else
+        err_msg = "#{path} checksum #{current_checksum} differs from indexed #{instance.checksum}"
+        Log.warning err_msg
+        false
+      end
+    else
+      false
+    end
+  end
+
+  # @raise [ArgumentError] when instance_check_level is incorrect
+  def check_instance(instance)
+    case Params['instance_check_level']
+      when 'deep'
+        deep_check instance
+      when 'shallow'
+        shallow_check instance
+      else
+        # TODO remove it when params will support set of values
+        throw ArgumentError.new "Unsupported check level #{Params['instance_check_level']}"
+    end
+  end
+
+
+  # TODO simplify conditions
+  # This mehod is experimental and shouldn\'t be used
+  # nil is used to define +/- infinity for to/from method arguments
+  # from/to values are exlusive in condition'a calculations
+  # Need to take care about '==' operation that is used for object's comparison.
+  # In need of case user should define it's own '==' implemementation.
+  def get_query(variable, params)
+    raise RuntimeError.new 'This method is experimental and shouldn\'t be used'
+
+    exact = params['exact'].nil? ? Array.new : params['exact']
+    from = params['from']
+    to = params ['to']
+    is_inside = params['is_inside']
+
+    unless ContentInstance.new.instance_variable_defined?("@#{attribute}")
+      raise ArgumentError "#{variable} isn't a ContentInstance variable"
+    end
+
+    if (exact.nil? && from.nil? && to.nil?)
+      raise ArgumentError 'At least one of the argiments {exact, from, to} must be defined'
+    end
+
+    if (!(from.nil? || to.nil?) && from.kind_of?(to.class))
+      raise ArgumentError 'to and from arguments should be comparable one with another'
+    end
+
+    # FIXME add support for from/to for Strings
+    if ((!from.nil? && !from.kind_of?(Numeric.new.class))\
+          || (!to.nil? && to.kind_of?(Numeric.new.class)))
+      raise ArgumentError 'from and to options supported only for numeric values'
+    end
+
+    if (!exact.empty? && (!from.nil? || !to.nil?))
+      raise ArgumentError 'exact and from/to options are mutually exclusive'
+    end
+
+    result_index = ContentData.new
+    instances.each_value do |instance|
+      is_match = false
+      var_value = instance.instance_variable_get("@#{variable}")
+
+      if exact.include? var_value
+        is_match = true
+      elsif (from.nil? || var_value > from) && (to.nil? || var_value < to)
+        is_match = true
+      end
+
+      if (is_match && is_inside) || (!is_match && !is_inside)
+        checksum = instance.checksum
+        result_index.add_content(contents[checksum]) unless result_index.content_exists(checksum)
+        result_index.add_instance instance
+      end
+    end
+    result_index
+  end
+
+  private :shallow_check, :deep_check, :check_instance, :get_query
 end
+

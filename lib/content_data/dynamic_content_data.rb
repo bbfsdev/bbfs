@@ -13,6 +13,7 @@ module ContentData
       ref = ContentData.new(content_data)
       @last_content_data_available_mutex.synchronize {
         @last_content_data = ref
+        Log.debug3("updating last content data:#{@last_content_data}\n")
       }
     end
 

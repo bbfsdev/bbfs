@@ -1,0 +1,26 @@
+# Copy and change the configuration file before using.
+# To run this file use the following commandline:
+# testing_server --conf_file=examples/testing_server.yml [--bg_command=start]
+master_host: 'localhost' # Remote host name of master (content) server.
+master_username: 'jhondoe' # Remote master (content) server username.
+
+# Path to config file in remote master (content) server.
+master_file_generator_config: '/home/jhondoe/.bbfs/etc/file_generator.yml'
+# Path to remote master (content) server index (content data) file.
+remote_master_content_data: '/home/jhondoe/.bbfs/var/content.data'
+# Local path to copy master server index file to.
+local_master_content_data: '/home/jhondoe/.bbfs/var/remote_content.data'
+# Local path to index (content data) file.
+backup_content_data: '/home/jhondoe/.bbfs/var/backup.data'
+
+from_email: 'jhon.doe@gmail.com' # From gmail address for update.
+from_email_password: '*********' # From gmail password.
+to_email: 'jhon.doe@gmail.com' # Destination email for updates.
+
+sleep_seconds_after_file_generation: 120
+email_delay_in_seconds: 60*60*6 # Number of seconds before sending email again.
+
+# Logging options
+log_write_to_console: true # Will print all log messages to standard output. Default is false.
+log_debug_level: 0 # Verbosity of logging. Default is 0, max is 3.
+log_file_name: '~/.bbfs/log/testing_server.log' # General log

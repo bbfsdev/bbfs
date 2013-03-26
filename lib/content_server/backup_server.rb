@@ -27,6 +27,7 @@ module ContentServer
   Params.integer('backup_check_delay', 5, 'Delay in seconds between two content vs backup checks.')
 
   def run_backup_server
+    Thread.abort_on_exception = true
     all_threads = []
 
     @process_variables = ThreadSafeHash::ThreadSafeHash.new
@@ -89,7 +90,15 @@ module ContentServer
         remote_cd = content_server_dynamic_content_data.last_content_data()
         diff = ContentData::ContentData.remove(local_cd, remote_cd)
         Log.debug2("Files to send? #{!diff.empty?}")
-        file_copy_client.request_copy(diff) unless diff.empty?
+        #file_copy_client.request_copy(diff) unless diff.empty?
+        if !diff.empty?
+          Log.info('Backup and remote contents need a sync:')
+          Log.info("Backup content:\n#{local_cd}")
+          Log.info("Remote content:\n#{remote_cd}")
+          Log.info("Missing contents:\n#{diff}")
+          Log.info('Requesting a copy')
+          file_copy_client.request_copy(diff)
+        end
       end
     end
 

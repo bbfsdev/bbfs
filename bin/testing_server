@@ -4,12 +4,10 @@
 # The files in those directories are indexed (calculating their SHA1).
 # Each unique content is backed up to the remote (backup) server.
 
-require 'log'
 require 'params'
 require 'run_in_background'
-require 'content_server'
+require 'testing_server'
 
 Params.init ARGV
-Log.init
 
-RunInBackground.run { ContentServer.run_content_server }
+RunInBackground.run { TestingServer.run_testing_server }

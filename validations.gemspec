@@ -10,6 +10,7 @@ Gem::Specification.new do |s|
   s.homepage    = 'http://github.com/kolmanv/bbfs'
   s.files       = Dir['lib/validations.rb', 'lib/validations/**/*'] \
                   & `git ls-files -z`.split("\0")
+  s.executables = ['index_validator']
   s.test_files  = Dir['spec/validations/**/*', 'test/validations/**/*'] \
                   & `git ls-files -z`.split("\0")
   s.add_dependency('log')
