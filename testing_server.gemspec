@@ -8,7 +8,7 @@ Gem::Specification.new do |s|
   s.authors     = ['Kolman Vornovitsky']
   s.email       = 'kolmanv@gmail.com'
   s.homepage    = 'http://github.com/kolmanv/bbfs'
-  s.files       = Dir['lib/testing_server.rb', 'lib/testing_server/**/*'] \
+  s.files       = Dir['lib/testing_server.rb', 'lib/testing_server_same_machine.rb', 'lib/testing_server/**/*'] \
                   & `git ls-files -z`.split("\0")
-  s.executables = ['testing_server']
+  s.executables = ['testing_server', 'testing_server_same_machine']
 end
