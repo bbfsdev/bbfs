@@ -52,6 +52,7 @@ module TestingServer
         :authtype => :plain,
         :tls => true
     )
+    email_outputter.level = Log4r::ERROR
     email_outputter.formatter = formatter
 
     log.outputters << stdout_outputtter
