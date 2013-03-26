@@ -27,9 +27,9 @@ module ContentServer
             file_mtime, file_size = File.open(path) { |f| [f.mtime, f.size] }
             if ((file_size == size) &&
                 (file_mtime.to_i == instance_mod_time))
-              Log.info("file exists: #{local_path}")
+              Log.info("file exists: #{path}")
               # add instance to local DB
-              server_content_data.add_instance(checksum, size, server_name,
+              server_content_data.add_instance(checksum, size, server,
                                                device, path, instance_mod_time)
             else
               Log.info("changed: #{path}")
