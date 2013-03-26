@@ -63,32 +63,20 @@ module FileUtils
         @base_db = indexer.indexed_content
         @ref_db = ContentData::ContentData.new
 
-        @base_db.contents.each_value do |content|
-          @ref_db.add_content(content)
-        end
-
-
-        @base_db.instances.each_value do |instance|
-          unless only_in_base.include?(instance.full_path)
-            file_name = File.basename(instance.full_path)
-            base_dir = File.dirname(instance.full_path)
+        @base_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+          unless only_in_base.include?(path)
+            file_name = File.basename(path)
+            base_dir = File.dirname(path)
             ref_full_path = String.new(REF_DIR)
             if (base_dir == RESOURCES_DIR)
               ref_full_path << "/dir/#{file_name}"
             else
               ref_full_path << "/#{file_name}"
             end
-            ref_instance = ContentData::ContentInstance.new(instance.checksum, instance.size, instance.server_name, instance.device, ref_full_path, instance.modification_time)
-            @ref_db.add_instance(ref_instance)
+            @ref_db.add_instance(checksum, size, server, device, path, instance_mod_time)
           end
-
-        end
-
-        not_found_instance = ContentData::ContentInstance.new(NOT_FOUND_CHECKSUM, 500, `hostname`.chomp, DEVICE_NAME, "/not/exist/path/file", Time.now.utc)
-        not_found_content = ContentData::Content.new(NOT_FOUND_CHECKSUM, not_found_instance.size, not_found_instance.modification_time)
-        @ref_db.add_content(not_found_content)
-        @ref_db.add_instance(not_found_instance)
-
+        }
+        @ref_db.add_instance(NOT_FOUND_CHECKSUM, 500, `hostname`.chomp, DEVICE_NAME, "/not/exist/path/file", Time.now.utc.to_i)
       end
 
       def test_create_symlink_structure
@@ -102,30 +90,35 @@ module FileUtils
         end
 
         base_path2checksum = Hash.new
-        @base_db.instances.each_value do |instance|
-          base_path2checksum[instance.full_path] = instance.checksum
-        end
-        not_found_path2checksum = Hash.new
-        not_found_db.instances.each_value do |instance|
-          not_found_path2checksum[instance.full_path] = instance.checksum
-        end
+        @base_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+          base_path2checksum[path] = checksum
+        }
 
-        @ref_db.instances.each_value do |instance|
-          ref_path = DEST_DIR + instance.full_path
-          next if not_found_path2checksum.has_key?(instance.full_path)
+        not_found_path2checksum = {}
+        not_found_db_contents_size = 0
+        not_found_db_instances_size = 0
+        not_found_db.each_content { |checksum, size, content_mod_time| not_found_db_contents_size += 1}
+        not_found_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+          not_found_path2checksum[path] = checksum
+          not_found_db_instances_size += 1
+        }
+
+        @ref_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+          next if not_found_path2checksum.has_key?(path)
+          ref_path = DEST_DIR + path
           assert(File.exists?(ref_path))
           assert(File.symlink?(ref_path))
           base_file = File.expand_path(File.readlink(ref_path))
           base_checksum = base_path2checksum[base_file]
-          assert_equal(instance.checksum, base_checksum)
-        end
+          assert_equal(checksum, base_checksum)
+        }
 
         if (not_found_db == nil)
           assert_not_nil(not_found_db)
         else
-          assert_equal(not_found_db.contents.size, 1)
-          assert_equal(not_found_db.instances.size, 1)
-          assert(not_found_db.contents.has_key?NOT_FOUND_CHECKSUM)
+          assert_equal(not_found_db_contents_size, 1)
+          assert_equal(not_found_db_instances_size, 1)
+          assert(not_found_db.content_exists NOT_FOUND_CHECKSUM)
         end
       end
     end

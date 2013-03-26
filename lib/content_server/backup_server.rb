@@ -87,7 +87,7 @@ module ContentServer
         sleep(Params['backup_check_delay'])
         local_cd = dynamic_content_data.last_content_data()
         remote_cd = content_server_dynamic_content_data.last_content_data()
-        diff = ContentData::ContentData.remove(local_cd, remote_cd)
+        diff = ContentData.remove(local_cd, remote_cd)
         Log.debug2("Files to send? #{!diff.empty?}")
         file_copy_client.request_copy(diff) unless diff.empty?
       end

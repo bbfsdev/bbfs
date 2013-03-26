@@ -13,24 +13,14 @@ module ContentData
         @mod_time = 123456
         @checksum = 'abcde987654321'
         @checksum2 = '987654321abcde'
+        @server = 'server_1'
+        @device = 'dev_1'
       end
 
       before :each do
         @index = ContentData.new
-
-        @content = double :content, :checksum => @checksum,
-          :size => @size, :first_appearance_time => @mod_time
-        @content2 = double :content2, :checksum => @checksum2,
-          :size => @size, :first_appearance_time => @mod_time
-        @index.add_content @content
-        @index.add_content @content2
-
-        @instance = double :instance, :checksum => @checksum, :global_path => @path,
-          :size => @size, :full_path => @path, :modification_time => @mod_time
-        @instance2 = double :instance2, :checksum => @checksum2, :global_path => @path2,
-          :size => @size, :full_path => @path2, :modification_time => @mod_time
-        @index.add_instance @instance
-        @index.add_instance @instance2
+        @index.add_instance @checksum, @size, @server, @device, @path, @mod_time
+        @index.add_instance @checksum2, @size, @server, @device, @path2, @mod_time
       end
 
       context 'with shallow check' do
@@ -42,7 +32,6 @@ module ContentData
           File.stub(:exists?).and_return(true)
           File.stub(:size).and_return(@size)
           File.stub(:mtime).and_return(@mod_time)
-          #ContentData.stub(:format_time).with(@mod_time).and_return(@mod_time)
         end
 
         it 'succeeds when files exist and their attributes the same as in the index' do
@@ -62,7 +51,6 @@ module ContentData
         it 'fails when there is a file with  modification time different from indexed' do
           modified_mtime = @mod_time + 10
           File.stub(:mtime).with(@path).and_return(modified_mtime)
-          #ContentData.stub(:format_time).with(modified_mtime).and_return(modified_mtime)
           @index.validate().should be_false
         end
       end
@@ -100,25 +88,25 @@ module ContentData
         end
 
         it ':failed param returns index of absent or invalid instances' do
+          # one instance that absent,
           absent_checksum = '123'
           absent_path = @path2 + '1'
-          absent_content = double :absent_content, :checksum => absent_checksum,
-            :size => @size, :first_appearance_time => @mod_time
-          absent_instance = double :absent_instance, :checksum => absent_checksum,
-            :global_path => absent_path, :size => @size, :full_path => absent_path,
-            :modification_time => @mod_time
-          @index.add_content absent_content
-          @index.add_instance absent_instance
+          @index.add_instance absent_checksum, @size, @server, @device, absent_path, @mod_time
           File.stub(:exists?).with(absent_path).and_return(false)
 
+          # another instance with different content was changed
           File.stub(:mtime).with(@path2).and_return(@mod_time + 10)
 
           failed = ContentData.new
           @index.validate(:failed => failed).should be_false
-          failed.contents.should have(2).items
-          failed.contents.keys.should include(absent_checksum, @checksum2)
-          failed.instances.should have(2).items
-          failed.instances.keys.should include(absent_path, @path2)
+          # should be two failed contents, with one instance per content
+          failed.contents_size.should eq(2)
+          failed.content_exists(absent_checksum).should be_true
+          failed.content_exists(@checksum2).should be_true
+          failed.instances_size(absent_checksum).should eq(1)
+          failed.instances_size(@checksum2).should eq(1)
+          failed.instance_exists(absent_path, @server, @device, absent_checksum).should be_true
+          failed.instance_exists(@path2, @server, @device, @checksum2).should be_true
         end
       end
     end

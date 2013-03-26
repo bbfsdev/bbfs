@@ -1,209 +1,241 @@
 require 'log'
 require 'params'
-require 'time'
 
 module ContentData
   Params.string('instance_check_level', 'shallow', 'Defines check level. Supported levels are: ' \
                 'shallow - quick, tests instance for file existence and attributes. ' \
                 'deep - can take more time, in addition to shallow recalculates hash sum.')
 
-  class Content
-    attr_reader :checksum, :size, :first_appearance_time
-
-    def initialize(checksum, size, first_appearance_time, content_serializer = nil)
-      if content_serializer != nil
-        if (content_serializer.checksum == nil)
-          raise ArgumentError.new("checksum have to be defined")
-        else
-          @checksum = content_serializer.checksum
-        end
-        if (content_serializer.size == nil)
-          raise ArgumentError.new("size have to be defined")
-        else
-          @size = content_serializer.size
-        end
-        if (content_serializer.first_appearance_time == nil)
-          raise ArgumentError.new("first_appearance_time have to be defined")
-        else
-          @first_appearance_time = ContentData.parse_time(content_serializer.first_appearance_time)
-        end
-
-      else
-        @checksum = checksum
-        @size = size
-        @first_appearance_time = first_appearance_time
-      end
-    end
-
-    def to_s
-      "%s,%d,%s" % [@checksum, @size, ContentData.format_time(@first_appearance_time)]
-    end
-
-    def ==(other)
-      return (self.checksum.eql? other.checksum and
-              self.size.eql? other.size and
-              self.first_appearance_time.to_i.eql? other.first_appearance_time.to_i)
-    end
-  end
-
-  class ContentInstance
-    attr_reader :checksum, :size, :server_name, :device, :full_path, :modification_time
-
-    def initialize(checksum, size, server_name, device, full_path, modification_time, content_instance_serializer = nil)
-      if content_instance_serializer != nil
-        if (content_instance_serializer.checksum == nil)
-          raise ArgumentError.new("checksum have to be defined")
-        else
-          @checksum = content_instance_serializer.checksum
-        end
-        if (content_instance_serializer.size == nil)
-          raise ArgumentError.new("size have to be defined")
-        else
-          @size = content_instance_serializer.size
-        end
-        if (content_instance_serializer.modification_time == nil)
-          raise ArgumentError.new("modification_time have to be defined")
-        else
-          @modification_time = ContentData.parse_time(content_instance_serializer.modification_time)
-        end
-        if (content_instance_serializer.server_name == nil)
-          raise ArgumentError.new("server_name have to be defined")
-        else
-          @server_name = content_instance_serializer.server_name
-        end
-        if (content_instance_serializer.device == nil)
-          raise ArgumentError.new("device have to be defined")
-        else
-          @device = content_instance_serializer.device
-        end
-        if (content_instance_serializer.full_path == nil)
-          raise ArgumentError.new("full_path have to be defined")
-        else
-          @full_path = content_instance_serializer.full_path
-        end
-      else
-        @checksum = checksum
-        @size = size
-        @server_name = server_name
-        @device = device
-        @full_path = full_path
-        @modification_time = modification_time
-      end
-    end
-
-    def global_path
-      ContentInstance.instance_global_path(@server_name, @full_path)
-    end
-
-    def ContentInstance.instance_global_path(server_name, full_path)
-      "%s:%s" % [server_name, full_path]
-    end
-
-    def to_s
-      "%s,%d,%s,%s,%s,%s" % [@checksum, @size, @server_name,
-        @device, @full_path, ContentData.format_time(@modification_time)]
-    end
-
-    def ==(other)
-      return (self.checksum.eql? other.checksum and
-              self.size.eql? other.size and
-              self.server_name.eql? other.server_name and
-              self.device.eql? other.device and
-              self.full_path.eql? other.full_path and
-              self.modification_time.to_i.eql? other.modification_time.to_i)
-    end
-  end
-
-  # Unfortunately this class is used as mutable for now. So need to be carefull.
-  # TODO(kolman): Make this class imutable, but add indexing structure to it.
-  # TODO(kolman): Add wrapper to the class to enable dynamic content data
-  # (with easy access indexes)
+  # Content Data(CD) object holds files information as contents and instances
+  # Files info retrieved from hardware: checksum, size, time modification, server, device and path
+  # Those attributes are divided into content and instance attributes:
+  #   unique checksum, size are content attributes
+  #   time modification, server, device and path are instance attributes
+  # The relationship between content and instances is 1:many meaning that
+  # a content can have instances in many servers.
+  # content also has time attribute, which has the value of the time of the first instance.
+  # This can be changed by using unify_time method  which sets all time attributes for a content and it's
+  # instances to the min time off all.
+  # Different files(instances) with same content(checksum), are grouped together under that content.
+  # Interface methods include:
+  #   iterate over contents and instances info,
+  #   unify time, add/remove instance, queries, merge, remove directory and more.
+  # Content info data structure:
+  #   @contents_info = { Checksum -> [size, *instances*, content_modification_time] }
+  #     *instances* = {'server,device,path' -> instance_modification_time }
+  # Notes:
+  #   1. content_modification_time is the instance_modification_time of the first
+  #      instances which was added to @contents_info
   class ContentData
-    attr_reader :contents, :instances
 
-    # @param content_data_serializer_str [String]
-    def initialize(copy = nil)
-      if copy.nil?
-        @contents = Hash.new # key is a checksum , value is a refernce to the Content object
-        @instances = Hash.new  # key is an instance global path , value is a reference to the ContentInstance object
+    def initialize(other = nil)
+      if other.nil?
+        @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
       else
-        # Regenerate only the hashes, the values are immutable.
-        @contents = copy.contents.clone
-        @instances = copy.instances.clone
+        @contents_info = other.clone_contents_info
       end
     end
 
-    def add_content(content)
-      @contents[content.checksum] = content
+    # getting a cloned data base
+    def clone_contents_info
+      @contents_info.keys.inject({}) { |clone_contents_info, checksum|
+        instances = @contents_info[checksum]
+        size = instances[0]
+        instances_db_cloned = instances[1].clone  # this shallow clone will work
+        content_time = instances[2]
+        clone_contents_info[checksum] = [size,
+                              instances_db_cloned,
+                              content_time]
+        clone_contents_info
+      }
     end
 
-    def add_instance(instance)
-      if (not @contents.key?(instance.checksum))
-        Log.warning sprintf("Adding instance while it's" +
-                            " checksum %s does not exists.\n", instance.checksum)
-        Log.warning sprintf("%s\n", instance.to_s)
-        return false
-      elsif (@contents[instance.checksum].size != instance.size)
+    # iterator over @contents_info data structure (not including instances)
+    # block is provided with: checksum, size and content modification time
+    def each_content(&block)
+      @contents_info.keys.each { |checksum|
+        content_val = @contents_info[checksum]
+        # provide checksum, size and content modification time to the block
+        block.call(checksum,content_val[0], content_val[2])
+      }
+    end
+
+    # iterator over @contents_info data structure (including instances)
+    # block is provided with: checksum, size, content modification time,
+    #   instance modification time, server, device and file path
+    def each_instance(&block)
+      @contents_info.keys.each { |checksum|
+        content_info = @contents_info[checksum]
+        content_info[1].keys.each {|location|
+          # provide checksum, size, content modification time,instance modification time,
+          #   server, device and path to the block
+          instance_modification_time = content_info[1][location]
+          location_arr = location.split(',')
+          block.call(checksum,content_info[0], content_info[2], instance_modification_time,
+                     location_arr[0], location_arr[1], location_arr[2])
+        }
+      }
+    end
+
+    def contents_size()
+      @contents_info.size
+    end
+
+    def instances_size(checksum)
+      content_info = @contents_info[checksum]
+      return 0 if content_info.nil?
+      content_info[1].size
+    end
+
+    def instance_mod_time(checksum, location)
+      content_info = @contents_info[checksum]
+      return nil if content_info.nil?
+      instances = content_info[1]
+      instance_time = instances[location]
+    end
+
+    def add_instance(checksum, size, server, device, path, modification_time)
+      location = "%s,%s,%s" % [server, device, path]
+      content_info = @contents_info[checksum]
+      if content_info.nil?
+        @contents_info[checksum] = [size,
+                                    {location => modification_time},
+                                    modification_time]
+      elsif size != content_info[0]
         Log.warning 'File size different from content size while same checksum'
-        Log.warning instance.to_s
-        return false
+        Log.warning sprintf("instance location:'%s'\n", location)
+        Log.warning sprintf("instance mod time:'%d'\n", modification_time)
+      else
+        #override file if needed
+        instances = content_info[1]
+        instances[location] = modification_time
       end
-
-      key = instance.global_path
-
-      #override file if needed
-      @instances[key] = instance
     end
 
     def empty?
-      @contents.empty?
+      @contents_info.empty?
     end
 
     def content_exists(checksum)
-      @contents.key? checksum
+      @contents_info.has_key?(checksum)
     end
 
-    # TODO(kolman): The semantics of thir merge is merge! change in all file.
-    def merge(content_data)
-      content_data.contents.values.each { |content|
-        add_content(content)
-      }
-      content_data.instances.values.each { |instance|
-        add_instance(instance)
-      }
+
+    # TODO (genadyp) consider about using hash for optional defining of parameters
+    def instance_exists(path, server, device, checksum=nil)
+      location = "%s,%s,%s" % [server, device, path]
+      if checksum.nil?
+        @contents_info.values.any? { |content_db|
+          content_db[1].has_key?(location)
+        }
+      else
+        content_info = @contents_info[checksum]
+        return false if content_info.nil?
+        content_info[1].has_key?(location)
+      end
+    end
+
+
+    # removes an instance from known content (faster then unknown content)
+    # remove also the content, if content becomes empty
+    def remove_instance(location, checksum=nil)
+      if checksum.nil?
+        @contents_info.keys.each { |checksum|
+          instances =  @contents_info[checksum][1]
+          instances.delete(location)
+          @contents_info.delete(checksum) if instances.empty?
+        }
+      else
+        content_info = @contents_info[checksum]
+        unless content_info.nil?
+          instances =  content_info[1]
+          instances.delete(location)
+          @contents_info.delete(checksum) if instances.empty?
+        end
+      end
     end
 
     def ==(other)
-      return false if other == nil
-      return false unless @contents.size == other.contents.size
-      return false unless @instances.size == other.instances.size
+      return false if other.nil?
+      return false if @contents_info.size != other.contents_size
+      other.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+        local_content_info = @contents_info[checksum]
+        return false if local_content_info.nil?
+        return false if local_content_info[0] != size
+        return false if local_content_info[2] != content_mod_time
+        #check instances
+        local_instances =  local_content_info[1]
+        return false if other.instances_size(checksum) != local_instances.size
+        location = "%s,%s,%s" % [server, device, path]
+        local_instance_mod_time = local_instances[location]
+        return false if local_instance_mod_time.nil?
+        return false if local_instance_mod_time != instance_mod_time
+      }
+      true
+    end
 
-      @contents.keys.each { |key|
-        if (@contents[key] != other.contents[key])
-          Log.info @contents[key].first_appearance_time.to_i
-          Log.info other.contents[key].first_appearance_time.to_i
-          return false
-        end
-      }
-      @instances.keys.each { |key|
-        if (@instances[key] != other.instances[key])
-          return false
-        end
-      }
-      return true
+    def remove_content(checksum)
+      @contents_info.delete(checksum)
     end
 
     def to_s
-      ret = ""
-      ret << @contents.length.to_s << "\n"
-      @contents.each_value { |content|
-        ret << content.to_s << "\n"
+      return_str = ""
+      contents_str = ""
+      instances_str = ""
+      instances_counter = 0
+      each_content { |checksum, size, content_mod_time|
+        contents_str << "%s,%d,%d\n" % [checksum, size, content_mod_time]
       }
-      ret << @instances.length.to_s << "\n"
-      @instances.each_value { |instance|
-        ret << instance.to_s << "\n"
+      instances_counter = 0
+      each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+        instances_counter += 1
+        instances_str <<  "%s,%d,%s,%s,%s,%d\n" % [checksum, size, server, device, path, instance_mod_time]
       }
-      return ret
+      return_str << "%d\n" % [@contents_info.size]
+      return_str << contents_str
+      return_str << "%d\n" % [instances_counter]
+      return_str << instances_str
+      return_str
+    end
+
+    def to_a
+      returned_arr = []
+      @contents_info.keys.each { |checksum|
+        instance = @contents_info[checksum]
+        returned_arr.push(checksum)
+        returned_arr.push(instance[0])
+        instances_keys = instance[1].keys
+        #returned_arr.push(instances_keys.size)
+        instances_keys.each { |path|
+          returned_arr.push(path)
+          returned_arr.push(instance[1][path])
+        }
+        returned_arr.push(instance[2])
+      }
+      returned_arr
+    end
+
+    def from_a(arr)
+      @contents_info = nil and return if arr.nil?
+      @contents_info = {}
+      tmp_ind = 0;
+      while tmp_ind < arr.size
+        checksum = arr[tmp_ind]
+        content_size = arr[tmp_ind+1]
+        next_elem = arr[tmp_ind+2]
+        tmp_ind+=2
+        instance_db = Hash.new
+        while next_elem.instance_of?(String)
+          instance_full_path = next_elem
+          instance_time = arr[tmp_ind+1]
+          next_elem = arr[tmp_ind+2]
+          tmp_ind+=2
+          instance_db[instance_full_path]=instance_time
+        end
+        content_time = next_elem
+        @contents_info[checksum] = [content_size,instance_db, content_time]
+        tmp_ind+=1
+      end
     end
 
     def to_file(filename)
@@ -214,17 +246,19 @@ module ContentData
 
     def from_file(filename)
       lines = IO.readlines(filename)
-      i = 0
-      number_of_contents = lines[i].to_i
-      i += 1
-      number_of_contents.times {
-        parameters = lines[i].split(",")
-        add_content(Content.new(parameters[0],
-                                parameters[1].to_i,
-                                ContentData.parse_time(parameters[2])))
-        i += 1
-      }
+      #i = 0
+      #number_of_contents = lines[i].to_i
+      #i += 1
+      #number_of_contents.times {
+      #  parameters = lines[i].split(",")
 
+      #  add_content(parameters[0],
+      #              parameters[1].to_i,
+      #              parameters[2].to_i)
+      #  i += 1
+      #}
+      number_of_contents = lines[0].to_i
+      i = 1 + number_of_contents
       number_of_instances = lines[i].to_i
       i += 1
       number_of_instances.times {
@@ -239,165 +273,39 @@ module ContentData
           end
         end
 
-        add_instance(ContentInstance.new(parameters[0],
-                                         parameters[1].to_i,
-                                         parameters[2],
-                                         parameters[3],
-                                         parameters[4],
-                                         ContentData.parse_time(parameters[5])))
+        add_instance(parameters[0],
+                     parameters[1].to_i,
+                     parameters[2],
+                     parameters[3],
+                     parameters[4],
+                     parameters[5].to_i)
         i += 1
       }
     end
 
-    def self.parse_time time_str
-      return nil unless time_str.instance_of? String
-      seconds_from_epoch = Integer time_str  # Not using to_i here because it does not check string is integer.
-      time = Time.at seconds_from_epoch
-    end
-
-    def self.format_time(time)
-      return nil unless time.instance_of?Time
-      str = time.to_i.to_s
-      return str
-    end
-
-    # merges content data a and content data b to a new content data and returns it.
-    def self.merge(a, b)
-      return b unless not a.nil?
-      return a unless not b.nil?
-
-      return nil unless a.instance_of?ContentData
-      return nil unless b.instance_of?ContentData
-
-      ret = ContentData.new
-      ret.merge(a)
-      ret.merge(b)
-
-      return ret
-    end
-
-    # removed content data a from content data b and returns the new content data.
-    def self.remove(a, b)
-      return nil unless a.instance_of?ContentData
-      return nil unless b.instance_of?ContentData
-
-      ret = ContentData.new
-
-      b.contents.values.each { |content|
-        #print "%s - %s\n" % [content.checksum, a.content_exists(content.checksum).to_s]
-        ret.add_content(content) unless a.content_exists(content.checksum)
-      }
-
-      #Log.info "kaka"
-
-      b.instances.values.each { |instance|
-        #print "%s - %s\n" % [instance.checksum, a.content_exists(instance.checksum).to_s]
-        ret.add_instance(instance) unless a.content_exists(instance.checksum)
-      }
-
-      #print "kuku %s" % ret.contents.size.to_s
-      #print "kuku %s" % ret.instances.size.to_s
-      return ret
-    end
-
-    def self.remove_instances(a, b)
-      return nil unless a.instance_of?ContentData
-      return nil unless b.instance_of?ContentData
-
-      ret = ContentData.new
-      b.instances.values.each do |instance|
-        if !a.instances.key?(instance.global_path)
-          ret.add_content(b.contents[instance.checksum])
-          ret.add_instance(instance)
-        end
-      end
-      return ret
-    end
-
-    def self.remove_directory(cd, global_dir_path)
-      return nil unless cd.instance_of?ContentData
-
-      ret = ContentData.new
-      cd.instances.values.each do |instance|
-        Log.debug3("global path to check: #{global_dir_path}")
-        Log.debug3("instance global path: #{instance.global_path}")
-        if instance.global_path.scan(global_dir_path).size == 0
-          Log.debug3("Adding instance.")
-          ret.add_content(cd.contents[instance.checksum])
-          ret.add_instance(instance)
-        end
-      end
-      return ret
-    end
-
-    # returns the common content in both a and b
-    def self.intersect(a, b)
-      b_minus_a = ContentData.remove(a, b)
-      return ContentData.remove(b_minus_a, b)
-    end
-
-    # unify time for all entries with same content to minimal time
-    def self.unify_time(db)
-      mod_db = ContentData.new # resulting ContentData that will consists objects with unified time
-      checksum2time = Hash.new # key=checksum value=min_time_for_this_checksum
-      checksum2instances = Hash.new # key=checksum value=array_of_instances_with_this_checksum (Will be replaced with ContentData method)
-
-      # populate tables with given ContentData entries
-      db.instances.each_value do |instance|
-        checksum = instance.checksum
-        time = instance.modification_time
-
-        unless (checksum2instances.has_key? checksum)
-          checksum2instances[checksum] = []
-        end
-        checksum2instances[checksum] << instance
-
-        if (not checksum2time.has_key? checksum)
-          checksum2time[checksum] = time
-        elsif ((checksum2time[checksum] <=> time) > 0)
-          checksum2time[checksum] = time
-        end
-      end
-
-      # update min time table with time information from contents
-      db.contents.each do |checksum, content|
-        time = content.first_appearance_time
-        if (not checksum2time.has_key? checksum)
-          checksum2time[checksum] = time
-        elsif ((checksum2time[checksum] <=> time) > 0)
-          checksum2time[checksum] = time
-        end
-      end
-
-      # add content entries to the output table. in need of case update time field with found min time
-      db.contents.each do |checksum, content|
-        time = checksum2time[checksum]
-        if ((content.first_appearance_time <=> time) == 0)
-          mod_db.add_content(content)
-        else
-          mod_db.add_content(Content.new(checksum, content.size, time))
-        end
-      end
-
-      # add instance entries to the output table. in need of case update time field with found min time
-      checksum2instances.each do |checksum, instances|
-        time = checksum2time[checksum]
-        instances.each do |instance|
-          if ((instance.modification_time <=> time) == 0)
-            mod_db.add_instance(instance)
-          else # must be bigger then found min time
-            mod_instance = ContentInstance.new(instance.checksum, instance.size,
-                                               instance.server_name, instance.device,
-                                               instance.full_path, time)
-            mod_db.add_instance(mod_instance)
+    # for each content, all time fields (content and instances) are replaced with the
+    # min time found, while going through all time fields.
+    def unify_time()
+      @contents_info.keys.each { |checksum|
+        content_info = @contents_info[checksum]
+        min_time_per_checksum = content_info[2]
+        instances = content_info[1]
+        instances.keys.each { |location|
+          instance_mod_time = instances[location]
+          if instance_mod_time < min_time_per_checksum
+            min_time_per_checksum = instance_mod_time
           end
-        end
-      end
-      mod_db
+        }
+        # update all instances with min time
+        instances.keys.each { |location|
+          instances[location] = min_time_per_checksum
+        }
+        # update content time with min time
+        content_info[2] = min_time_per_checksum
+      }
     end
-
     # Validates index against file system that all instances hold a correct data regarding files
-    # that they represrents.
+    # that they represents.
     #
     # There are two levels of validation, controlled by instance_check_level system parameter:
     # * shallow - quick, tests instance for file existence and attributes.
@@ -416,47 +324,67 @@ module ContentData
 
       # used to process method parameters centrally
       process_params = Proc.new do |values|
-        # values is a Hash with keys: :content, :instance and value appropriate to key
-        if param_exists.call :failed
-          unless values[:content].nil?
-            params[:failed].add_content values[:content]
-          end
-          unless values[:instance].nil?
-            # appropriate content should be already added
-            params[:failed].add_instance values[:instance]
+        if param_exists.call(:failed)
+          info = values[:details]
+          unless info.nil?
+            checksum = info[0]
+            content_mtime = info[1]
+            size = info[2]
+            inst_mtime = info[3]
+            server = info[4]
+            device = info[5]
+            file_path = info[6]
+            params[:failed].add_instance(checksum, size, server, device, file_path, inst_mtime)
           end
         end
       end
 
       is_valid = true
-      instances.each_value do |instance|
-        unless check_instance instance
-          is_valid = false
+      @contents_info.keys.each { |checksum|
+        instances = @contents_info[checksum]
+        content_size = instances[0]
+        content_mtime = instances[2]
+        instances[1].keys.each { |unique_path|
+          instance_mtime = instances[1][unique_path]
+          instance_info = [checksum, content_mtime, content_size, instance_mtime]
+          instance_info.concat(unique_path.split(','))
+          unless check_instance(instance_info)
+            is_valid = false
 
-          unless params.nil? || params.empty?
-            process_params.call :content => contents[instance.checksum], :instance => instance
+            unless params.nil? || params.empty?
+              process_params.call({:details => instance_info})
+            end
           end
-        end
-      end
-
+        }
+      }
       is_valid
     end
 
-    def shallow_check(instance)
-      path = instance.full_path
+    # instance_info is an array:
+    #   [0] - checksum
+    #   [1] - content time
+    #   [2] - content size
+    #   [3] - instance mtime
+    #   [4] - server name
+    #   [5] - device name
+    #   [6] - file path
+    def shallow_check(instance_info)
+      path = instance_info[6]
+      size = instance_info[2]
+      instance_mtime = instance_info[3]
       is_valid = true
 
       if (File.exists?(path))
-        if File.size(path) != instance.size
+        if File.size(path) != size
           is_valid = false
-          err_msg = "#{path} size #{File.size(path)} differs from indexed size #{instance.size}"
+          err_msg = "#{path} size #{File.size(path)} differs from indexed size #{size}"
           Log.warning err_msg
         end
         #if ContentData.format_time(File.mtime(path)) != instance.modification_time
-        if File.mtime(path).to_i != instance.modification_time.to_i
+        if File.mtime(path).to_i != instance_mtime
           is_valid = false
-          err_msg = "#{path} modification time #{File.mtime(path)} differs from " \
-            + "indexed #{instance.modification_time}"
+          err_msg = "#{path} modification time #{File.mtime(path).to_i} differs from " \
+            + "indexed #{instance_mtime}"
           Log.warning err_msg
         end
       else
@@ -467,14 +395,23 @@ module ContentData
       is_valid
     end
 
-    def deep_check(instance)
-      if shallow_check(instance)
-        path = instance.full_path
+    # instance_info is an array:
+    #   [0] - checksum
+    #   [1] - content time
+    #   [2] - content size
+    #   [3] - instance mtime
+    #   [4] - server name
+    #   [5] - device name
+    #   [6] - file path
+    def deep_check(instance_info)
+      if shallow_check(instance_info)
+        instance_checksum = instance_info[0]
+        path = instance_info[6]
         current_checksum = FileIndexing::IndexAgent.get_checksum(path)
-        if instance.checksum == current_checksum
+        if instance_checksum == current_checksum
           true
         else
-          err_msg = "#{path} checksum #{current_checksum} differs from indexed #{instance.checksum}"
+          err_msg = "#{path} checksum #{current_checksum} differs from indexed #{instance_checksum}"
           Log.warning err_msg
           false
         end
@@ -486,13 +423,13 @@ module ContentData
     # @raise [ArgumentError] when instance_check_level is incorrect
     def check_instance(instance)
       case Params['instance_check_level']
-      when 'deep'
-        deep_check instance
-      when 'shallow'
-        shallow_check instance
-      else
-        # TODO remove it when params will support set of values
-        throw ArgumentError.new "Unsupported check level #{Params['instance_check_level']}"
+        when 'deep'
+          deep_check instance
+        when 'shallow'
+          shallow_check instance
+        else
+          # TODO remove it when params will support set of values
+          throw ArgumentError.new "Unsupported check level #{Params['instance_check_level']}"
       end
     end
 
@@ -554,5 +491,117 @@ module ContentData
     end
 
     private :shallow_check, :deep_check, :check_instance, :get_query
+  end
+
+  # merges content data a and content data b to a new content data and returns it.
+  def self.merge(a, b)
+    return ContentData.new(a) if b.nil?
+    return ContentData.new(b) if a.nil?
+    c = ContentData.new(b)
+    # Add A instances to content data c
+    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+      c.add_instance(checksum, size, server, device, path, instance_mod_time)
+    }
+    c
+  end
+
+  def self.merge_override_b(a, b)
+    return ContentData.new(a) if b.nil?
+    return ContentData.new(b) if a.nil?
+    # Add A instances to content data B
+    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+      b.add_instance(checksum, size, server, device, path, instance_mod_time)
+    }
+    b
+  end
+
+  # B - A : Remove contents of A from B and return the new content data.
+  # instances are ignored
+  # e.g
+  # A db:
+  #    Content_1 ->
+  #                   Instance_1
+  #                   Instance_2
+  #
+  #    Content_2 ->
+  #                   Instance_3
+  #
+  # B db:
+  #    Content_1 ->
+  #                   Instance_1
+  #                   Instance_2
+  #
+  #    Content_2 ->
+  #                   Instance_3
+  #                   Instance_4
+  #    Content_3 ->
+  #                   Instance_5
+  # B-A db:
+  #   Content_3 ->
+  #                   Instance_5
+  def self.remove(a, b)
+    return nil if b.nil?
+    return ContentData.new(b) if a.nil?
+    c = ContentData.new(b)  # create new cloned content C from B
+    # remove contents of A from newly cloned content A
+    a.each_content { |checksum, size, content_mod_time|
+      c.remove_content(checksum)
+    }
+    c
+  end
+
+  # B - A : Remove instances of A content from B content data B and return the new content data.
+  # If all instances are removed then the content record itself will be removed
+  # e.g
+  # A db:
+  #    Content_1 ->
+  #                   Instance_1
+  #                   Instance_2
+  #
+  #    Content_2 ->
+  #                   Instance_3
+  #
+  # B db:
+  #    Content_1 ->
+  #                   Instance_1
+  #                   Instance_2
+  #
+  #    Content_2 ->
+  #                   Instance_3
+  #                   Instance_4
+  # B-A db:
+  #   Content_2 ->
+  #                   Instance_4
+  def self.remove_instances(a, b)
+    return nil if b.nil?
+    return ContentData.new(b) if a.nil?
+    c = ContentData.new(b)  # create new cloned content C from B
+    # remove contents of A from newly cloned content A
+    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+      location = "%s,%s,%s" % [server, device, path]
+      c.remove_instance(location, checksum)
+    }
+    c
+  end
+
+  def self.remove_directory(content_data, dir_to_remove)
+    return nil if content_data.nil?
+    result_content_data = ContentData.new()
+    content_data.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+      location = "%s,%s,%s" % [server, device, path]
+      if location.scan(dir_to_remove).size == 0
+        # instance location is valid
+        result_content_data.add_instance(checksum, size, server, device, path, instance_mod_time)
+      end
+    }
+    result_content_data
+  end
+
+  # returns the common content in both a and b
+  def self.intersect(a, b)
+    return nil if a.nil?
+    return nil if b.nil?
+    b_minus_a = remove(a, b)
+    b_minus_b_minus_a  = remove(b_minus_a, b)
   end
 end
