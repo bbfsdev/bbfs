@@ -22,7 +22,9 @@ module Log
 
   # Global params
   Params.integer('log_debug_level', 0 , \
-      'Log level. 0 will log only INFO messages. Other value, will log all DEBUG messages as well')
+      'Verbosity of logging. 0 will log only INFO messages. Other value, will log all DEBUG messages as well.')
+  Params.boolean('log_flush_each_message', true, \
+      'If true then File and Console outputters will be flushed for each message.')
   Params.boolean('log_write_to_file', true , \
       'If true then the logger will write the messages to a file.')
   Params.path('log_file_name', "~/.bbfs/log/#{Log.executable_name}.log4r" , \
@@ -76,7 +78,7 @@ module Log
       email_outputter = Log4r::EmailOutputter.new('email_log',
                                                   :server => 'smtp.gmail.com',
                                                   :port => 587,
-                                                  :subject => "Error happened in #{server_name} server run by #{ENV['USER']}.",
+                                                  :subject => "Error happened at #{server_name} server run by #{ENV['USER']}. Service_name is #{Params['service_name']}",
                                                   :acct => Params['from_email'],
                                                   :from => Params['from_email'],
                                                   :passwd => Params['from_email_password'],
@@ -108,31 +110,37 @@ module Log
   # Log warning massages
   def Log.warning(msg)
     @log4r.warn(msg_with_caller(msg))
+    Log.flush if Params['log_flush_each_message']
   end
 
   # Log error massages
   def Log.error(msg)
     @log4r.error(msg_with_caller(msg))
+    Log.flush if Params['log_flush_each_message']
   end
 
   # Log info massages
   def Log.info(msg)
     @log4r.info(msg_with_caller(msg))
+    Log.flush if Params['log_flush_each_message']
   end
 
   # Log debug level 1 massages
   def Log.debug1(msg)
     @log4r.debug(msg_with_caller(msg))
+    Log.flush if Params['log_flush_each_message']
   end
 
   # Log debug level 2 massages
   def Log.debug2(msg)
     @log4r.debug(msg_with_caller(msg))
+    Log.flush if Params['log_flush_each_message']
   end
 
   # Log debug level 3 massages
   def Log.debug3(msg)
     @log4r.debug(msg_with_caller(msg))
+    Log.flush if Params['log_flush_each_message']
   end
 
   # Flush email log
