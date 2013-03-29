@@ -11,3 +11,4 @@ gem 'win32-service', :platforms => [:mswin, :mingw]
 gem 'sinatra'
 gem 'thin'
 gem 'sys-uname', :platforms => [:mswin, :mingw]
+gem 'log4r'

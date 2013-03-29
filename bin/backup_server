@@ -15,4 +15,23 @@ require 'content_server'
 Params.init ARGV
 Log.init
 
-RunInBackground.run { ContentServer.run_backup_server }
+Thread.abort_on_exception = true  # TODO (genadyp) should be treated globally? by param for example.
+
+retries = 1  # number of attempts to run a server
+
+begin
+  RunInBackground.run { ContentServer.run_backup_server }
+rescue SystemExit, SignalException => exc
+  # TODO (genadyp) do we need to trap signals by types?
+  Log.error("Interrupt or Exit happened in #{Params['service_name']} server: #{exc.class}, " +
+            "stopping process.\nBacktrace:\n#{exc.backtrace.join("\n")}")
+  exit
+rescue Exception => exc
+  Log.error("Exception happened in #{Params['service_name']} server: #{exc.class}:#{exc.message}")
+  if retries > 0
+    Log.info("Restarting (retries:#{retries}).\nBacktrace:\n#{exc.backtrace.join("\n")}")
+  else
+    Log.info("Exiting...\nBacktrace:\n#{exc.backtrace.join("\n")}")
+  end
+  retries -= 1
+end while retries > 0
