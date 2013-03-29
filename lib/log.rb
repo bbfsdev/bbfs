@@ -68,7 +68,7 @@ module Log
     end
 
     #email setup
-    if Params['log_write_to_file']
+    if Params['log_write_to_email']
       server_name = `hostname`.strip
       email_outputter = Log4r::EmailOutputter.new('email_log',
                                                   :server => 'smtp.gmail.com',
@@ -133,7 +133,9 @@ module Log
 
   # Flush email log
   def Log.flush()
-    @log4r.outputters.each_outputter {|o| o.flush}
+    @log4r.outputters.each { |o|
+      o.flush unless o.is_a?(Log4r::EmailOutputter)
+    }
   end
 
   private_class_method(:msg_with_caller)
