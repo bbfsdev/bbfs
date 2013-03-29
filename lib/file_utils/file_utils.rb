@@ -198,67 +198,62 @@ module FileUtils
     #             There is no check what device they are belong - only the check of server name.
     #             It is a user responsibility (meanwhile) to provide a correct input
     #             If file has a modification time attribute that doesn't present in the input db,
-    #             then the assumption is that this file wasnt indexized and it will not be treated
-    #             (e.i. we do nothing with it)
-    def self.unify_time(db)
-      mod_db = ContentData::ContentData.unify_time(db)
-      mod_db.instances.each_value do |instance|
-        next unless db.instances.has_key? instance.global_path
-        if (File.exists?(instance.full_path))
-          file_mtime, file_size = File.open(instance.full_path) { |f| [f.mtime, f.size] }
-          Log.info "file:#{instance.full_path} file_mtime:#{file_mtime}."
-          Log.info "update mtime:#{instance.modification_time}"
-          Log.info "original instance mtime:#{db.instances[instance.global_path].modification_time}."
-          Log.info "unify instance mtime:#{instance.modification_time}."
-          Log.info "unify instance mtime:#{instance.modification_time.to_i}."
-          Log.info "Comparison: #{file_mtime <=> instance.modification_time}"
-          if (file_mtime == db.instances[instance.global_path].modification_time \
-                and file_size == instance.size \
-                and (file_mtime <=> instance.modification_time) > 0)
-            Log.info ("Comparison success.")
-            File.utime File.atime(instance.full_path), instance.modification_time, instance.full_path
-            file_mtime = File.open(instance.full_path) { |f| f.mtime }
-            Log.info "file mtime:#{file_mtime}."
-            Log.info "file mtime:#{file_mtime.to_i}."
+      #             then the assumption is that this file wasnt indexized and it will not be treated
+      #             (e.i. we do nothing with it)
+      def self.unify_time(content_data)
+        orig_content_data = ContentData::ContentData.new(content_data)
+        content_data.unify_time
+        content_data.each_instance { |checksum, size, content_mod_time, unified_inst_mod_time, server, device, path|
+          location = "%s,%s,%s" % [server, device, path]
+          orig_inst_mod_time = orig_content_data.instance_mod_time(checksum, location)
+          file_mtime, file_size = File.open(path) { |f| [f.mtime, f.size] }
+          Log.info "file:#{path} file_mtime:#{file_mtime}."
+          Log.info "update mtime:#{unified_inst_mod_time}"
+          Log.info "original instance mtime:#{orig_inst_mod_time}."
+          Log.info "unify instance mtime:#{unified_inst_mod_time}."
+          Log.info "Comparison: Real file = unified? #{file_mtime.to_i == unified_inst_mod_time}"
+          if (file_mtime.to_i == orig_inst_mod_time) \
+                and file_size == size \
+                and (file_mtime.to_i != unified_inst_mod_time)
+            Log.info ("Comparison results: File actual time is same as instance time before unification. Need to modify file time")
+            File.utime(File.atime(path), unified_inst_mod_time, path)
+            file_mtime = File.open(path) { |f| f.mtime }
+            Log.info "new file mtime:#{file_mtime}."
+            Log.info "new file mtime in seconds:#{file_mtime.to_i}."
           end
-        end
+        }
+        content_data
       end
-      mod_db
-    end
 
-    # Creates directory structure and symlinks with ref_cd structure to the base_cd files and dest as a root dir
-    # Parameters: ref_cd [ContentData]
-    #             base_cd [ContentData]
-    #             dest [String]
-    # Output: ContentData object consists of contents/instances from ref_cd that have no target in base_cd
-    def self.mksymlink(ref_cd, base_cd, dest)
-      # symlinks are not implemented in Windows
-      raise NotImplementedError.new if (RUBY_PLATFORM =~ /mingw/ or RUBY_PLATFORM =~ /ms/ or RUBY_PLATFORM =~ /win/)
+      # Creates directory structure and symlinks with ref_cd structure to the base_cd files and dest as a root dir
+      # Parameters: ref_cd [ContentData]
+      #             base_cd [ContentData]
+      #             dest [String]
+      # Output: ContentData object consists of contents/instances from ref_cd that have no target in base_cd
 
-      not_found = ContentData::ContentData.new
-      inverted_index = Hash.new
-      base_cd.instances.values.each{ |instance|
-        inverted_index[instance.checksum] = instance
-      }
+      def self.mksymlink(ref_cd, base_cd, dest)
+        # symlinks are not implemented in Windows
+        raise NotImplementedError.new if (RUBY_PLATFORM =~ /mingw/ or RUBY_PLATFORM =~ /ms/ or RUBY_PLATFORM =~ /win/)
 
-      warnings = Array.new
+        not_found = {}
+        not_found_cd = ContentData::ContentData.new
+        warnings = []
+        dest.chop! if (dest.end_with?("/") or dest.end_with?("\\"))
 
-      dest.chop! if (dest.end_with?("/") or dest.end_with?("\\"))
-
-      ref_cd.instances.values.each { |instance|
-        if inverted_index.key? instance.checksum
-          symlink_path = dest + instance.full_path
-          ::FileUtils.mkdir_p(File.dirname(symlink_path)) unless (Dir.exists?(File.dirname(symlink_path)))
-          File.symlink(inverted_index[instance.checksum].full_path, symlink_path)
-        else
-          not_found.add_content(ref_cd.contents[instance.checksum])
-          not_found.add_instance(instance)
-          warnings << "Warning: base content does not contains:'%s'" % instance.checksum
-        end
-      }
-      Log.warning (warnings)
-      return not_found
-    end
+        ref_cd.each_instance { |checksum, size, content_mod_time, inst_mod_time, server, device, path|
+          if base_cd.content_exists(checksum)
+            symlink_path = dest + path
+            ::FileUtils.mkdir_p(File.dirname(symlink_path)) unless (Dir.exists?(File.dirname(symlink_path)))
+            File.symlink(path, symlink_path)
+          else
+            # add instance to not_found cd
+            not_found_cd.add_instance(checksum, size, server, device, path, inst_mod_time)
+            warnings << "Warning: base content does not contains:'%s'" % checksum
+          end
+        }
+        Log.warning (warnings)
+        not_found_cd
+      end
   end
 
 end

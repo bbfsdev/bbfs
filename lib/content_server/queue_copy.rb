@@ -51,20 +51,19 @@ module ContentServer
           Log.info 'Waiting on copy files events.'
           message_type, message_content = @copy_input_queue.pop
 
-          if message_type == :COPY_MESSAGE
-            Log.info "Copy file event: #{message_content}"
-            # Prepare source,dest map for copy.
-            message_content.instances.each { |key, instance|
-              # If not already sending.
-              if !@copy_prepare.key?(instance.checksum) || !@copy_prepare[instance.checksum][1]
-                @copy_prepare[instance.checksum] = [instance.full_path, false]
-                Log.info("Sending ack for: #{instance.checksum}")
-                @backup_tcp.send_obj([:ACK_MESSAGE, [instance.checksum, Time.now.to_i]])
-              end
-            }
-          elsif message_type == :ACK_MESSAGE
-            # Received ack from backup, copy file if all is good.
-            # The timestamp is of local content server! not backup server!
+            if message_type == :COPY_MESSAGE
+              Log.info "Copy file event: #{message_content}"
+              # Prepare source,dest map for copy.
+              message_content.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+                if !@copy_prepare.key?(checksum) || !@copy_prepare[checksum][1]
+                  @copy_prepare[checksum] = [path, false]
+                  Log.info("Sending ack for: #{checksum}")
+                  @backup_tcp.send_obj([:ACK_MESSAGE, [checksum, Time.now.to_i]])
+                end
+              }
+            elsif message_type == :ACK_MESSAGE
+              # Received ack from backup, copy file if all is good.
+              # The timestamp is of local content server! not backup server!
             timestamp, ack, checksum = message_content
 
             Log.info("Ack (#{ack}) received for: #{checksum}, timestamp: #{timestamp} " \

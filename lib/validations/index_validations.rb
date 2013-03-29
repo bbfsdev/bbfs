@@ -35,16 +35,11 @@ module Validations
       end
 
       # used to process method parameters centrally
-      process_params = Proc.new do |values|
-        # values is a Hash with keys: :content, :instance and value appropriate to key
-        if param_exists.call :failed
-          unless values[:content].nil?
-            params[:failed].add_content values[:content]
-          end
-          unless values[:instance].nil?
-            # appropriate content should be already added
-            params[:failed].add_instance values[:instance]
-          end
+      # TODO consider more convenient form of parameters
+      # TODO code duplication with ContentData::validate
+      process_params = Proc.new do |checksum, content_mtime, size, instance_mtime, server, device, path|
+        if param_exists.call(:failed)
+          params[:failed].add_instance(checksum, size, server, device, path, instance_mtime)
         end
       end
 
@@ -59,21 +54,18 @@ module Validations
       # contains local instances corresponding to given remote index contents
       local_index_to_check = ContentData::ContentData.new
 
-      # check whether remote contents exist locally and add them for further validations
-      remote_index.contents.each_key do |checksum|
-        if local_index.content_exists checksum
-          local_index_to_check.add_content local_index.contents[checksum]
-        else
+      # check whether remote contents exist locally
+      remote_index.each_content do |checksum|
+        unless local_index.content_exists checksum
           is_valid = false
-          failed.add_content remote_index.contents[checksum]
           absent_checksums << checksum
         end
       end
 
-      # add instances of contents that should be check
-      local_index.instances.each_value do |instance|
-        if remote_index.content_exists instance.checksum
-          local_index_to_check.add_instance instance
+      # add instances of contents that should be check, i.e. exist in local
+      local_index.each_instance do |checksum, size, content_mtime, instance_mtime, server, device, path|
+        if remote_index.content_exists checksum
+          local_index_to_check.add_instance checksum, size, server, device, path, instance_mtime
         end
       end
 
@@ -83,14 +75,15 @@ module Validations
 
       # contains contents that have at least one valid local instance,
       # then also corresponding remote content defined valid
-      contents_with_succeeded_instances = ContentData::ContentData.remove_instances failed, local_index
+      contents_with_succeeded_instances = ContentData.remove_instances failed, local_index
 
       # write summary to log
       # TODO should be controlled from params?
-      failed.contents.each_key do |checksum|
-        if absent_checksums.include? checksum
+      absent_checksums.each do |checksum|
           Log.warning "Content #{checksum} is absent in the local file system"
-        elsif !contents_with_succeeded_instances.content_exists checksum
+      end
+      failed.each_content do |checksum|
+        if !contents_with_succeeded_instances.content_exists checksum
           # if checked content have no valid local instances
           # then content defined invalid
           Log.warning "Content #{checksum} is invalid in the local file system"
@@ -99,9 +92,9 @@ module Validations
 
       # if needed process output params
       unless params.nil? || params.empty?
-        remote_index.instances.each_value do |instance|
-          unless contents_with_succeeded_instances.content_exists instance.checksum
-            process_params.call :content => remote_index.contents[instance.checksum], :instance => instance
+        remote_index.each_instance do |checksum, size, content_mtime, instance_mtime, server, device, path|
+          unless contents_with_succeeded_instances.content_exists checksum
+            process_params.call checksum, content_mtime, size, instance_mtime, server, device, path
           end
         end
       end
