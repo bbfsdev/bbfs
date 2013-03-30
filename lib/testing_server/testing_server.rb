@@ -20,8 +20,6 @@ module TestingServer
   Params.string('local_master_content_data', nil, 'Local path to copy master server index file to.')
   Params.path('backup_content_data', '', 'Local path to index (content data) file.')
 
-  Params.string('to_email', nil, 'Destination email for updates.')
-
   Params.integer('sleep_seconds_after_file_generation', 120, '')
 
   Params.integer('email_delay_in_seconds', 60*60*6, 'Number of seconds before sending email again.')
