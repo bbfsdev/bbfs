@@ -127,20 +127,26 @@ module Log
 
   # Log debug level 1 massages
   def Log.debug1(msg)
-    @log4r.debug(msg_with_caller(msg))
-    Log.flush if Params['log_flush_each_message']
+    if Params['log_debug_level'] >= 1
+      @log4r.debug(msg_with_caller(msg))
+      Log.flush if Params['log_flush_each_message']
+    end
   end
 
   # Log debug level 2 massages
   def Log.debug2(msg)
-    @log4r.debug(msg_with_caller(msg))
-    Log.flush if Params['log_flush_each_message']
+    if Params['log_debug_level'] >= 2
+      @log4r.debug(msg_with_caller(msg))
+      Log.flush if Params['log_flush_each_message']
+    end
   end
 
   # Log debug level 3 massages
   def Log.debug3(msg)
-    @log4r.debug(msg_with_caller(msg))
-    Log.flush if Params['log_flush_each_message']
+    if Params['log_debug_level'] >= 3
+      @log4r.debug(msg_with_caller(msg))
+      Log.flush if Params['log_flush_each_message']
+    end
   end
 
   # Flush email log
