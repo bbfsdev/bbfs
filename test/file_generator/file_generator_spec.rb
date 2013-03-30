@@ -8,7 +8,6 @@ module FileGenerator
   module Spec
     describe 'FileGenerator::run' do
       before(:each) do
-        Params['file_size_in_mb'] = 50
         Params['total_created_directories'] = 1
         Params['total_files_in_dir'] = 1
         Params['is_tot_files_in_dir_random'] = false
@@ -74,9 +73,9 @@ module FileGenerator
 
       it 'should create filename and put text in it' do
         file = mock('file')
-        File.should_receive(:open).with(any_args(), "w").and_yield(file)
+        File.should_receive(:open).with(any_args(), "w").exactly(2).times.and_yield(file)
         file.should_receive(:write).exactly(2).times
-
+        Params['total_files_in_dir'] = 2
         fg = FileGenerator.new()
         fg.run()
       end

@@ -1,17 +1,17 @@
 # Author: Yaron Dror (yaron.dror.bb@gmail.com)
 # Description: The file contains the code which implements the 'Log' module
-# Run: Add to 'require' list.
+# Run: Add to 'require' list. Execute Log.init
 
 require 'email'
 require 'log4r'
 require 'log4r/outputter/emailoutputter'
 
 require 'params'
+
 # Module: Log.
 # Abstruct: The Log is used to log info\warning\error\debug messages
-# Note: The logger will be automatically initialized if log_param_auto_start is true
-#       If log_param_auto_start is false then 'Log.init' method will be called
-#       on the first attempt to log.
+#           This module is actually a wrapper to log4r gem and serves
+#           as a central code to use the log utility.
 module Log
 
   #Auxiliary method to retrieve the executable name
@@ -21,7 +21,10 @@ module Log
   end
 
   # Global params
-  Params.integer('log_debug_level', 0 , 'Log level.')
+  Params.integer('log_debug_level', 0 , \
+      'Verbosity of logging. 0 will log only INFO messages. Other value, will log all DEBUG messages as well.')
+  Params.boolean('log_flush_each_message', true, \
+      'If true then File and Console outputters will be flushed for each message.')
   Params.boolean('log_write_to_file', true , \
       'If true then the logger will write the messages to a file.')
   Params.path('log_file_name', "~/.bbfs/log/#{Log.executable_name}.log4r" , \
@@ -31,9 +34,11 @@ module Log
   Params.boolean('log_write_to_email', false , \
       'If true then the logger will write the error and fatal messages to email.')
   Params.string('from_email', 'bbfsdev@gmail.com', 'From gmail address for update.')
-  Params.string('from_email_password', 'Only2Gether', 'From gmail password.')
+  Params.string('from_email_password', '', 'From gmail password.')
   Params.string('to_email', 'bbfsdev@gmail.com', 'Destination email for updates.')
 
+  #Should be called from executable right after params handling.
+  # Init Log level and set output to file,stdout and email according to configuration params.
   def Log.init
     @log4r = Log4r::Logger.new 'BBFS log'
     @log4r.trace = true
@@ -68,12 +73,12 @@ module Log
     end
 
     #email setup
-    if Params['log_write_to_file']
+    if Params['log_write_to_email']
       server_name = `hostname`.strip
       email_outputter = Log4r::EmailOutputter.new('email_log',
                                                   :server => 'smtp.gmail.com',
                                                   :port => 587,
-                                                  :subject => "Error happened in #{server_name} server run by #{ENV['USER']}.",
+                                                  :subject => "Error happened at #{server_name} server run by #{ENV['USER']}. Service_name is #{Params['service_name']}",
                                                   :acct => Params['from_email'],
                                                   :from => Params['from_email'],
                                                   :passwd => Params['from_email_password'],
@@ -90,12 +95,13 @@ module Log
     end
 
     # Write init message and user parameters
-    @log4r.info 'BBFS Log initialized.'  # log first data
+    @log4r.info('BBFS Log initialized.')  # log first data
     Params.get_init_messages().each { |msg|
       @log4r.info(msg)
     }
   end
 
+  # Auxiliary method to add the calling method to the message
   def Log.msg_with_caller(msg)
     /([a-zA-Z0-9\-_\.]+:\d+)/ =~ caller[1]
     $1 + ':' + msg
@@ -103,37 +109,60 @@ module Log
 
   # Log warning massages
   def Log.warning(msg)
+    Log.init if @log4r.nil?
     @log4r.warn(msg_with_caller(msg))
+    Log.flush if Params['log_flush_each_message']
   end
 
   # Log error massages
   def Log.error(msg)
+    Log.init if @log4r.nil?
     @log4r.error(msg_with_caller(msg))
+    Log.flush if Params['log_flush_each_message']
   end
 
   # Log info massages
   def Log.info(msg)
+    Log.init if @log4r.nil?
     @log4r.info(msg_with_caller(msg))
+    Log.flush if Params['log_flush_each_message']
   end
 
   # Log debug level 1 massages
   def Log.debug1(msg)
-    @log4r.debug(msg_with_caller(msg))
+    if Params['log_debug_level'] >= 1
+      Log.init if @log4r.nil?
+      @log4r.debug(msg_with_caller(msg))
+      Log.flush if Params['log_flush_each_message']
+    end
   end
 
   # Log debug level 2 massages
   def Log.debug2(msg)
-    @log4r.debug(msg_with_caller(msg))
+    if Params['log_debug_level'] >= 2
+      Log.init if @log4r.nil?
+      @log4r.debug(msg_with_caller(msg))
+      Log.flush if Params['log_flush_each_message']
+    end
   end
 
   # Log debug level 3 massages
   def Log.debug3(msg)
-    @log4r.debug(msg_with_caller(msg))
+    if Params['log_debug_level'] >= 3
+      Log.init if @log4r.nil?
+      @log4r.debug(msg_with_caller(msg))
+      Log.flush if Params['log_flush_each_message']
+    end
   end
 
   # Flush email log
   def Log.flush()
-    @log4r.outputters.each_outputter {|o| o.flush}
+    return if @log4r.nil?
+    @log4r.outputters.each { |o|
+      # Not flushing to email since this will cause empty emails to be sent
+      # Email is already configured to immediately send mail on ERROR|FATAL messages.
+      o.flush unless o.is_a?(Log4r::EmailOutputter)
+    }
   end
 
   private_class_method(:msg_with_caller)
