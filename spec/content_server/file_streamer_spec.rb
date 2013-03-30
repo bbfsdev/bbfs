@@ -62,7 +62,7 @@ module ContentServer
         Log.info('#3 start streaming.')
         streamer.start_streaming('da39a3ee5e6b4b0d3255bfef95601890afd80709', 'dummy')
         streamer.thread.join()
-        sleep Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 1
+        Log.flush
       end
     end
   end
