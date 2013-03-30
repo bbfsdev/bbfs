@@ -310,6 +310,7 @@ module ContentData
         content_info[2] = min_time_per_checksum
       }
     end
+
     # Validates index against file system that all instances hold a correct data regarding files
     # that they represents.
     #
@@ -468,7 +469,7 @@ module ContentData
 
       # FIXME add support for from/to for Strings
       if ((!from.nil? && !from.kind_of?(Numeric.new.class))\
-          || (!to.nil? && to.kind_of?(Numeric.new.class)))
+            || (!to.nil? && to.kind_of?(Numeric.new.class)))
         raise ArgumentError 'from and to options supported only for numeric values'
       end
 
@@ -496,7 +497,7 @@ module ContentData
       result_index
     end
 
-    private :shallow_check, :deep_check, :check_instance, :get_query
+    private :shallow_check, :deep_check, :check_instance
   end
 
   # merges content data a and content data b to a new content data and returns it.
