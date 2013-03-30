@@ -95,7 +95,7 @@ module Log
     end
 
     # Write init message and user parameters
-    @log4r.info 'BBFS Log initialized.'  # log first data
+    @log4r.info('BBFS Log initialized.')  # log first data
     Params.get_init_messages().each { |msg|
       @log4r.info(msg)
     }
@@ -109,18 +109,21 @@ module Log
 
   # Log warning massages
   def Log.warning(msg)
+    Log.init if @log4r.nil?
     @log4r.warn(msg_with_caller(msg))
     Log.flush if Params['log_flush_each_message']
   end
 
   # Log error massages
   def Log.error(msg)
+    Log.init if @log4r.nil?
     @log4r.error(msg_with_caller(msg))
     Log.flush if Params['log_flush_each_message']
   end
 
   # Log info massages
   def Log.info(msg)
+    Log.init if @log4r.nil?
     @log4r.info(msg_with_caller(msg))
     Log.flush if Params['log_flush_each_message']
   end
@@ -128,6 +131,7 @@ module Log
   # Log debug level 1 massages
   def Log.debug1(msg)
     if Params['log_debug_level'] >= 1
+      Log.init if @log4r.nil?
       @log4r.debug(msg_with_caller(msg))
       Log.flush if Params['log_flush_each_message']
     end
@@ -136,6 +140,7 @@ module Log
   # Log debug level 2 massages
   def Log.debug2(msg)
     if Params['log_debug_level'] >= 2
+      Log.init if @log4r.nil?
       @log4r.debug(msg_with_caller(msg))
       Log.flush if Params['log_flush_each_message']
     end
@@ -144,6 +149,7 @@ module Log
   # Log debug level 3 massages
   def Log.debug3(msg)
     if Params['log_debug_level'] >= 3
+      Log.init if @log4r.nil?
       @log4r.debug(msg_with_caller(msg))
       Log.flush if Params['log_flush_each_message']
     end
@@ -151,6 +157,7 @@ module Log
 
   # Flush email log
   def Log.flush()
+    return if @log4r.nil?
     @log4r.outputters.each { |o|
       # Not flushing to email since this will cause empty emails to be sent
       # Email is already configured to immediately send mail on ERROR|FATAL messages.
