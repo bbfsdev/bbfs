@@ -22,6 +22,7 @@ rescue SystemExit, SignalException => exc
   # TODO (genadyp) do we need to trap signals by types?
   Log.error("Interrupt or Exit happened in #{Params['service_name']} server: #{exc.class}, " +
             "stopping process.\nBacktrace:\n#{exc.backtrace.join("\n")}")
+  Log.flush
   exit
 rescue Exception => exc
   Log.error("Exception happened in #{Params['service_name']} server: #{exc.class}:#{exc.message}")
@@ -29,6 +30,7 @@ rescue Exception => exc
     Log.info("Restarting (retries:#{retries}).\nBacktrace:\n#{exc.backtrace.join("\n")}")
   else
     Log.info("Exiting...\nBacktrace:\n#{exc.backtrace.join("\n")}")
+    Log.flush
   end
   retries -= 1
 end while retries > 0
