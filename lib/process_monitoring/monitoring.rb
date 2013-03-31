@@ -17,9 +17,15 @@ module Monitoring
   Params.string('gmail_username', nil, 'Backup server gmail username.')
   Params.string('gmail_password', nil, 'Backup server gmail password.')
 
+  class Monitoring
+    attr_reader :thread
+    def initialize(process_variables)
+      @thread = 'dummy'
+    end
+  end
+=begin
   class Monitoring < Log::Consumer
     attr_reader :thread
-
     def initialize(process_variables)
       super(false)
       @passed_time_dur = 0
@@ -75,4 +81,5 @@ module Monitoring
           "monitoring_loop_count: #{@process_variables.get('monitoring_loop_count')}"
     end
   end
+=end
 end

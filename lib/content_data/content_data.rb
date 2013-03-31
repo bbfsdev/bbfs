@@ -244,6 +244,7 @@ module ContentData
       File.open(filename, 'w') {|f| f.write(to_s) }
     end
 
+    # TODO validation that file indeed contains ContentData missing
     def from_file(filename)
       lines = IO.readlines(filename)
       #i = 0
@@ -262,6 +263,11 @@ module ContentData
       number_of_instances = lines[i].to_i
       i += 1
       number_of_instances.times {
+        if lines[i].nil?
+          Log.info "lines[i] if nil !!!, Backing filename: #{filename} to #{filename}.bad"
+          FileUtils.cp(filename, "#{filename}.bad")
+          Log.info lines[i].join("\n")
+        end
         parameters = lines[i].split(',')
         # bugfix: if file name consist a comma then parsing based on comma separating fails
         if (parameters.size > 6)
@@ -304,6 +310,7 @@ module ContentData
         content_info[2] = min_time_per_checksum
       }
     end
+
     # Validates index against file system that all instances hold a correct data regarding files
     # that they represents.
     #
@@ -462,7 +469,7 @@ module ContentData
 
       # FIXME add support for from/to for Strings
       if ((!from.nil? && !from.kind_of?(Numeric.new.class))\
-          || (!to.nil? && to.kind_of?(Numeric.new.class)))
+            || (!to.nil? && to.kind_of?(Numeric.new.class)))
         raise ArgumentError 'from and to options supported only for numeric values'
       end
 
@@ -490,7 +497,7 @@ module ContentData
       result_index
     end
 
-    private :shallow_check, :deep_check, :check_instance, :get_query
+    private :shallow_check, :deep_check, :check_instance
   end
 
   # merges content data a and content data b to a new content data and returns it.
@@ -605,3 +612,4 @@ module ContentData
     b_minus_b_minus_a  = remove(b_minus_a, b)
   end
 end
+

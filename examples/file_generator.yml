@@ -1,0 +1,75 @@
+# Logging options
+log_write_to_console: true # Will print all log messages to standard output. Default is false.
+log_debug_level: 3 # Verbosity of logging. Default is 0, max is 3.
+
+# Represents the root path where directories and files will be
+# generated.
+target_path: '~/.bbfs/test_files'
+
+# Represents the directory name template. Name of created
+# directories will be dir_name_prefix_xxx. where xxx is random
+# characters
+dir_name_prefix: 'auto_gen_dir'
+
+# Represents the file name template for generated file. Name of
+# created files will be dir_name_prefix_xxx. where xxx is random
+# characters
+file_name_prefix: 'auto_gen_file'
+
+#*******************************************Processing**********************************************
+# Represents the total created directories. Use any
+# negative value or zero for Infinity. Not relevant if
+# random calculation is triggered.
+total_created_directories: -1
+
+# Indicates that total files in a directory will be
+# calculated randomly. If false then value will be
+# taken from parameter:'total_files_in_dir'.
+# Also lower\upper_limit_4_files_in_dir parameters will
+# not be used.
+is_tot_files_in_dir_random: Yes
+
+# - Represents the Lower limit for total files in
+#   directory for random calculation. Active only if
+#   parameter:'is_tot_files_in_dir_random' is true.
+lower_limit_4_files_in_dir: 3
+
+# Represents the Upper limit for total files in
+# directory for random calculation. Active only if
+# parameter:'is_tot_files_in_dir_random' is true.
+upper_limit_4_files_in_dir: 100
+
+# Maximum number of files to generate, 0 for no limit.
+max_total_files: 0
+
+# Represents the total files in directory. Use any
+# negative value or zero for Infinity. Active only if
+# parameter:'is_tot_files_in_dir_random' is false.
+total_files_in_dir: -1
+
+# Indicates that file size will be calculated randomly.
+# If false then value will be taken from
+# parameter:'file_size_in_bytes'. Also next 2 parameters
+# will not be used.
+is_use_random_size: Yes
+
+# Represents the upper limit file size in MB for random
+# size calculation.
+# Active only if parameter:'is_use_random_size' is
+# true.
+upper_size_in_bytes: 100000
+
+# Represents the Lower limit file size in MB for random
+# size calculation. Active only if
+# parameter:'is_use_random_size' is true.
+down_size_in_bytes: 10000
+
+# Represents the file size in MB. Not relevant if
+# random calculation is triggered. Active only if
+# parameter:'is_use_random_size' is false.
+file_size_in_bytes: -1
+
+# Represent delay between two close cycles of
+# processing. In each cycle of processing
+# file\s and\or folder\s created.
+sleep_time_in_seconds: 60

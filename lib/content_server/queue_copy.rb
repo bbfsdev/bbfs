@@ -30,6 +30,7 @@ module ContentServer
       # resend the ack request.
       @copy_prepare = {}
       @file_streamer = FileStreamer.new(method(:send_chunk))
+      Log.debug2("initialize FileCopyServer on port:#{port}")
     end
 
     def send_chunk(*arg)
@@ -38,7 +39,7 @@ module ContentServer
 
     def receive_message(addr_info, message)
       # Add ack message to copy queue.
-      Log.info("message received: #{message}")
+      Log.info("Master Copy Server message received: #{message}")
       @copy_input_queue.push(message)
     end
 
@@ -131,6 +132,7 @@ module ContentServer
       end
       @local_thread.abort_on_exception = true
       @process_variables = process_variables
+      Log.debug2("initialize FileCopyClient  host:#{host}  port:#{port}")
     end
 
     def threads

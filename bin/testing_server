@@ -1,0 +1,13 @@
+#!/usr/bin/env ruby
+
+# Runs content server. This server monitors a set of directories (blobs/patterns).
+# The files in those directories are indexed (calculating their SHA1).
+# Each unique content is backed up to the remote (backup) server.
+
+require 'params'
+require 'run_in_background'
+require 'testing_server'
+
+Params.init ARGV
+
+RunInBackground.run { TestingServer.run_testing_server }

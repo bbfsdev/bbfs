@@ -4,13 +4,18 @@ content_server_files_port: 4444 # TCP/IP port to connect as client to receive fi
 content_server_data_port: 3333 # TCP/IP port to connect as client to get content data.
 
 # Local files and logs
-log_file_name: '~/.bbfs/log/backup_server.log' # General log
+log_file_name: '~/.bbfs/log/backup_server.log4r' # General log
 default_monitoring_log_path: '~/.bbfs/log/backup_file_monitoring.log' # Log for file changes
 local_content_data_path: '~/.bbfs/var/backup.data' # File to store all local contents, i.e., backed up files.
 
 # Logging options
 log_write_to_console: true # Will print all log messages to standard output. Default is false.
-log_debug_level: 0 # Verbosity of logging. Default is 0, max is 3.
+log_write_to_email: true # Will print error and fatal log messages to email output. Default is false.
+log_debug_level: 0 # Verbosity of logging. 0 will log only INFO messages. Other value, will log all
+                   # DEBUG messages as well.
+from_email: 'bbfsdev@gmail.com' # From gmail address for update
+from_email_password: 'enter your password here' # From gmail password
+to_email: 'bbfsdev@gmail.com' # Destination email for updates
 
 # Configuration for the file monitoring module.
 # This module go over a directory, and monitor all sub files and directories.
