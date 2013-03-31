@@ -17,7 +17,7 @@ Log.init
 
 Thread.abort_on_exception = true  # TODO (genadyp) should be treated globally? by param for example.
 
-retries = 1  # number of attempts to run a server
+retries = 0  # number of retries to run a server
 
 begin
   RunInBackground.run { ContentServer.run_backup_server }
@@ -36,4 +36,4 @@ rescue Exception => exc
     Log.flush
   end
   retries -= 1
-end while retries > 0
+end while retries >= 0
