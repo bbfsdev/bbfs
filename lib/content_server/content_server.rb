@@ -50,9 +50,9 @@ module ContentServer
 
     # # # # # # # # # # # # # # # # # # # # # #
     # Initialize/Start content data comparator
-    copy_files_events = Queue.new
+    copy_files_events = Queue.new  # TODO(kolman): Remove this initialization and merge to FileCopyServer.
     local_dynamic_content_data = ContentData::DynamicContentData.new
-    all_threads << Thread.new do
+    all_threads << Thread.new do  # TODO(kolman): Seems like redundant, check how to update dynamic directly.
       while true do
         # Note: This thread should be the only consumer of local_server_content_data_queue
         Log.info 'Waiting on local server content data.'
