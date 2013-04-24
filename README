@@ -142,7 +142,7 @@ Developers Guide
     https://github.com/oneclick/rubyinstaller/wiki/Development-Kit.
  d. Mac (only) users will have to install XCode for gcc compiler.
     Run in command prompt (Windows users should run in Git Bash):
- e. git clone https://github.com/kolmanv/bbfs.git
+ e. git clone https://github.com/bbfsdev/bbfs.git
  f. cd bbfs
  g. gem install bundler
  h. bundle install
@@ -193,7 +193,7 @@ link to detailed description about application.
 How to contribute to this project:
 ----------------------------------
 A) Clone the project:
- > git@github.com:kolmanv/bbfs.git
+ > git@github.com:bbfsdev/bbfs.git
  > cd bbfs
 B) Master is sarced! Note this, this is important : you will never commit or merge
   into master branch. Master is master. You will use to get the changes, and only
@@ -210,7 +210,7 @@ D) Fetch master: It's been a while you work on different topics. You want to tes
   bbfs> git merge master
   Resolve conflicts if any, and try.
 E) OK, it works. Now, you want to publish your changes to master branch. You go to
-  github at: https://github.com/kolmanv/bbfs,
+  github at: https://github.com/bbfsdev/bbfs,
   then for each new topic branches, you select it, then do a pull request. We'll
   review the code, eventually merge it in the master branch. Then you'll be able to
   drop your old topic branches.

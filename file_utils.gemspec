@@ -6,8 +6,8 @@ Gem::Specification.new do |s|
   s.summary     = 'Executable for operating on bbfs files.'
   s.description = 'Executable for operating on bbfs files, locally and remotely.'
   s.authors     = ['Gena Petelko, Kolman Vornovitsky']
-  s.email       = 'kolmanv@gmail.com'
-  s.homepage    = 'http://github.com/kolmanv/bbfs'
+  s.email       = 'bbfsdev@gmail.com'
+  s.homepage    = 'http://github.com/bbfsdev/bbfs'
   s.files       = Dir['lib/file_utils.rb', 'lib/file_utils/**/*'] \
                   & `git ls-files -z`.split("\0")
   s.test_files  = Dir['spec/file_utils/**/*', 'test/file_utils/**/*'] \

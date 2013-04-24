@@ -1,3 +1,3 @@
 module Params
-  VERSION = "0.0.9"  # Parser updated in params.rb
+  VERSION = "1.0.0"
 end

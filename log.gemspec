@@ -13,7 +13,6 @@ Gem::Specification.new do |s|
   s.test_files  = Dir['spec/log/**/*', 'test/log/**/*'] \
                   & `git ls-files -z`.split("\0")
   s.add_dependency('params')
-  s.add_dependency('email')
   s.add_dependency('log4r')
-  s.add_dependency('log4r/outputter/emailoutputter')
+  #s.add_dependency('log4r/outputter/emailoutputter')
 end

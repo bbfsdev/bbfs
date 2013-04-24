@@ -2,7 +2,7 @@
 # Description: The file contains the code which implements the 'Log' module
 # Run: Add to 'require' list. Execute Log.init
 
-require 'email'
+#require 'email'
 require 'log4r'
 require 'log4r/outputter/emailoutputter'
 

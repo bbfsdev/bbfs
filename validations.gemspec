@@ -7,7 +7,7 @@ Gem::Specification.new do |s|
   s.description = 'Used to validate ContentData objects.'
   s.authors     = ['Genady Petelko']
   s.email       = 'nukegluk@gmail.com'
-  s.homepage    = 'http://github.com/kolmanv/bbfs'
+  s.homepage    = 'http://github.com/bbfsdev/bbfs'
   s.files       = Dir['lib/validations.rb', 'lib/validations/**/*'] \
                   & `git ls-files -z`.split("\0")
   s.executables = ['index_validator']

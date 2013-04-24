@@ -6,8 +6,8 @@ Gem::Specification.new do |s|
   s.summary     = 'Dynamically stores, parses and providers params.'
   s.description = 'Dynamically stores, parses and providers params. Uses module local readers.'
   s.authors     = ['Gena Petelko', 'Kolman Vornovitsky']
-  s.email       = 'kolmanv@gmail.com'
-  s.homepage    = 'http://github.com/kolmanv/bbfs'
+  s.email       = 'bbfsdev@gmail.com'
+  s.homepage    = 'http://github.com/bbfsdev/bbfs'
   s.files       = Dir['lib/params.rb', 'lib/params/**/*'] \
                   & `git ls-files -z`.split("\0")
   s.test_files  = Dir['spec/params/**/*', 'test/params/**/*'] \
