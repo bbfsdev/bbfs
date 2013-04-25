@@ -2,13 +2,10 @@ echo ---------------
 echo install bundler
 echo ----------------
 call gem install bundle
-
 echo --------------------------------------------
 echo install infrastructure gems (bundle install)
 echo -------------------------------------------
 call bundle install
-
-
 echo ---------------------------------
 echo Start build content server gems:
 echo --------------------------------
@@ -41,5 +38,3 @@ call gem install process_monitoring-1.0.0.gem
 call gem install run_in_background-1.0.0.gem
 call gem install validations-1.0.0.gem
 call gem install content_server-1.0.0.gem
-
-
