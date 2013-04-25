@@ -7,7 +7,7 @@ Gem::Specification.new do |s|
   s.description = 'logging data to file, console etc. Data can be pushed using info\warning\error\debug-levels categories'
   s.authors     = ['Yaron Dror']
   s.email       = 'yaron.dror.bb@gmail.com'
-  s.homepage    = 'http://github.com/yarondbb/bbfs'
+  s.homepage    = 'http://github.com/bbfsdev/bbfs'
   s.files       = Dir['lib/log.rb', 'lib/log/**/*'] \
                   & `git ls-files -z`.split("\0")
   s.test_files  = Dir['spec/log/**/*', 'test/log/**/*'] \
