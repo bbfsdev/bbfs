@@ -12,10 +12,11 @@ Gem::Specification.new do |s|
                   & `git ls-files -z`.split("\0")
   s.test_files  = Dir['examples/process_monitoring.rb', 'spec/process_monitoring/**/*'] \
                   & `git ls-files -z`.split("\0")
-  s.add_dependency('thin')
+
   s.add_dependency('eventmachine')
+  s.add_dependency('json')
   s.add_dependency('log')
   s.add_dependency('params')
-  s.add_dependency('json')
-  #s.add_dependency('net-http')
+  s.add_dependency('sinatra')
+  s.add_dependency('thin')
 end
