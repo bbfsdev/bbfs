@@ -23,7 +23,6 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency('process_monitoring', '1.0.0')
   s.add_runtime_dependency('rake', '0.9.2.2')
   s.add_runtime_dependency('run_in_background', '1.0.0')
-  s.add_runtime_dependency('validations', '1.0.0')
   s.add_dependency('content_data', '1.0.0')
   s.add_dependency('file_indexing', '1.0.0')
   s.add_dependency('file_monitoring', '1.0.0')
@@ -33,5 +32,4 @@ Gem::Specification.new do |s|
   s.add_dependency('process_monitoring', '1.0.0')
   s.add_dependency('rake', '0.9.2.2')
   s.add_dependency('run_in_background', '1.0.0')
-  s.add_dependency('validations', '1.0.0')
 end
