@@ -1,217 +1,117 @@
---------------------------------------------------
-Big Brother File System (Distributed File System).
---------------------------------------------------
-Backup system, general workflow:
---------------------------------------------------
+BBFS - Backup system, general workflow:
 
-1. Content server monitors a set of local directories (blobs/patterns). The files in those  directories are indexed (calculating their SHA1/file content fingerprint).
-2. Backup server also monitors a set of local directories (blobs/patterns). Files in those directories are also indexed.
-3. Backup server requests new/changed files from the Content server.
+Content server monitors a set of local directories.
+  The files in those  directories are indexed (calculating their SHA1).
+  The indexed SHA1 (content hash) is stored in a file called content data.
+  When requested content data is sent to backup server.
+  When requested , files are sent to backup server for backup.
 
---------------------------------------------------
-User Guide
---------------------------------------------------
-This manual explain how to run BBFS backup from scratch. The BBFS program is application for backing-up files. There are two application for BBFS system:
+Backup server requests new/changed contents (files) from the Content server.
+  Backup files (copied from content server) are stored in a destination dir which is also monitored, indexed and stored in a file (backup content data).
+  The destination dir structure is:
+    backup/destination/tmp - used to temporary files while copying from content server.
+    backup/destination/remote/ - content data received from servers.
+    backup/destination/* - rest of dirs used to stored backup files.
+  Each period of time (configurable), sends request to content server to get its latest content data.
+  Each period of time (configurable), performs a sync check between content server and itself.
+  If needed, requests and copy required files from content server to backup (store in destination dir).
 
-1. backup_server is server run on machine where files is backed-up
-2. content_server is application that run on machine from where files are copied.
+Installing:
+  Install Ruby 1.9.3
+  Instal RubyGems
+  Install application gems:
+    gem install content_server
+      (This can take a while till all gems are installed.)
 
-So you need to prepare two computers (it can be only one computer if you want the data to be backed up to the same computer).
+Running:
+1. Preparing content server and backup server configuration files (see Appendix examples).
+2. Run content server: content_server --conf_file=path_to_configuration_file
+3. Run backup server:  backup_server --conf_file=path_to_configuration_file
+Uninstalling all gems
+  Unix:
+    for x in gem list --no-versions; do gem uninstall $x -a -x -I; done
+  Windows:
+    ruby -e "gem list.split(/$/).each { |line| puts gem uninstall -Iax #{line.split(' ')[0]} unless line.empty? }"
+  Note:
+  Be aware to use it when some other programs run on ruby and use different gems. If this is a situation remove gems manually and don’t remove ruby.
 
-The BBFS system done on Ruby language so Ruby should be installed on both computers.
+Validation:
+This release was manually tested. The test included backing up content server during a period of one week. During the week, files were generated randomly on content server machine. 14K content instances (files) were generated, which actually are 5K different contents of total size of 72MB to backup servers. The test was performed on 2 linux machines. During validation each 6 hours, backup server compared successfully files against the expected files.
 
-1. Installing Ruby, devkit (required by 'algorithms' gem and installed only on windows) and rubygems (if not installed):
-1. Check if Ruby and rubygems installed on you computer by next commands :"ruby -v", "gem -v"
-2. Installing Ruby and gemspec:
-On Windows: go to http://rubyinstaller.org/ and download and install Ruby.
-On Linux: sudo apt-get install ruby1.9.3
-3. Installing devkit (Windows only, on Linux no need)
+Documentation:
+  Can be found at:
+    https://github.com/bbfsdev/bbfs/wiki/Documentation
 
-On Windows: go to ruby site and download devkit, follow instructions at instructions
-
-On machine where content_server should run:
-
-1. Install Content server by 'gem install content_server'
-2. Create configuration file for content server which should be located in     /home/<username>/.bbfs/etc/file_monitoring.yml
----------------------------File content------------------------------------
-paths:
-  - path: /home/<username>/.bbfs/test_files
-    scan_period: 1
-    stable_state: 5
---------------------------End Of File-----------------------
+Appendix (configuration files):
+1. content_server application configuration file (example):
+############# START OF FILE #################
+# Content server parameters
+local_files_port: 4444 # TCP/IP port to start server to send files to backup.
+local_content_data_port: 3333 # TCP/IP port to start server to send content data upon request from client.
+#content data file, i.e., state of content server.
+local_content_data_path: '~/.bbfs/var/content.data' # File to store content data
+#Logging options
+log_write_to_file: true # Will print all log messages to file
+log_file_name: '~/.bbfs/log/content_server.log4r'
+log_write_to_console: true # Will print all log messages to standard output. Default is false.
+log_write_to_email: true # Will print errors to mail on system crush only . Default is false.
+# Verbosity of logging. 0 will log INFO messages. 3 will print ALL debug messages as well.
+log_debug_level: 0
+from_email: 'put your email address here..'
+# Log to email on system crush options
+from_email: 'jhon.doe@gmail.com'  # user should change to real value
+from_email_password: 'hihahu'  # user should change to real value
+to_email: 'jhon.doe@gmail.com'  # user should change to real value
+default_monitoring_log_path: '~/.bbfs/log/content_file_monitoring.log' # Log of file changes
+# Paths to monitor\backup files from. All path files and recursive sub paths are used.
+monitoring_paths:
+  - path: '/home/jhon_doe/dir_to_backup'
+    scan_period: 1 # Number of seconds before initiating another directory scan.
+    stable_state: 5 # Number of scan times for a file to be unchanged before his state becomes stable.
+  - path: 'path_2_to_monitor'
+    scan_period: 1 # Number of seconds before initiating another directory scan.
+    stable_state: 5 # Number of scan times for a file to be unchanged before his state becomes stable.
+# … optional more paths here
+# print all parameters to console at the beginning of execution log.
+print_params_to_stdout: true
+############# END OF FILE #################
 Notes:
+  User needs to change dummy values in the file example for parameters: monitoring_paths, from_email, and to_email.
+  User can change other parameter according to the system characteristics (files size to backup, network speed etc..). Pls see more on this in documentation.
 
-Spaces are important!
-Replace the path with your username and created local dir. This directory must                                    exist.
-
-3. run the content_server by running the following command:
-> content_server --remote_server=<backup_server_address> --backup_username=<username> --backup_password=<password> --content_data_path=/home/<username>/.bbfs/var/server_content.data  -- --monitoring_config_path =/home/<username>/.bbfs/etc/file_monitoring.yml
-
-Notes:  
-
-In the command line above, the User needs to replace the <> containers with                              the specific values of the backup address and the home dir (don’t use “~”).
-
-For more information about parameters run: content_server -h
-When only one computer used for backup and content no need to supply the next arguments: remote_server (localhost used as default), backup_username, backup_password.
-
-
-On  machine where backup_server should run:
-
-1. Install Backup server by 'gem install content_server'
-2. Create configuration file for backup server which should be located
-      in /home/<username>/.bbfs/etc/backup_file_monitoring.yml
-     
-----------------------------------------File content---------------------------------------------------------
-paths:
-  - path:  /home/<username>/.bbfs/compare_files  # <=== replace with your local dir.
-    scan_period: 1
-    stable_state: 5
-------------------------------------------End of File---------------------------------------------------------
+2. backup_server application configuration file (example):
+############# START OF FILE #################
+#Backup server parameters
+content_server_hostname: 'localhost' # Default is nil
+content_server_files_port: 4444 # TCP/IP port to start server to send files to backup.
+# TCP/IP port to start server to send content data upon request from client.
+content_server_data_port: 3333
+#backup data file, i.e. state(index) of backup server destination folder.
+local_content_data_path: '~/.bbfs/var/backup.data' # File to store content data
+#Logging options
+log_write_to_file: true # Will print all log messages to file
+log_file_name: '~/.bbfs/log/backup_server.log4r'
+log_write_to_console: true # Will print all log messages to standard output. Default is false.
+log_write_to_email: true # Will print errors to mail on system crush only . Default is false.
+# Verbosity of logging. 0 will log INFO messages. 3 will print ALL debug messages as well.
+log_debug_level: 0
+from_email: 'jhon.doe@gmail.com'  # user should change to real value
+from_email_password: 'hihahu'  # user should change to real value
+to_email: 'jhon.doe@gmail.com'  # user should change to real value
+default_monitoring_log_path: '~/.bbfs/log/backup_file_monitoring.log' # Log of file changes
+# Paths to monitor\backup files from. All path files and recursive sub paths are used.
+monitoring_paths:
+  - path: '/home/jhon_doe/destination_to_copy_backup_files'
+    scan_period: 1 # Number of seconds before initiating another directory scan.
+    stable_state: 5 # Number of scan times for a file to be unchanged before his state becomes stable.
+#cycles of fetch period used by backup server to ping content server for its content
+remote_content_save_timeout: 120
+#Cycles where backup is checking if sync is required between remote and backup contents
+backup_check_delay: 60
+# print all parameters to console at the beginning of execution log.
+print_params_to_stdout: true
+############# END OF FILE #################
 Notes:
-
-Spaces are important!
-Replace the path with your username and created local dir. This directory must exist.
-
-3. Run the Backup server by running the following command:
-   > backup_server --remote_server=<content_server_address> --monitoring_config_path=/home/<username>/.bbfs/etc/backup_file_monitoring.yml  --backup_destination_folder /home/<username>/.bbfs/backup_data --service_name=content_data
-
-   Notes:  
-
-In the command line above, the User needs to replace the <> containers with                     the specific values of the backup address and the home dir (don’t use “~”).
-For more information about parameters run: backup_server -h
-
-When only one computer used for backup server and content server no need to supply the next argument: remote_server (localhost used as default).
-
-
-Explanation about file_monitoring.yml and backup_file_monitoring.yml configuration files:
-"path:" - say to program which folder to scan recursively in order to find              new/changed files and folders.
-    "scan_period:" - how much time in seconds passed before two consecutive scans             for files and directories.
-"stable_state:" - how many scan_period passed until the file is considered stable.
-
---------------------------------------------------
-Testing:
---------------------------------------------------
-1. In the content server:
-
-Place the next  files at /home/<username>/.bbfs/test_files.
-the files to place : test1.txt, test2.txt, test3.txt. The content of each file should be the name of each file.
-run the content_server as explained above.
-In the backup server:
-Place the next files at /home/<username>/.bbfs/compare_files.
-The files to place: test4.txt, test5.txt, test2.txt. The content of each file should be the name of server.
-run the backup server as explained above.
-The results to expect:
-The backup server compare files located at backup server at .bbfs/compare_files/ directory with files located at content_server at .bbfs/test_files
-Different files should be copied from content_server:/home/<username>/.bbfs/test_files to backup_server:/home/<username>/.bbfs/backup_data.
-So after application run we will see:
-at backup_server:/home/<username>/.bbfs/backup_data:
-4c/a2/4ca2e3e8d8daf9a8850d7d2ee4643542cbb0c9cf - BUG this file is test2.txt file that should not be copied.
-6e/a8/6ea884da8842b668bbbc4dfacc0b34cca836a140 - this is test1.txt file
-ba/a6/baa6e6bac30982f59088a680d06c8f0253078d02 - this is test3.txt file
-remote - folder that save address of content_server
-tmp - temporary files for backup_server application.
-at  backup_server:/home/<username>/.bbfs/compare_files should not changed:
-test2.txt,  test4.txt,  test5.txt - the file we created before
-at content_server:/home/<username>/.bbfs/test_files should not changed:
-test1.txt,  test2.txt,  test3.txt
-
---------------------------------------------------
-Uninstalling
---------------------------------------------------
-
-1. Uninstall all gems by: 'gem list | cut -d" " -f1 | xargs gem uninstall -aIx'
-2. Uninstall ruby
-1. In windows - uninstall Ruby (from ruby193/unins000.exe) and delete ruby193 folder.
-2. In linux - sudo apt-get purge ruby*. If this not help use: sudo apt-get autoremove ruby*
-Note:
-
-The way of uninstalling explained above is for removing all gems and Ruby. Be aware to use it when some other programs run on ruby and use different gems. If this is a situation remove gems manually and don’t remove ruby.
-
---------------------------------------------------
-Developers Guide
---------------------------------------------------
-1) Installation of BBFS runtime:
- a. Download and install Ruby.
- b. Download and install gem.
- c. From command line: gem install content_server
-2) Installation of BBFS development kit:
- a. Download and install git.
- b. Download and install Ruby.
- c. Download and unpack and install DevKit (Windows). Note that after unpacking there
-    are installation instructions at
-    https://github.com/oneclick/rubyinstaller/wiki/Development-Kit.
- d. Mac (only) users will have to install XCode for gcc compiler.
-    Run in command prompt (Windows users should run in Git Bash):
- e. git clone https://github.com/bbfsdev/bbfs.git
- f. cd bbfs
- g. gem install bundler
- h. bundle install
- g. rake  # This will run all project tests and specs.
- k. You are done, you can start coding on the project.
-
-3) (Optional) Recommended for development kit:
- 1. Download and install smartgit.
- 2. Download and install Ruby IDE (for example RubyMine).
-
-4) Preparing Configuration file:
- see  User guide section (B.2.b, B.3.b)
-
-5) Run content server and backup server:
-
-   a. run content server
-       ruby -Ilib bin/content_server --remote_server="backup_address"
-
-  b. Run backup server (after content server is running):
-       ruby -Ilib bin/backup_server --remote_server="content_address" --backup_destination_folder=/home/user_name/.bbfs/backup_data
-
-where user_name is your user name at linux.
-      where backup_address and content_address is address of backup and content
-      servers.
-
-    notes: when you not use --remote_server localhost used as default address.
-          thats mean that content and backup servers run on the same physical
-          machine.
-
- Servers can be run in background (as Linux daemons or Windows services)
- By default servers run in a foreground.
- To start daemon/service add command line parameters:
-    --bg_command=start --service_name=<default is a server's file name>
- To stop daemon/service - server should be run with following parameters:
-    --bg_command=delete --service_name=<same name as was provided when starting service>
- Background notes:
- a) No multiple instances with the same name.
- b) Linux note: when daemon wasn't stoped in a normal way (by delete command), then it's pid file
-    (<service_name>.pid) remains in the pid directory (default is: $HOME/.bbfs/pids) and system's
-    functioning is undefined. It's a user's responsibility to remove such an obsolete files.
- More information regarding background functionality as well as instructions how to use this
- option on Windows7 can be found online:
- http://rubydoc.info/gems/run_in_background/0.0.9/BBFS/RunInBackground
-      
-6) Detailed description of applications:
-link to detailed description about application.
-
-How to contribute to this project:
-----------------------------------
-A) Clone the project:
- > git@github.com:bbfsdev/bbfs.git
- > cd bbfs
-B) Master is sarced! Note this, this is important : you will never commit or merge
-  into master branch. Master is master. You will use to get the changes, and only
-  that.
-C) Topic branch:
-  So you want to fix a bug, add a great feature ? No problem, you create a new branch
-  (because remember you will never commit or merge into your master branch!) :
-  bbfs> git checkout -b feature-world-conquest
-  Then you work in this branch, commit when you want, revert, etc. In short: you
-  work. If you work on two different topics (add the world conquest feature and fix
-  a bug) you create a topic branch for each. Don't forget to test your changes!
-D) Fetch master: It's been a while you work on different topics. You want to test your
-  changes with last changes :
-  bbfs> git merge master
-  Resolve conflicts if any, and try.
-E) OK, it works. Now, you want to publish your changes to master branch. You go to
-  github at: https://github.com/bbfsdev/bbfs,
-  then for each new topic branches, you select it, then do a pull request. We'll
-  review the code, eventually merge it in the master branch. Then you'll be able to
-  drop your old topic branches.
+  User needs to change dummy values in the file example for parameters: monitoring_paths, from_email, and to_email.
+  User can change other parameter according to the system characteristics (files size to backup, network speed etc..). Pls see more on this in documentation.
 
