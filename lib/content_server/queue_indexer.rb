@@ -4,6 +4,8 @@ require 'log'
 
 module ContentServer
 
+  Params.integer('data_flush_delay', 300, 'Number of seconds to delay content data file flush to disk.')
+
   # Simple indexer, gets inputs events (files to index) and outputs
   # content data updates into output queue.
   class QueueIndexer
@@ -12,6 +14,7 @@ module ContentServer
       @input_queue = input_queue
       @output_queue = output_queue
       @content_data_path = content_data_path
+      @last_data_flush_time = nil
     end
 
     def run
@@ -84,10 +87,11 @@ module ContentServer
           else
             Log.info("This case should not be handled: #{state}, #{is_dir}, #{path}.")
           end
-          # TODO(kolman): Don't write to file each change?
-          Log.info "Writing server content data to #{@content_data_path}."
-          server_content_data.to_file(@content_data_path)
-
+          if @last_data_flush_time.nil? || @last_data_flush_time + Params['data_flush_delay'] < Time.now.to_i
+            Log.info "Writing server content data to #{@content_data_path}."
+            server_content_data.to_file(@content_data_path)
+            @last_data_flush_time = Time.now.to_i
+          end
           Log.info 'Adding server content data to queue.'
           @output_queue.push(ContentData::ContentData.new(server_content_data))
         end  # while true do
