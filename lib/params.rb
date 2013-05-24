@@ -401,7 +401,13 @@ paths:
   end
   #define default params:
   # 1. configuration file
-  Params.string('conf_file', nil, 'Configuration file path.')
+  if $0 =~ /content_server/
+    Params.path('conf_file', '~/.bbfs/etc/config_content_server.yml', 'Configuration file path.')
+  elsif $0 =~ /backup_server/
+    Params.path('conf_file', '~/.bbfs/etc/config_backup_server.yml', 'Configuration file path.')
+  else
+    Params.path('conf_file', nil, 'Configuration file path.')
+  end
   # 2. Print params to stdout
   Params.boolean('print_params_to_stdout', false, 'print_params_to_stdout or not during Params.init')
 
