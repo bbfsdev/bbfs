@@ -20,7 +20,6 @@ begin
   # C:/Documents and Settings/NetworkService/.bbfs/test_app_<pid>.log
   Params['log_file_name'] = File.join(Dir.home, '.bbfs', "#{File.basename(__FILE__)}_#{Process.pid}.log")
   Params['log_write_to_console'] = false
-  Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] = 1
   if DBG
     Params['log_debug_level'] = 1
     Log.init

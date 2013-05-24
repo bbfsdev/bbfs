@@ -47,7 +47,7 @@ def run
     err_msg = "Incorrect input: parameters missing"
     puts err_msg
     Log.error err_msg
-    wait_to_log
+    Log.flush
     exit 1
   end
 end
@@ -72,7 +72,7 @@ def local_index_validation
     Log.error err.message
     Log.debug1 'Backtrace: '
     err.backtrace.each { |a| Log.debug1 a } 
-    wait_to_log
+    Log.flush
     exit 1
   end
 end 
@@ -101,17 +101,12 @@ def remote_index_validation
     Log.error err.message
     Log.debug1 'Backtrace:'
     err.backtrace.each { |a| Log.debug1 a } 
-    wait_to_log
+    Log.flush
     exit 1
   end
 end
 
-# give a log system time to flush data
-def wait_to_log
-  sleep(Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5)
-end
-
 # starts here
 run
-wait_to_log
+Log.flush
 
