@@ -15,6 +15,7 @@ Gem::Specification.new do |s|
   s.test_files  = Dir['test/run_in_background/**/*'] & `git ls-files -z`.split("\0")
   s.add_dependency('log')
   s.add_dependency('params')
+  s.add_dependency('rake')
 #  Add platform dependant gems via extension
 #    Linux dependencies: daemons
 #    Windows dependencies: win32-service, sys-uname
