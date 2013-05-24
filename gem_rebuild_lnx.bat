@@ -6,11 +6,11 @@ for x in `gem list --no-versions`; do gem uninstall $x -a -x -I; done
 echo ---------------
 echo install bundler
 echo ----------------
-gem install bundle
+#gem install bundle
 echo --------------------------------------------
 echo 'install infrastructure gems (bundle install)'
 echo -------------------------------------------
-bundle install
+#bundle install
 echo ---------------------------------
 echo Start build content server gems:
 echo --------------------------------
@@ -30,6 +30,7 @@ gem build validations.gemspec
 echo -------------------------------------
 echo Start installing content server gems:
 echo -------------------------------------
+gem install content_server-1.0.1.gem
 gem install log-1.0.1.gem
 gem install content_data-1.0.1.gem
 gem install email-1.0.1.gem
