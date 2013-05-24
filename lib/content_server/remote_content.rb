@@ -24,6 +24,7 @@ module ContentServer
 
     def receive_content(message)
       Log.debug1("Backup server received Remote content data:#{message.to_s}")
+      Log.info("Backup server received Remote content data")
       ref = @dynamic_content_data.last_content_data
       @dynamic_content_data.update(message)
       @last_fetch_timestamp = Time.now.to_i
@@ -62,7 +63,7 @@ module ContentServer
           if sleep_time_span >= Params['remote_content_save_timeout']
             # Send ping!
             bytes_written = @remote_tcp.send_obj(nil)
-            Log.debug1("sending ping request for remote content data!")
+            Log.info("sending ping request for remote content data!")
           end
           sleep(sleep_time_span) if sleep_time_span > 0
         end
@@ -79,9 +80,10 @@ module ContentServer
 
     def content_requested(addr_info, message)
       # Send response.
-      Log.debug1("Master server received content data request.  Sending content data:#{@dynamic_content_data.last_content_data}")
+      Log.info("Content server received content data request")
+      Log.debug1("Sending content data:#{@dynamic_content_data.last_content_data}")
       @tcp_server.send_obj(@dynamic_content_data.last_content_data)
-      Log.debug1('Master server sent content data')
+      Log.info('Content server sent content data')
     end
 
     def tcp_thread

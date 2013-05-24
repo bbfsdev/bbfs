@@ -39,7 +39,7 @@ module ContentServer
 
     def receive_message(addr_info, message)
       # Add ack message to copy queue.
-      Log.debug1("Master Copy Server message received: #{message}")
+      Log.debug2("Content server Copy message received: #{message}")
       @copy_input_queue.push(message)
     end
 
@@ -52,7 +52,7 @@ module ContentServer
           message_type, message_content = @copy_input_queue.pop
 
           if message_type == :COPY_MESSAGE
-            Log.debug1 "Copy file event: #{message_content}"
+            Log.debug1 "Copy files event: #{message_content}"
             # Prepare source,dest map for copy.
             message_content.instances.each { |key, instance|
               # If not already sending.
@@ -67,7 +67,7 @@ module ContentServer
             # The timestamp is of local content server! not backup server!
             timestamp, ack, checksum = message_content
 
-            Log.debug1("Ack (#{ack}) received for: #{checksum}, timestamp: #{timestamp} " \
+            Log.debug1("Ack (#{ack}) received for content: #{checksum}, timestamp: #{timestamp} " \
                        "now: #{Time.now.to_i}")
 
             # Copy file if ack (does not exists on backup and not too much time passed)
@@ -76,7 +76,7 @@ module ContentServer
                 Log.warning("File was aborted, copied, or started copy just now: #{checksum}")
               else
                 path = @copy_prepare[checksum][0]
-                Log.debug1 "Streaming file: #{checksum} #{path}."
+                Log.info "Streaming to backup server. content: #{checksum} path:#{path}."
                 @file_streamer.start_streaming(checksum, path)
                 # Ack received, setting prepare to true
                 @copy_prepare[checksum][1] = true
@@ -186,7 +186,7 @@ module ContentServer
       elsif message_type == :ACK_MESSAGE
         checksum, timestamp = message_content
         # Here we should check file existence
-        Log.debug1("Returning ack for: #{checksum}, timestamp: #{timestamp}")
+        Log.info("Returning ack for content: #{checksum}, timestamp: #{timestamp}")
         Log.debug1("Ack: #{!@dynamic_content_data.exists?(checksum)}")
         @tcp_client.send_obj([:ACK_MESSAGE, [timestamp,
                                              !@dynamic_content_data.exists?(checksum),

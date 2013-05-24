@@ -47,7 +47,7 @@ module ContentServer
           # delete directory with it's sub files
           # delete file
           if state == FileMonitoring::FileStatEnum::STABLE && !is_dir
-            Log.debug1 "Indexing content #{path}."
+            Log.info "Indexing content #{path}."
             index_agent = FileIndexing::IndexAgent.new
             indexer_patterns = FileIndexing::IndexerPatterns.new
             indexer_patterns.add_pattern(path)
@@ -88,7 +88,7 @@ module ContentServer
             Log.debug1("This case should not be handled: #{state}, #{is_dir}, #{path}.")
           end
           if @last_data_flush_time.nil? || @last_data_flush_time + Params['data_flush_delay'] < Time.now.to_i
-            Log.info "Writing server content data to #{@content_data_path}."
+            Log.debug1 "Writing server content data to #{@content_data_path}."
             server_content_data.to_file(@content_data_path)
             @last_data_flush_time = Time.now.to_i
           end

@@ -24,6 +24,7 @@ module ContentServer
   Params.integer('local_content_data_port', 3333, 'Listen to incoming content data requests.')
 
   def run_content_server
+    Log.info('Content server start')
     all_threads = []
 
     @process_variables = ThreadSafeHash::ThreadSafeHash.new
@@ -31,6 +32,10 @@ module ContentServer
 
     # # # # # # # # # # # #
     # Initialize/Start monitoring
+    Log.info('Start monitoring following directories:')
+    Params['monitoring_paths'].each {|path|
+      Log.info("  Path:'#{path['path']}'")
+    }
     monitoring_events = Queue.new
     fm = FileMonitoring::FileMonitoring.new
     fm.set_event_queue(monitoring_events)
@@ -41,6 +46,7 @@ module ContentServer
 
     # # # # # # # # # # # # # #
     # Initialize/Start local indexer
+    Log.debug1('Start indexer')
     local_server_content_data_queue = Queue.new
     queue_indexer = QueueIndexer.new(monitoring_events,
                                      local_server_content_data_queue,
@@ -50,6 +56,7 @@ module ContentServer
 
     # # # # # # # # # # # # # # # # # # # # # #
     # Initialize/Start content data comparator
+    Log.debug1('Start content data comparator')
     copy_files_events = Queue.new
     local_dynamic_content_data = ContentData::DynamicContentData.new
     all_threads << Thread.new do
@@ -67,6 +74,7 @@ module ContentServer
 
     # # # # # # # # # # # # # # # #
     # Start copying files on demand
+    Log.debug1('Start copy data on demand')
     copy_server = FileCopyServer.new(copy_files_events, Params['local_files_port'])
     all_threads.concat(copy_server.run())
 
