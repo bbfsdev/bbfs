@@ -99,7 +99,7 @@ module FileIndexing
         files = files | (collect(permit_patterns[i]));
       end
 
-      Log.info "Files: #{files}."
+      Log.debug1 "Files: #{files}."
 
       # expand to absolute pathes
       files.map! {|f| File.expand_path(f)}

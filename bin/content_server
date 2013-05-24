@@ -27,9 +27,9 @@ rescue SystemExit, SignalException => exc
 rescue Exception => exc
   Log.error("Exception happened in #{Params['service_name']} server: #{exc.class}:#{exc.message}")
   if retries > 0
-    Log.info("Restarting (retries:#{retries}).\nBacktrace:\n#{exc.backtrace.join("\n")}")
+    Log.debug1("Restarting (retries:#{retries}).\nBacktrace:\n#{exc.backtrace.join("\n")}")
   else
-    Log.info("Exiting...\nBacktrace:\n#{exc.backtrace.join("\n")}")
+    Log.debug1("Exiting...\nBacktrace:\n#{exc.backtrace.join("\n")}")
     Log.flush
   end
   retries -= 1

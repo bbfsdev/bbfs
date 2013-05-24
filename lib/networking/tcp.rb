@@ -13,7 +13,7 @@ module Networking
     Log.debug2("Writing data size: #{marshal_data.length}")
     data_size = [marshal_data.length].pack("l")
     if data_size.nil? || marshal_data.nil?
-      Log.debug3 'Send data size is nil!'
+      Log.debug2 'Send data size is nil!'
     end
     begin
       bytes_written = stream.write data_size
@@ -49,7 +49,7 @@ module Networking
     end
 
     unmarshalled_data = Marshal.load(data)
-    Log.debug3('Read good.')
+    Log.debug2('Read good.')
     return [true, unmarshalled_data]
   end
 
@@ -71,7 +71,7 @@ module Networking
     end
 
     def send_obj(obj, addr_info=nil)
-      Log.debug3("addr_info=#{addr_info}")
+      Log.debug3("send_obj with addr_info:#{addr_info}")
       unless addr_info.nil?
         if @sockets.key?(addr_info)
           Networking.write_to_stream(@sockets[addr_info], obj)
@@ -91,19 +91,18 @@ module Networking
     def run_server
       Log.debug3('run_server')
       return Thread.new do
-        Log.debug3('run_server2')
         loop {
           begin
             Socket.tcp_server_loop(@port) do |sock, addr_info|
-              Log.debug3("----- #{@port} -----")
-              Log.debug3("tcp_server_loop... #{sock} #{addr_info.inspect}")
+              Log.debug2("----- #{@port} -----")
+              Log.debug2("tcp_server_loop... #{sock} #{addr_info.inspect}")
               @sockets[addr_info] = sock
               @new_clb.call(addr_info) if @new_clb != nil
               loop do
                 # Blocking read.
-                Log.debug3('read_from_stream')
+                Log.debug2('read_from_stream')
                 stream_ok, obj = Networking.read_from_stream(sock)
-                Log.debug3("Server returned from read: #{stream_ok}")
+                Log.debug2("Server returned from read: #{stream_ok}")
                 @obj_clb.call(addr_info, obj) if @obj_clb != nil && stream_ok
                 break if !stream_ok
               end
@@ -120,7 +119,7 @@ module Networking
             # and if it ends, it will fail, and rescue will work.
             break
           rescue IOError => e
-            Log.info("Connection broken during tcp_server_loop. Restarting server loop " \
+            Log.warning("Connection broken during tcp_server_loop. Restarting server loop " \
                        "port:#{port}.")
           end
         }
@@ -137,8 +136,7 @@ module Networking
       @tcp_socket = nil
       @obj_clb = obj_clb
       @reconnected_clb = reconnected_clb
-      Log.debug1('TCPClient init.')
-      Log.debug1("TCPClient init...#{@obj_clb}...")
+      Log.debug3("Start TCPClient initialize  with @obj_clb: #{@obj_clb}")
       if @obj_clb != nil
         @tcp_thread = start_reading
         @tcp_thread.abort_on_exception = true
@@ -147,6 +145,7 @@ module Networking
       @remote_server_available = ConditionVariable.new
       @remote_server_available_mutex = Mutex.new
       open_socket unless socket_good?
+      Log.debug3("End TCPClient initialize.")
     end
 
     def send_obj(obj)
@@ -157,8 +156,7 @@ module Networking
         Log.warning('Socket not opened for writing, skipping send.')
         return false
       end
-      Log.debug1('writing...')
-      #Log.debug3("socket port: #{@tcp_socket.peeraddr}")
+      Log.debug2("writing... socket port: #{@tcp_socket.peeraddr}")
       bytes_written = Networking.write_to_stream(@tcp_socket, obj)
       return bytes_written
     end
@@ -172,7 +170,7 @@ module Networking
       rescue Errno::ECONNREFUSED
         Log.warning('Connection refused')
       end
-      Log.debug1("Reconnect clb: '#{@reconnected_clb.nil? ? 'nil' : @reconnected_clb}'")
+      Log.debug3("Reconnect clb: '#{@reconnected_clb.nil? ? 'nil' : @reconnected_clb}'")
       if socket_good?
         @remote_server_available_mutex.synchronize {
           @remote_server_available.signal
@@ -183,13 +181,12 @@ module Networking
 
     private
     def socket_good?
-      Log.debug1 "socket_good? #{@tcp_socket != nil && !@tcp_socket.closed?}"
+      Log.debug3("socket_good? #{@tcp_socket != nil && !@tcp_socket.closed?}")
       return @tcp_socket != nil && !@tcp_socket.closed?
     end
 
     private
     def start_reading
-      Log.debug1('start_reading (TCPClient).')
       return Thread.new do
         loop do
           Log.debug3('Start blocking read (TCPClient).')

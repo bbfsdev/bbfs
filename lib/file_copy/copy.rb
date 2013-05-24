@@ -13,7 +13,7 @@ module FileCopy
     password = (password and password.length > 0) ? password : nil
     port = 22 # 22 is a standart SSH port
     raise "Undefined server" unless server
-    Log.info "Trying to connect(ssh): #{username}, #{password}, #{server}, #{port}."
+    Log.debug1 "Trying to connect(ssh): #{username}, #{password}, #{server}, #{port}."
     if (username and password)
       Net::SSH.start(server, username,
                      :password => password,
@@ -36,11 +36,11 @@ module FileCopy
       uploads = files_map.map { |from,to|
         remote_dir = File.dirname(to)
         sftp_mkdir_recursive(sftp, File.dirname(to))
-        Log.info "Copying #{from} to #{to}"
+        Log.debug1 "Copying #{from} to #{to}"
         sftp.upload(from, to)
       }
       uploads.each { |u| u.wait }
-      Log.info "Done."
+      Log.debug1 "Done."
     end # ssh.sftp.connect
   end # def initialize
   module_function :sftp_copy
@@ -48,17 +48,17 @@ module FileCopy
   def sftp_mkdir_recursive(sftp, path)
     dir_stat = nil
     begin
-      Log.info "Stat remote dir: #{path}."
+      Log.debug1 "Stat remote dir: #{path}."
       dir_stat = sftp.stat!(path).directory?
-      Log.info "Stat result #{dir_stat}."
+      Log.debug1 "Stat result #{dir_stat}."
     rescue Net::SFTP::StatusException
     end
     if !dir_stat
-      Log.info "Directory does not exists: #{path}."
+      Log.debug1 "Directory does not exists: #{path}."
       sftp_mkdir_recursive sftp, File.dirname(path)
-      Log.info "Making dir #{path}."
+      Log.debug1 "Making dir #{path}."
       response = sftp.mkdir!(path)
-      Log.info "Making dir ok:#{response.ok?}."
+      Log.debug1 "Making dir ok:#{response.ok?}."
     end
   end
   module_function :sftp_mkdir_recursive

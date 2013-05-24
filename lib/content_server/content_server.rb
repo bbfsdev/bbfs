@@ -55,7 +55,7 @@ module ContentServer
     all_threads << Thread.new do
       while true do
         # Note: This thread should be the only consumer of local_server_content_data_queue
-        Log.info 'Waiting on local server content data.'
+        Log.debug1 'Waiting on local server content data.'
         local_server_content_data = local_server_content_data_queue.pop
         local_dynamic_content_data.update(local_server_content_data)
       end

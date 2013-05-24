@@ -61,7 +61,7 @@ module ContentServer
     # Start sending to backup server
     all_threads << Thread.new do
       while true do
-        Log.info 'Waiting on local server content data queue.'
+        Log.debug1 'Waiting on local server content data queue.'
         cd = local_server_content_data_queue.pop
         #    content_data_sender.send_content_data(cd)
         dynamic_content_data.update(cd)
@@ -89,14 +89,14 @@ module ContentServer
         local_cd = dynamic_content_data.last_content_data()
         remote_cd = content_server_dynamic_content_data.last_content_data()
         diff = ContentData::ContentData.remove(local_cd, remote_cd)
-        Log.debug2("Files to send? #{!diff.empty?}")
+        Log.debug1("Local and remote contents are equal?: #{diff.empty?}")
         #file_copy_client.request_copy(diff) unless diff.empty?
         if !diff.empty?
-          Log.info('Backup and remote contents need a sync:')
-          Log.info("Backup content:\n#{local_cd}")
-          Log.info("Remote content:\n#{remote_cd}")
-          Log.info("Missing contents:\n#{diff}")
-          Log.info('Requesting a copy')
+          Log.debug2('Backup and remote contents need a sync:')
+          Log.debug2("Backup content:\n#{local_cd}")
+          Log.debug2("Remote content:\n#{remote_cd}")
+          Log.debug2("Missing contents:\n#{diff}")
+          Log.debug2('Requesting a copy')
           file_copy_client.request_copy(diff)
         end
       end
