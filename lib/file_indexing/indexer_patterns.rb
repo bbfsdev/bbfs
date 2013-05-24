@@ -8,7 +8,7 @@ module FileIndexing
 
     # @param indexer_patterns_str [String]
     def initialize (indexer_patterns = nil)
-      Log.info "Initialize index patterns #{indexer_patterns}."
+      Log.debug1 "Initialize index patterns #{indexer_patterns}."
       @positive_patterns = Array.new
       @negative_patterns = Array.new
       # TODO add a test (including empty collections)
@@ -49,7 +49,7 @@ module FileIndexing
     def parse_from_file(file)
       input_patterns = IO.readlines(file)
       begin
-        Log.info "Error loading patterns=%s" % file
+        Log.debug1 "Error loading patterns=%s" % file
         raise IOError("Error loading patterns=%s" % file)
       end unless not input_patterns.nil?
 
@@ -57,7 +57,7 @@ module FileIndexing
         if (m = /^\s*([+-]):(.*)/.match(pattern))
           add_pattern(m[2], m[1].eql?('+') ? true : false)
         elsif (not /^\s*[\/\/|#]/.match(pattern))   # not a comment
-          Log.info "pattern in incorrect format: #{pattern}"
+          Log.debug1 "pattern in incorrect format: #{pattern}"
           raise RuntimeError("pattern in incorrect format: #{pattern}")
         end
       end

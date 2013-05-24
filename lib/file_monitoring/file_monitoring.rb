@@ -37,13 +37,13 @@ module FileMonitoring
         priority = (Time.now + elem['scan_period']).to_i
         dir_stat = DirStat.new(File.expand_path(elem['path']), elem['stable_state'])
         dir_stat.set_event_queue(@event_queue) if @event_queue
-        Log.info "File monitoring started for: #{elem}"
+        Log.debug1 "File monitoring started for: #{elem}"
         pq.push([priority, elem, dir_stat], -priority)
       }
 
       log_path = Params['default_monitoring_log_path']
 
-      Log.info 'File monitoring log: ' + log_path
+      Log.debug1 'File monitoring log: ' + log_path
       log_dir = File.dirname(log_path)
       FileUtils.mkdir_p(log_dir) unless File.exists?(log_dir)
       log = File.open(log_path, 'w')

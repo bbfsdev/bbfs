@@ -13,7 +13,7 @@ module ContentData
       ref = ContentData.new(content_data)
       @last_content_data_available_mutex.synchronize {
         @last_content_data = ref
-        Log.debug3("updating last content data:#{@last_content_data}\n")
+        Log.debug2("updating last content data:#{@last_content_data}\n")
       }
     end
 
@@ -22,10 +22,6 @@ module ContentData
       @last_content_data_available_mutex.synchronize {
         ref = @last_content_data
       }
-      #Log.debug3("@last_content_data is nil? #{@last_content_data.nil?}")
-      #Log.debug3(@last_content_data.to_s) unless @last_content_data.nil?
-      #Log.debug3("Exists?:#{@last_content_data.content_exists(checksum)}") \
-      #         unless @last_content_data.nil?
       return ref.content_exists(checksum) if ref != nil
       false
     end

@@ -276,8 +276,6 @@ module Params
       override_param(result_name, results[result_name])
     end
 
-    print_global_parameters
-
     # Prints help and parameters if needed.
     if @show_help_and_exit
       # Print parameters + description and exit.
@@ -287,7 +285,17 @@ module Params
       end
       exit
     end
-    puts @init_debug_messages if Params['print_params_to_stdout']
+
+    # Add parameters to log init messages (used by Log.init if param:print_params_to_stdout is true)
+    @init_debug_messages << "\n"
+    @init_debug_messages << 'Initialized executable parameters:'
+    @init_debug_messages << '---------------------------------'
+    counter=0
+    @globals_db.values.each do |param|
+      counter += 1
+      @init_debug_messages << "#{counter}: #{param.name}=#{param.value}"
+    end
+    @init_debug_messages << '---------------------------------'
   end
 
   # Load yml params and override default values.
@@ -380,18 +388,6 @@ paths:
     return results
   end # end of Parse function
 
-  def Params.print_global_parameters
-    @init_debug_messages << "\n"
-    @init_debug_messages << 'Initialized global parameters:'
-    @init_debug_messages << '---------------------------------'
-    counter=0
-    @globals_db.values.each do |param|
-      counter += 1
-      @init_debug_messages << "#{counter}: #{param.name}=#{param.value}"
-    end
-    @init_debug_messages << '---------------------------------'
-  end
-
   def Params.to_simple_hash
     @globals_db.map { |param|
       param.value
@@ -409,7 +405,7 @@ paths:
   # 2. Print params to stdout
   Params.boolean('print_params_to_stdout', false, 'print_params_to_stdout or not during Params.init')
 
-  private_class_method :print_global_parameters, :parse_command_line_arguments, \
+  private_class_method :parse_command_line_arguments, \
                        :raise_error_if_param_exists, :raise_error_if_param_does_not_exist, \
                        :read_yml_params, :override_param, :executable_name
 end

@@ -109,7 +109,7 @@ module ContentServer
             @send_chunk_clb.call(checksum, offset, @streams[checksum].size, chunk, chunk_checksum)
           end
         else
-          Log.info("No checksum found to copy chunk. #{checksum}.")
+          Log.debug1("No checksum found to copy chunk. #{checksum}.")
         end
       end
 
@@ -213,7 +213,7 @@ module ContentServer
     def handle_new_chunk(file_checksum, offset, content)
       if offset == @streams[file_checksum].file.pos
         FileReceiver.write_string_to_file(content, @streams[file_checksum].file)
-        Log.info("Written already #{@streams[file_checksum].file.pos} bytes, " \
+        Log.debug1("Written already #{@streams[file_checksum].file.pos} bytes, " \
                  "out of #{@streams[file_checksum].size} " \
                  "(#{100.0*@streams[file_checksum].file.size/@streams[file_checksum].size}%)")
         return true
@@ -247,10 +247,10 @@ module ContentServer
         local_file_checksum = FileIndexing::IndexAgent.get_checksum(tmp_file_path)
         message = "Local checksum (#{local_file_checksum}) received checksum (#{file_checksum})."
         if local_file_checksum == file_checksum
-          Log.info(message)
+          Log.debug1(message)
           begin
             File.rename(tmp_file_path, path)
-            Log.info("End move tmp file to permanent location #{path}.")
+            Log.debug1("End move tmp file to permanent location #{path}.")
             @file_done_clb.call(local_file_checksum, path) unless @file_done_clb.nil?
           rescue IOError => e
             Log.warning("Could not move tmp file to permanent file #{path}. #{e.to_s}")
@@ -267,7 +267,7 @@ module ContentServer
 
     def self.write_string_to_file(str, file)
       bytes_to_write = str.bytesize
-      Log.info("writing to file: #{file.to_s}, #{bytes_to_write} bytes.")
+      Log.debug1("writing to file: #{file.to_s}, #{bytes_to_write} bytes.")
       while bytes_to_write > 0
         bytes_to_write -= file.write(str)
       end

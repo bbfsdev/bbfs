@@ -17,7 +17,7 @@ class AgentClient
     Protobuf::Rpc::Client.new(server, 9999).call :index, request, response
 
 # show response
-    #Log.info response
+    #Log.debug1 response
   end
 
 end

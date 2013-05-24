@@ -40,8 +40,8 @@ number = 1
 loop do
   number += 1
   variables.set('number', number)
-  Log.info "number: #{number}"
+  Log.debug1 "number: #{number}"
   remote_mon_info = MonitoringInfo::MonitoringInfo.get_remote_monitoring_info('localhost', 5555)
-  Log.info "Remote monitoring info (localhost:5555): #{remote_mon_info}" if remote_mon_info
+  Log.debug1 "Remote monitoring info (localhost:5555): #{remote_mon_info}" if remote_mon_info
   sleep(3)
 end

@@ -181,8 +181,8 @@ module ContentData
 
       @contents.keys.each { |key|
         if (@contents[key] != other.contents[key])
-          Log.info @contents[key].first_appearance_time.to_i
-          Log.info other.contents[key].first_appearance_time.to_i
+          Log.debug1 @contents[key].first_appearance_time.to_i
+          Log.debug1 other.contents[key].first_appearance_time.to_i
           return false
         end
       }
@@ -231,9 +231,9 @@ module ContentData
       i += 1
       number_of_instances.times {
         if lines[i].nil?
-          Log.info "lines[i] if nil !!!, Backing filename: #{filename} to #{filename}.bad"
+          Log.debug1 "lines[i] if nil !!!, Backing filename: #{filename} to #{filename}.bad"
           FileUtils.cp(filename, "#{filename}.bad")
-          Log.info lines[i].join("\n")
+          Log.debug1 lines[i].join("\n")
         end
         parameters = lines[i].split(',')
         # bugfix: if file name consist a comma then parsing based on comma separating fails
@@ -295,7 +295,7 @@ module ContentData
         ret.add_content(content) unless a.content_exists(content.checksum)
       }
 
-      #Log.info "kaka"
+      #Log.debug1 "kaka"
 
       b.instances.values.each { |instance|
         #print "%s - %s\n" % [instance.checksum, a.content_exists(instance.checksum).to_s]
@@ -326,10 +326,7 @@ module ContentData
 
       ret = ContentData.new
       cd.instances.values.each do |instance|
-        Log.debug3("global path to check: #{global_dir_path}")
-        Log.debug3("instance global path: #{instance.global_path}")
         if instance.global_path.scan(global_dir_path).size == 0
-          Log.debug3("Adding instance.")
           ret.add_content(cd.contents[instance.checksum])
           ret.add_instance(instance)
         end

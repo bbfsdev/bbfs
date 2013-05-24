@@ -119,7 +119,7 @@ module FileUtils
 
         patterns = FileIndexing::IndexerPatterns.new
         Params['patterns'].split(':').each { |pattern|
-          Log.info "Pattern: #{pattern}"
+          Log.debug1 "Pattern: #{pattern}"
           patterns.add_pattern File.expand_path(pattern)
         }
 
@@ -139,7 +139,7 @@ module FileUtils
         end
         indexer = FileIndexing::IndexAgent.new
         indexer.index(patterns, exist_cd)
-        Log.info indexer.indexed_content.to_s
+        Log.debug1 indexer.indexed_content.to_s
         # crawler
       elsif Params['command'] == 'crawler'
         if Params['conf_file'].nil?
@@ -206,20 +206,20 @@ module FileUtils
         next unless db.instances.has_key? instance.global_path
         if (File.exists?(instance.full_path))
           file_mtime, file_size = File.open(instance.full_path) { |f| [f.mtime, f.size] }
-          Log.info "file:#{instance.full_path} file_mtime:#{file_mtime}."
-          Log.info "update mtime:#{instance.modification_time}"
-          Log.info "original instance mtime:#{db.instances[instance.global_path].modification_time}."
-          Log.info "unify instance mtime:#{instance.modification_time}."
-          Log.info "unify instance mtime:#{instance.modification_time.to_i}."
-          Log.info "Comparison: #{file_mtime <=> instance.modification_time}"
+          Log.debug1 "file:#{instance.full_path} file_mtime:#{file_mtime}."
+          Log.debug1 "update mtime:#{instance.modification_time}"
+          Log.debug1 "original instance mtime:#{db.instances[instance.global_path].modification_time}."
+          Log.debug1 "unify instance mtime:#{instance.modification_time}."
+          Log.debug1 "unify instance mtime:#{instance.modification_time.to_i}."
+          Log.debug1 "Comparison: #{file_mtime <=> instance.modification_time}"
           if (file_mtime == db.instances[instance.global_path].modification_time \
                 and file_size == instance.size \
                 and (file_mtime <=> instance.modification_time) > 0)
-            Log.info ("Comparison success.")
+            Log.debug1 ("Comparison success.")
             File.utime File.atime(instance.full_path), instance.modification_time, instance.full_path
             file_mtime = File.open(instance.full_path) { |f| f.mtime }
-            Log.info "file mtime:#{file_mtime}."
-            Log.info "file mtime:#{file_mtime.to_i}."
+            Log.debug1 "file mtime:#{file_mtime}."
+            Log.debug1 "file mtime:#{file_mtime.to_i}."
           end
         end
       end
