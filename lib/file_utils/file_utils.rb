@@ -119,7 +119,7 @@ module FileUtils
 
         patterns = FileIndexing::IndexerPatterns.new
         Params['patterns'].split(':').each { |pattern|
-          Log.info "Pattern: #{pattern}"
+          Log.debug1 "Pattern: #{pattern}"
           patterns.add_pattern File.expand_path(pattern)
         }
 
@@ -139,7 +139,7 @@ module FileUtils
         end
         indexer = FileIndexing::IndexAgent.new
         indexer.index(patterns, exist_cd)
-        Log.info indexer.indexed_content.to_s
+        Log.debug1 indexer.indexed_content.to_s
         # crawler
       elsif Params['command'] == 'crawler'
         if Params['conf_file'].nil?

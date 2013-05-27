@@ -6,8 +6,8 @@ Gem::Specification.new do |s|
   s.summary     = 'Indexes files.'
   s.description = 'Indexes files, treats files with same binary sequence as one content.'
   s.authors     = ['Gena Petelko, Kolman Vornovitsky']
-  s.email       = 'kolmanv@gmail.com'
-  s.homepage    = 'http://github.com/kolmanv/bbfs'
+  s.email       = 'bbfsdev@gmail.com'
+  s.homepage    = 'http://github.com/bbfsdev/bbfs'
   s.files       = Dir['lib/file_indexing.rb', 'lib/file_indexing/**/*'] \
                   & `git ls-files -z`.split("\0")
   s.test_files  = Dir['spec/file_indexing/**/*', 'test/file_indexing/**/*'] \

@@ -7,8 +7,8 @@ Gem::Specification.new do |s|
   s.summary     = 'Deamon for monitoring file changes.'
   s.description = 'Deamon for monitoring file changes in set of patterns (blobs).'
   s.authors     = ['Gena Petelko, Kolman Vornovitsky']
-  s.email       = 'kolmanv@gmail.com'
-  s.homepage    = 'http://github.com/kolmanv/bbfs'
+  s.email       = 'bbfsdev@gmail.com'
+  s.homepage    = 'http://github.com/bbfsdev/bbfs'
   s.files       = Dir['lib/file_monitoring.rb', 'lib/file_monitoring/**/*'] \
                   & `git ls-files -z`.split("\0")
   s.test_files  = Dir['spec/file_monitoring/**/*', 'test/file_monitoring/**/*'] \

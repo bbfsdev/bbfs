@@ -1,28 +1,31 @@
-# Backup server parameters
+############# START OF FILE #################
+# Content server parameters
 local_files_port: 4444 # TCP/IP port to start server to send files to backup.
 local_content_data_port: 3333 # TCP/IP port to start server to send content data upon request from client.
-
-# Local files and logs
-log_file_name: '~/.bbfs/log/content_server.log4r' # General log
-default_monitoring_log_path: '~/.bbfs/log/content_file_monitoring.log' # Log for file changes
-local_content_data_path: '~/.bbfs/var/content.data' # File to store all contents, i.e., state of content server.
-
-# Logging options
+#content data file, i.e., state of content server.
+local_content_data_path: '~/.bbfs/var/content.data' # File to store content data
+#Logging options
+log_write_to_file: true # Will print all log messages to file
+log_file_name: '~/.bbfs/log/content_server.log4r'
 log_write_to_console: true # Will print all log messages to standard output. Default is false.
-log_write_to_email: true # Will print error and fatal log messages to email output. Default is false.
-log_debug_level: 0 # Verbosity of logging. 0 will log only INFO messages. Other value, will log all
-                   # DEBUG messages as well.
-from_email: 'bbfsdev@gmail.com' # From gmail address for update
-from_email_password: 'enter your password here' # From gmail password
-to_email: 'bbfsdev@gmail.com' # Destination email for updates
-
-# Configuration for the file monitoring module.
-# This module go over a directory, and monitor all sub files and directories.
+log_write_to_email: true # Will print errors to mail on system crush only . Default is false.
+# Verbosity of logging. 0 will log INFO messages. 3 will print ALL debug messages as well.
+log_debug_level: 0
+from_email: 'put your email address here..'
+# Log to email on system crush options
+from_email: 'jhon.doe@gmail.com'  # user should change to real value
+from_email_password: 'hihahu'  # user should change to real value
+to_email: 'jhon.doe@gmail.com'  # user should change to real value
+default_monitoring_log_path: '~/.bbfs/log/content_file_monitoring.log' # Log of file changes
+# Paths to monitor\backup files from. All path files and recursive sub paths are used.
 monitoring_paths:
-  - path: '~/.bbfs/test_files' # Directory to monitor.
+  - path: '/home/jhon_doe/dir_to_backup'
     scan_period: 1 # Number of seconds before initiating another directory scan.
     stable_state: 5 # Number of scan times for a file to be unchanged before his state becomes stable.
-  - path: '~/.bbfs/test_files2' # Another directory
-    scan_period: 3
-    stable_state: 7
-
+  - path: 'path_2_to_monitor'
+    scan_period: 1 # Number of seconds before initiating another directory scan.
+    stable_state: 5 # Number of scan times for a file to be unchanged before his state becomes stable.
+# … optional more paths here
+# print all parameters to console at the beginning of execution log.
+print_params_to_stdout: true
+############# END OF FILE #################

@@ -2,7 +2,7 @@
 # Description: The file contains the code which implements the 'Log' module
 # Run: Add to 'require' list. Execute Log.init
 
-require 'email'
+#require 'email'
 require 'log4r'
 require 'log4r/outputter/emailoutputter'
 
@@ -95,10 +95,16 @@ module Log
     end
 
     # Write init message and user parameters
-    @log4r.info('BBFS Log initialized.')  # log first data
-    Params.get_init_messages().each { |msg|
-      @log4r.info(msg)
-    }
+    @log4r.info('BBFS Log initialized.') # log first data
+
+    # print params
+    if Params['print_params_to_stdout']
+      Params.get_init_messages().each { |msg|
+        @log4r.info(msg)
+      }
+    else
+      @log4r.info("Not printing executable parameters since param:'print_params_to_stdout' is false")
+    end
   end
 
   # Auxiliary method to add the calling method to the message

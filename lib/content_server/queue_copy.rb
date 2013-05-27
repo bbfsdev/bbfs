@@ -30,7 +30,7 @@ module ContentServer
       # resend the ack request.
       @copy_prepare = {}
       @file_streamer = FileStreamer.new(method(:send_chunk))
-      Log.debug2("initialize FileCopyServer on port:#{port}")
+      Log.debug3("initialize FileCopyServer on port:#{port}")
     end
 
     def send_chunk(*arg)
@@ -39,7 +39,7 @@ module ContentServer
 
     def receive_message(addr_info, message)
       # Add ack message to copy queue.
-      Log.info("Master Copy Server message received: #{message}")
+      Log.debug2("Content server Copy message received: #{message}")
       @copy_input_queue.push(message)
     end
 
@@ -48,12 +48,12 @@ module ContentServer
       threads << @backup_tcp.tcp_thread if @backup_tcp != nil
       threads << Thread.new do
         while true do
-          Log.info 'Waiting on copy files events.'
+          Log.debug1 'Waiting on copy files events.'
           message_type, message_content = @copy_input_queue.pop
 
-            if message_type == :COPY_MESSAGE
-              Log.info "Copy file event: #{message_content}"
-              # Prepare source,dest map for copy.
+          if message_type == :COPY_MESSAGE
+            Log.debug1 "Copy files event: #{message_content}"
+            # Prepare source,dest map for copy.
               message_content.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
                 if !@copy_prepare.key?(checksum) || !@copy_prepare[checksum][1]
                   @copy_prepare[checksum] = [path, false]
@@ -66,7 +66,7 @@ module ContentServer
               # The timestamp is of local content server! not backup server!
             timestamp, ack, checksum = message_content
 
-            Log.info("Ack (#{ack}) received for: #{checksum}, timestamp: #{timestamp} " \
+            Log.debug1("Ack (#{ack}) received for content: #{checksum}, timestamp: #{timestamp} " \
                        "now: #{Time.now.to_i}")
 
             # Copy file if ack (does not exists on backup and not too much time passed)
@@ -75,7 +75,7 @@ module ContentServer
                 Log.warning("File was aborted, copied, or started copy just now: #{checksum}")
               else
                 path = @copy_prepare[checksum][0]
-                Log.info "Streaming file: #{checksum} #{path}."
+                Log.info "Streaming to backup server. content: #{checksum} path:#{path}."
                 @file_streamer.start_streaming(checksum, path)
                 # Ack received, setting prepare to true
                 @copy_prepare[checksum][1] = true
@@ -98,15 +98,15 @@ module ContentServer
               @copy_prepare.delete(file_checksum)
             end
           elsif message_type == :ABORT_COPY
-            Log.info("Aborting file copy: #{message_content}")
+            Log.debug1("Aborting file copy: #{message_content}")
             if @copy_prepare.key?(message_content)
-              Log.info("Aborting: #{@copy_prepare[message_content][0]}")
+              Log.debug1("Aborting: #{@copy_prepare[message_content][0]}")
               @copy_prepare.delete(message_content)
             end
             @file_streamer.abort_streaming(message_content)
           elsif message_type == :RESET_RESUME_COPY
             file_checksum, new_offset = message_content
-            Log.info("Resetting/Resuming file (#{file_checksum}) copy to #{new_offset}")
+            Log.debug1("Resetting/Resuming file (#{file_checksum}) copy to #{new_offset}")
             @file_streamer.reset_streaming(file_checksum, new_offset)
           else
             Log.error("Copy event not supported: #{message_type}")
@@ -132,7 +132,7 @@ module ContentServer
       end
       @local_thread.abort_on_exception = true
       @process_variables = process_variables
-      Log.debug2("initialize FileCopyClient  host:#{host}  port:#{port}")
+      Log.debug3("initialize FileCopyClient  host:#{host}  port:#{port}")
     end
 
     def threads
@@ -155,7 +155,7 @@ module ContentServer
 
     def done_copy(local_file_checksum, local_path)
       add_process_variables_info()
-      Log.info("Done copy file: #{local_path}, #{local_file_checksum}")
+      Log.debug1("Done copy file: #{local_path}, #{local_file_checksum}")
     end
 
     def add_process_variables_info()
@@ -163,7 +163,7 @@ module ContentServer
     end
 
     def handle_message(message)
-      Log.debug2('QueueFileReceiver handle message')
+      Log.debug3('QueueFileReceiver handle message')
       @local_queue.push(message)
     end
 
@@ -173,9 +173,9 @@ module ContentServer
       message_type, message_content = message
       if message_type == :SEND_COPY_MESSAGE
         Log.debug1("Requesting file (content data) to copy.")
-        Log.debug3("File requested: #{message_content.to_s}")
+        Log.debug2("File requested: #{message_content.to_s}")
         bytes_written = @tcp_client.send_obj([:COPY_MESSAGE, message_content])
-        Log.debug1("Sending copy message succeeded? bytes_written: #{bytes_written}.")
+        Log.debug2("Sending copy message succeeded? bytes_written: #{bytes_written}.")
       elsif message_type == :COPY_CHUNK
         Log.debug1('Chunk received.')
         if @file_receiver.receive_chunk(*message_content)
@@ -185,7 +185,7 @@ module ContentServer
       elsif message_type == :ACK_MESSAGE
         checksum, timestamp = message_content
         # Here we should check file existence
-        Log.debug1("Returning ack for: #{checksum}, timestamp: #{timestamp}")
+        Log.info("Returning ack for content: #{checksum}, timestamp: #{timestamp}")
         Log.debug1("Ack: #{!@dynamic_content_data.exists?(checksum)}")
         @tcp_client.send_obj([:ACK_MESSAGE, [timestamp,
                                              !@dynamic_content_data.exists?(checksum),

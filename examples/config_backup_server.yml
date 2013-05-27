@@ -1,28 +1,31 @@
-# Content server parameters
-content_server_hostname: 'localhost' #'f1.test.kbb1.com' # Default is nil
-content_server_files_port: 4444 # TCP/IP port to connect as client to receive files to backup from content server.
-content_server_data_port: 3333 # TCP/IP port to connect as client to get content data.
-
-# Local files and logs
-log_file_name: '~/.bbfs/log/backup_server.log4r' # General log
-default_monitoring_log_path: '~/.bbfs/log/backup_file_monitoring.log' # Log for file changes
-local_content_data_path: '~/.bbfs/var/backup.data' # File to store all local contents, i.e., backed up files.
-
-# Logging options
+############# START OF FILE #################
+#Backup server parameters
+content_server_hostname: 'localhost' # Default is nil
+content_server_files_port: 4444 # TCP/IP port to start server to send files to backup.
+# TCP/IP port to start server to send content data upon request from client.
+content_server_data_port: 3333
+#backup data file, i.e. state(index) of backup server destination folder.
+local_content_data_path: '~/.bbfs/var/backup.data' # File to store content data
+#Logging options
+log_write_to_file: true # Will print all log messages to file
+log_file_name: '~/.bbfs/log/backup_server.log4r'
 log_write_to_console: true # Will print all log messages to standard output. Default is false.
-log_write_to_email: true # Will print error and fatal log messages to email output. Default is false.
-log_debug_level: 0 # Verbosity of logging. 0 will log only INFO messages. Other value, will log all
-                   # DEBUG messages as well.
-from_email: 'bbfsdev@gmail.com' # From gmail address for update
-from_email_password: 'enter your password here' # From gmail password
-to_email: 'bbfsdev@gmail.com' # Destination email for updates
-
-# Configuration for the file monitoring module.
-# This module go over a directory, and monitor all sub files and directories.
-# In backup server only one directory of the backed up files should be monitored!
+log_write_to_email: true # Will print errors to mail on system crush only . Default is false.
+# Verbosity of logging. 0 will log INFO messages. 3 will print ALL debug messages as well.
+log_debug_level: 0
+from_email: 'jhon.doe@gmail.com'  # user should change to real value
+from_email_password: 'hihahu'  # user should change to real value
+to_email: 'jhon.doe@gmail.com'  # user should change to real value
+default_monitoring_log_path: '~/.bbfs/log/backup_file_monitoring.log' # Log of file changes
+# Paths to monitor\backup files from. All path files and recursive sub paths are used.
 monitoring_paths:
-  - path: '~/.bbfs/backup_files' # Directory to monitor.
+  - path: '/home/jhon_doe/destination_to_copy_backup_files'
     scan_period: 1 # Number of seconds before initiating another directory scan.
     stable_state: 5 # Number of scan times for a file to be unchanged before his state becomes stable.
-
-
+#cycles of fetch period used by backup server to ping content server for its content
+remote_content_save_timeout: 120
+#Cycles where backup is checking if sync is required between remote and backup contents
+backup_check_delay: 60
+# print all parameters to console at the beginning of execution log.
+print_params_to_stdout: true
+############# END OF FILE #################

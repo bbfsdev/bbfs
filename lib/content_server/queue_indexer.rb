@@ -4,6 +4,8 @@ require 'log'
 
 module ContentServer
 
+  Params.integer('data_flush_delay', 300, 'Number of seconds to delay content data file flush to disk.')
+
   # Simple indexer, gets inputs events (files to index) and outputs
   # content data updates into output queue.
   class QueueIndexer
@@ -12,6 +14,7 @@ module ContentServer
       @input_queue = input_queue
       @output_queue = output_queue
       @content_data_path = content_data_path
+      @last_data_flush_time = nil
     end
 
     def run
@@ -44,12 +47,12 @@ module ContentServer
         }
 
 
-        # Start indexing on demand and write changes to queue
-        thread = Thread.new do
-          while true do
-            Log.info 'Waiting on index input queue.'
-            state, is_dir, path = @input_queue.pop
-            Log.info "event: #{state}, #{is_dir}, #{path}."
+      # Start indexing on demand and write changes to queue
+      thread = Thread.new do
+        while true do
+          Log.debug1 'Waiting on index input queue.'
+          state, is_dir, path = @input_queue.pop
+          Log.debug1 "event: #{state}, #{is_dir}, #{path}."
 
             # index files and add to copy queue
             # delete directory with it's sub files

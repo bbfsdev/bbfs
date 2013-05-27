@@ -264,9 +264,9 @@ module ContentData
       i += 1
       number_of_instances.times {
         if lines[i].nil?
-          Log.info "lines[i] if nil !!!, Backing filename: #{filename} to #{filename}.bad"
+          Log.debug1 "lines[i] if nil !!!, Backing filename: #{filename} to #{filename}.bad"
           FileUtils.cp(filename, "#{filename}.bad")
-          Log.info lines[i].join("\n")
+          Log.debug1 lines[i].join("\n")
         end
         parameters = lines[i].split(',')
         # bugfix: if file name consist a comma then parsing based on comma separating fails

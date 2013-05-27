@@ -6,8 +6,8 @@ Gem::Specification.new do |s|
   s.summary     = 'Easy to use simple tools for networking (tcp/ip, ect,...).'
   s.description = 'Easy to use simple tools for networking (tcp/ip, ect,...).'
   s.authors     = ['Kolman Vornovitsky']
-  s.email       = 'kolmanv@gmail.com'
-  s.homepage    = 'http://github.com/kolmanv/bbfs'
+  s.email       = 'bbfsdev@gmail.com'
+  s.homepage    = 'http://github.com/bbfsdev/bbfs'
   s.files       = Dir['lib/networking.rb', 'lib/networking/**/*'] \
                   & `git ls-files -z`.split("\0")
   s.test_files  = Dir['spec/networking/**/*'] & `git ls-files -z`.split("\0")
