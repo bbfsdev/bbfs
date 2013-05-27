@@ -96,11 +96,11 @@ module ContentServer
               Log.debug1("This case should not be handled: #{state}, #{is_dir}, #{path}.")
             end
             if @last_data_flush_time.nil? || @last_data_flush_time + Params['data_flush_delay'] < Time.now.to_i
-              Log.debug1 "Writing server content data to #{@content_data_path}."
+              Log.info "Writing server content data to #{@content_data_path}."
               server_content_data.to_file(@content_data_path)
               @last_data_flush_time = Time.now.to_i
             end
-            Log.debug1 'Adding server content data to queue.'
+            Log.debug1('Adding server content data to queue.')
             @output_queue.push(ContentData::ContentData.new(server_content_data))
           end  # while true do
         end  # Thread.new do
