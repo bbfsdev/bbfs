@@ -59,7 +59,7 @@ def local_index_validation
   begin  
     if index.validate
       valid_msg = "#{Params['local_index']} is valid"
-      Log.info valid_msg
+      Log.debug1 valid_msg
       puts valid_msg
     else
       invalid_msg = "#{Params['local_index']} has problems.\n"\
@@ -87,7 +87,7 @@ def remote_index_validation
     if Validations::IndexValidations.validate_remote_index remote_index, local_index
       valid_msg = "All contents from #{Params['remote_index']} have valid instances on " \
         "#{Params['local_index']}" 
-      Log.info valid_msg
+      Log.debug1 valid_msg
       puts valid_msg
     else
       invalid_msg = "#{Params['remote_index']} has contents absent or without valid instances on "\

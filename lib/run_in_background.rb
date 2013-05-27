@@ -138,7 +138,7 @@ module RunInBackground
     0.upto(TIMEOUT) do
       if exists?(name) && running?(name)
         puts "daemon/service #{name} started\n"
-        Log.info("daemon/service #{name} started")
+        Log.debug1("daemon/service #{name} started")
         return
       end
       sleep 1
@@ -240,7 +240,7 @@ module RunInBackground
     0.upto(TIMEOUT) do
       if exists?(name) && running?(name)
         puts "windows service #{name} started\n"
-        Log.info("windows service #{name} started")
+        Log.debug1("windows service #{name} started")
         return
       end
       sleep 1
@@ -318,7 +318,7 @@ module RunInBackground
     0.upto(TIMEOUT) do
       unless exists? name
         puts "daemon/service #{name} deleted\n"
-        Log.info("daemon/service #{name} deleted")
+        Log.debug1("daemon/service #{name} deleted")
         return
       end
       sleep 1

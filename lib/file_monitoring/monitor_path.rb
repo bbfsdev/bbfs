@@ -109,7 +109,7 @@ module FileMonitoring
           @@log.flush  #Ruby1.9.3: note that this is Ruby internal buffering only; the OS may buffer the data as well
         end
         if (!@event_queue.nil?)
-          Log.info "Writing to event queue [#{self.state}, #{self.path}]"
+          Log.debug1 "Writing to event queue [#{self.state}, #{self.path}]"
           @event_queue.push([self.state, self.instance_of?(DirStat), self.path])
         end
       end

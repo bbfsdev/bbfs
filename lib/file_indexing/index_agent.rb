@@ -72,22 +72,23 @@ module FileIndexing
     # TODO device support
     def index(patterns, otherDB = nil)
       abort "#{self.class}: DB not empty. Current implementation permits only one running of index" \
-            unless @indexed_content.contents.empty?
-
-      server_name = `hostname`.strip
-      permit_patterns = Array.new
-      forbid_patterns = Array.new
-      otherDB_table = Hash.new   # contains instances from given DB while full path name is a key and instance is a value
-      otherDB_contents = Hash.new  # given DB contents
+            unless @indexed_content.empty?
+      local_server_name = `hostname`.strip
+      permit_patterns = []
+      forbid_patterns = []
+      otherDB_updated = ContentData::ContentData.new
+      #otherDB_table = Hash.new   # contains instances from given DB while full path name is a key and instance is a value
+      #otherDB_contents = Hash.new  # given DB contents
 
       # if there is a given DB then populate table with files
       # that was already indexed on this server/device
-      if (otherDB != nil)
-        otherDB_contents.update(otherDB.contents)
-        otherDB.instances.each_value do |i|
-          next unless i.server_name == server_name #and i.device == @device
-          otherDB_table[i.full_path] = i
-        end
+      if !otherDB.nil?
+        otherDB.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+          if (server == local_server_name)
+            # add instance
+            otherDB_updated.add_instance(checksum, size, server, device, path, instance_mod_time)
+          end
+        }
       end
 
       permit_patterns = patterns.positive_patterns
@@ -99,7 +100,7 @@ module FileIndexing
         files = files | (collect(permit_patterns[i]));
       end
 
-      Log.info "Files: #{files}."
+      Log.debug1 "Files: #{files}."
 
       # expand to absolute pathes
       files.map! {|f| File.expand_path(f)}
@@ -116,6 +117,7 @@ module FileIndexing
       files.each do |file|
         file_stats = File.lstat(file)
         file_mtime = IndexAgent.get_correct_mtime(file)
+        device = file_stats.dev.to_s
 
         # index only files
         next if file_stats.directory?
@@ -128,17 +130,19 @@ module FileIndexing
 
         # add files present in the given DB to the DB and remove these files
         # from further processing (save checksum calculation)
-        if otherDB_table.has_key?(file)
-          instance = otherDB_table[file]
-          if instance.size == file_stats.size and instance.modification_time == file_mtime
-            @indexed_content.add_content(otherDB_contents[instance.checksum])
-            @indexed_content.add_instance(instance)
-            next
-          else
-            Log.warning("File (#{file}) size or modification file is different.")
+        file_match = false
+        otherDB_updated.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+          if otherDB_updated.instance_exists(file, local_server_name, device, checksum)
+            if size == file_stats.size and instance_mod_time == file_mtime.to_i
+              @indexed_content.add_instance(checksum, size, server, file_stats.dev.to_s, file, instance_mod_time)
+              file_match = true
+              break
+            else
+              Log.warning("File (#{file}) size or modification file is different.")
+            end
           end
-        end
-
+        }
+        next if file_match
         # calculate a checksum
         unless (checksum = self.class.get_checksum(file))
           Log.warning("Cheksum failure: " + file)
@@ -146,15 +150,9 @@ module FileIndexing
           next
         end
 
-        if !@indexed_content.content_exists(checksum)
-          @indexed_content.add_content ContentData::Content.new(checksum, file_stats.size,
-                                                                Time.now.utc)
-        end
-
-        instance = ContentData::ContentInstance.new(
-            checksum, file_stats.size, server_name, file_stats.dev.to_s,
-            File.expand_path(file), file_mtime)
-        @indexed_content.add_instance(instance)
+        @indexed_content.add_instance(checksum, file_stats.size, local_server_name,
+                                      file_stats.dev.to_s, File.expand_path(file),
+                                      file_mtime.to_i)
       end
     end
 
@@ -162,15 +160,17 @@ module FileIndexing
       return nil unless File.exists?(filename)
       file_stats = File.lstat(filename)
       file_mtime = IndexAgent.get_correct_mtime(filename)
-      ContentData::ContentInstance.new(nil, file_stats.size, nil, file_stats.dev.to_s,
-                                       File.expand_path(filename), file_mtime)
+      # return instance shallow representation (no server)
+      [file_stats.size,
+       "%s,%s,%s" % [`hostname`.strip , file_stats.dev.to_s , File.expand_path(filename)],
+       file_mtime.to_i]
     end
 
     def IndexAgent.global_path(filename)
       server_name = `hostname`.strip
-      return ContentData::ContentInstance.instance_global_path(server_name, filename)
+      file_stats = File.lstat(filename)
+      return "%s,%s,%s" % [server_name, file_stats.dev.to_s,filename]
     end
   end
-
 end
 

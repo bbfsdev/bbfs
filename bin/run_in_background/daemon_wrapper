@@ -30,7 +30,7 @@ Log.init
 
 class WrapperDaemon < Daemon
   def service_main
-    Log.info "Wrapper starts: #{ARGV.join(' ')}"
+    Log.debug1 "Wrapper starts: #{ARGV.join(' ')}"
     @pid = Process.spawn ARGV.join(' ')
     Log.debug1 "Wrapper inner app pid: #{@pid}"
 

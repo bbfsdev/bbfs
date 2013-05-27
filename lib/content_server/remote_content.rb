@@ -19,11 +19,12 @@ module ContentServer
       @last_save_timestamp = nil
       @content_server_content_data_path = File.join(local_backup_folder, 'remote',
                                                     host + '_' + port.to_s)
-      Log.debug2("Initialized RemoteContentClient: host:#{host}   port:#{port}  local_backup_folder:#{local_backup_folder}")
+      Log.debug3("Initialized RemoteContentClient: host:#{host}   port:#{port}  local_backup_folder:#{local_backup_folder}")
     end
 
     def receive_content(message)
       Log.debug1("Backup server received Remote content data:#{message.to_s}")
+      Log.info("Backup server received Remote content data")
       ref = @dynamic_content_data.last_content_data
       @dynamic_content_data.update(message)
       @last_fetch_timestamp = Time.now.to_i
@@ -40,9 +41,9 @@ module ContentServer
         FileUtils.makedirs(@content_server_content_data_path) unless \
               File.directory?(@content_server_content_data_path)
         count = File.open(write_to, 'wb') { |f| f.write(message.to_s) }
-        Log.info("Written content data to file:#{write_to}.")
+        Log.debug1("Written content data to file:#{write_to}.")
       else
-        Log.info("No need to write remote content data, it has not changed.")
+        Log.debug1("No need to write remote content data, it has not changed.")
       end
     end
 
@@ -74,14 +75,15 @@ module ContentServer
     def initialize(dynamic_content_data, port)
       @dynamic_content_data = dynamic_content_data
       @tcp_server = Networking::TCPServer.new(port, method(:content_requested))
-      Log.debug2("initialize RemoteContentServer on port:#{port}")
+      Log.debug3("initialize RemoteContentServer on port:#{port}")
     end
 
     def content_requested(addr_info, message)
       # Send response.
-      Log.info("Master server received content data request.  Sending content data:#{@dynamic_content_data.last_content_data}")
+      Log.info("Content server received content data request")
+      Log.debug1("Sending content data:#{@dynamic_content_data.last_content_data}")
       @tcp_server.send_obj(@dynamic_content_data.last_content_data)
-      Log.info('Master server sent content data')
+      Log.info('Content server sent content data')
     end
 
     def tcp_thread
