@@ -88,17 +88,18 @@ module ContentServer
             elsif state == FileMonitoring::FileStatEnum::NON_EXISTING && is_dir
               Log.debug1("NonExisting/Changed: #{path}")
               # Remove directory but only when non-existing.
-              Log.info("removing index of Directory:'#{path}'")
+              Log.debug1("Directory to remove: #{path}")
               global_dir = FileIndexing::IndexAgent.global_path(path)
               server_content_data = ContentData.remove_directory(
               server_content_data, global_dir)
             else
               Log.debug1("This case should not be handled: #{state}, #{is_dir}, #{path}.")
             end
-            # TODO(kolman): Don't write to file each change?
-            Log.debug1 "Writing server content data to #{@content_data_path}."
-            server_content_data.to_file(@content_data_path)
-
+            if @last_data_flush_time.nil? || @last_data_flush_time + Params['data_flush_delay'] < Time.now.to_i
+              Log.debug1 "Writing server content data to #{@content_data_path}."
+              server_content_data.to_file(@content_data_path)
+              @last_data_flush_time = Time.now.to_i
+            end
             Log.debug1 'Adding server content data to queue.'
             @output_queue.push(ContentData::ContentData.new(server_content_data))
           end  # while true do
