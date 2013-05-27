@@ -30,17 +30,17 @@ module ContentServer
             file_mtime, file_size = File.open(path) { |f| [f.mtime, f.size] }
             if ((file_size == size) &&
                 (file_mtime.to_i == instance_mod_time))
-              Log.info("file exists: #{path}")
+              Log.debug1("file exists: #{path}")
               # add instance to local DB
               server_content_data.add_instance(checksum, size, server,
                                                device, path, instance_mod_time)
             else
-              Log.info("changed: #{path}")
+              Log.debug1("changed: #{path}")
               # Add non existing and changed files to index queue.
               @input_queue.push([FileMonitoring::FileStatEnum::STABLE, path])
             end
           else  # File.exists?(path) TODO: need to change code
-            Log.info("changed: #{path}")
+            Log.debug1("changed: #{path}")
             # Add non existing and changed files to index queue.
             @input_queue.push([FileMonitoring::FileStatEnum::STABLE, path])
           end
@@ -58,14 +58,14 @@ module ContentServer
             # delete directory with it's sub files
             # delete file
             if state == FileMonitoring::FileStatEnum::STABLE && !is_dir
-              Log.info "Indexing content #{path}."
+              Log.info "Indexing file:'#{path}'."
               index_agent = FileIndexing::IndexAgent.new
               indexer_patterns = FileIndexing::IndexerPatterns.new
               indexer_patterns.add_pattern(path)
               index_agent.index(indexer_patterns, server_content_data)
-              Log.info("Failed files: #{index_agent.failed_files.to_a.join(',')}.") \
+              Log.debug1("Failed files: #{index_agent.failed_files.to_a.join(',')}.") \
                   if !index_agent.failed_files.empty?
-              Log.info("indexed content #{index_agent.indexed_content}.")
+              Log.debug1("indexed content #{index_agent.indexed_content}.")
               # merge indexed content into server content data
               ContentData.merge_override_b(index_agent.indexed_content, server_content_data)
             elsif ((state == FileMonitoring::FileStatEnum::NON_EXISTING ||
@@ -73,7 +73,7 @@ module ContentServer
               # If file content changed, we should remove old instance.
               candidate_location = FileIndexing::IndexAgent.global_path(path)
               # Check if deleted file exists at content data.
-              Log.info("Instance candidate to remove: #{candidate_location}")
+              Log.debug1("Instance candidate to remove: #{candidate_location}")
               server_content_data.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
                 tmp_location = "%s,%s,%s" % [server, device, path]
                 if (tmp_location == candidate_location)
@@ -86,20 +86,20 @@ module ContentServer
                 end
               }
             elsif state == FileMonitoring::FileStatEnum::NON_EXISTING && is_dir
-              Log.info("NonExisting/Changed: #{path}")
+              Log.debug1("NonExisting/Changed: #{path}")
               # Remove directory but only when non-existing.
-              Log.info("Directory to remove: #{path}")
+              Log.info("removing index of Directory:'#{path}'")
               global_dir = FileIndexing::IndexAgent.global_path(path)
               server_content_data = ContentData.remove_directory(
               server_content_data, global_dir)
             else
-              Log.info("This case should not be handled: #{state}, #{is_dir}, #{path}.")
+              Log.debug1("This case should not be handled: #{state}, #{is_dir}, #{path}.")
             end
             # TODO(kolman): Don't write to file each change?
-            Log.info "Writing server content data to #{@content_data_path}."
+            Log.debug1 "Writing server content data to #{@content_data_path}."
             server_content_data.to_file(@content_data_path)
 
-            Log.info 'Adding server content data to queue.'
+            Log.debug1 'Adding server content data to queue.'
             @output_queue.push(ContentData::ContentData.new(server_content_data))
           end  # while true do
         end  # Thread.new do

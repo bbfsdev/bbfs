@@ -57,7 +57,7 @@ module ContentServer
               message_content.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
                 if !@copy_prepare.key?(checksum) || !@copy_prepare[checksum][1]
                   @copy_prepare[checksum] = [path, false]
-                  Log.info("Sending ack for: #{checksum}")
+                  Log.debug1("Sending ack for: #{checksum}")
                   @backup_tcp.send_obj([:ACK_MESSAGE, [checksum, Time.now.to_i]])
                 end
               }

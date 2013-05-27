@@ -207,19 +207,19 @@ module FileUtils
           location = "%s,%s,%s" % [server, device, path]
           orig_inst_mod_time = orig_content_data.instance_mod_time(checksum, location)
           file_mtime, file_size = File.open(path) { |f| [f.mtime, f.size] }
-          Log.info "file:#{path} file_mtime:#{file_mtime}."
-          Log.info "update mtime:#{unified_inst_mod_time}"
-          Log.info "original instance mtime:#{orig_inst_mod_time}."
-          Log.info "unify instance mtime:#{unified_inst_mod_time}."
-          Log.info "Comparison: Real file = unified? #{file_mtime.to_i == unified_inst_mod_time}"
+          Log.debug1 "file:#{path} file_mtime:#{file_mtime}."
+          Log.debug1 "update mtime:#{unified_inst_mod_time}"
+          Log.debug1 "original instance mtime:#{orig_inst_mod_time}."
+          Log.debug1 "unify instance mtime:#{unified_inst_mod_time}."
+          Log.debug1 "Comparison: Real file = unified? #{file_mtime.to_i == unified_inst_mod_time}"
           if (file_mtime.to_i == orig_inst_mod_time) \
                 and file_size == size \
                 and (file_mtime.to_i != unified_inst_mod_time)
-            Log.info ("Comparison results: File actual time is same as instance time before unification. Need to modify file time")
+            Log.debug1 ("Comparison results: File actual time is same as instance time before unification. Need to modify file time")
             File.utime(File.atime(path), unified_inst_mod_time, path)
             file_mtime = File.open(path) { |f| f.mtime }
-            Log.info "new file mtime:#{file_mtime}."
-            Log.info "new file mtime in seconds:#{file_mtime.to_i}."
+            Log.debug1 "new file mtime:#{file_mtime}."
+            Log.debug1 "new file mtime in seconds:#{file_mtime.to_i}."
           end
         }
         content_data
