@@ -146,7 +146,7 @@ module RunInBackground
     # if got here then something gone wrong and daemon/service wasn't started in timely manner
     delete name if exists? name
     Log.error("daemon/service #{name} wasn't started in timely manner")
-    sleep(Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5)
+		Log.flush
     raise "daemon/service #{name} wasn't started in timely manner"
   end
 
@@ -218,7 +218,7 @@ module RunInBackground
   def RunInBackground.start! name, opts = {}
     # $0 is the executable name.
     start(File.expand_path($0), ARGV, name, opts)
-    sleep Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5
+	  Log.flush
     exit!
   end
 
@@ -248,7 +248,7 @@ module RunInBackground
     # if got here then something gone wrong and daemon/service wasn't started in timely manner
     delete name if exists? name
     Log.error("daemon/service #{name} wasn't started in timely manner")
-    sleep(Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5)
+		Log.flush
     raise "daemon/service #{name} wasn't started in timely manner"
   end
 
@@ -325,7 +325,7 @@ module RunInBackground
     end
     # if got here then something gone wrong and daemon/service wasn't deleted in timely manner
     Log.error("daemon/service #{name} wasn't deleted in timely manner")
-    sleep(Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5)
+		Log.flush
     raise "daemon/service #{name} wasn't deleted in timely manner"
   end
 
@@ -420,10 +420,11 @@ module RunInBackground
           Log.warning(msg)
         end
       else
-        msg = "Unsupported command #{Params['bg_command']}. Supported commands are: start, delete"
+			  msg = "Unsupported command #{Params['bg_command']}. Supported commands are: start, delete"
         puts msg
         Log.error(msg)
     end
+		nil	
   end
 
   private_class_method :start_linux, :start_windows, :wrap_windows, :stop, :get_abs_std_path, \
