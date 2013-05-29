@@ -102,11 +102,11 @@ class WrapperDaemon < Daemon
       end
       Log.debug1 'Wrapper was stopped'
       # let log be written
-      sleep Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5
+			Log.flush
       exit!
     end
     Log.error 'Failed to stop service'
-    sleep Params['log_param_max_elapsed_time_in_seconds_from_last_flush'] + 0.5
+		Log.flush
     #exit! 
     raise 'Failed to stop service'
   end
