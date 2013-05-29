@@ -232,7 +232,9 @@ module Params
   # full user directory).
   def Params.path(name, value, description)
     raise_error_if_param_exists(name)
-    @globals_db[name] = Param.new(name, File.expand_path(value), 'Path', description)
+    expanded_path = nil
+    expanded_path = File.expand_path(value) if not value.nil?
+    @globals_db[name] = Param.new(name, expanded_path, 'Path', description)
   end
 
   def Params.complex(name, value, description)
@@ -405,6 +407,8 @@ paths:
     Params.path('conf_file', '~/.bbfs/etc/config_content_server.yml', 'Configuration file path.')
   elsif $0 =~ /backup_server/
     Params.path('conf_file', '~/.bbfs/etc/config_backup_server.yml', 'Configuration file path.')
+  elsif $0 =~ /testing_server/
+    Params.path('conf_file', '~/.bbfs/etc/testing_server.yml', 'Configuration file path')
   else
     Params.path('conf_file', nil, 'Configuration file path.')
   end
