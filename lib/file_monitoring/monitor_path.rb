@@ -144,6 +144,7 @@ module FileMonitoring
       super
       @dirs = nil
       @files = nil
+      @non_utf8_paths = {}
     end
 
     #  Adds directory for monitoring.
@@ -257,6 +258,14 @@ module FileMonitoring
 
       # add and monitor new files and directories
       files.each do |file|
+        # keep only files with names in UTF-8
+        next if @non_utf8_paths[file]
+        check_utf_8_encoding_file = file.clone
+        unless check_utf_8_encoding_file.force_encoding("UTF-8").valid_encoding?
+          Log.warning("Non UTF-8 file name '#{check_utf_8_encoding_file}', skipping.")
+          @non_utf8_paths[file]=true
+          next
+        end
         file_stat = File.lstat(file) rescue nil
         if (file_stat.directory?)
           unless (has_dir?(file)) # new directory
