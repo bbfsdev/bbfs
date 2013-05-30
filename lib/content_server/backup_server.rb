@@ -61,7 +61,7 @@ module ContentServer
     # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # Initialize/Start backup server content data sender
     Log.debug1('Start backup server content data sender')
-    dynamic_content_data = ContentData::DynamicContentData.new
+    local_dynamic_content_data = ContentData::DynamicContentData.new
     #content_data_sender = ContentDataSender.new(
     #    Params['remote_server'],
     #    Params['remote_listening_port'])
@@ -71,7 +71,22 @@ module ContentServer
         Log.debug1 'Waiting on local server content data queue.'
         cd = local_server_content_data_queue.pop
         #    content_data_sender.send_content_data(cd)
-        dynamic_content_data.update(cd)
+        local_dynamic_content_data.update(cd)
+      end
+    end
+
+    # # # # # # # # # # # # # # # # # # # # # # # #
+    # Start dump local content data to file thread
+    Log.debug1('Start dump local content data to file thread')
+    all_threads << Thread.new do
+      last_data_flush_time = nil
+      while true do
+        if last_data_flush_time.nil? || last_data_flush_time + Params['data_flush_delay'] < Time.now.to_i
+          Log.info "Writing local content data to #{Params['local_content_data_path']}."
+          local_dynamic_content_data.last_content_data.to_file(Params['local_content_data_path'])
+          last_data_flush_time = Time.now.to_i
+        end
+        sleep(1)
       end
     end
     Params['backup_destination_folder'] = File.expand_path(Params['monitoring_paths'][0]['path'])
@@ -85,7 +100,7 @@ module ContentServer
 
     file_copy_client = FileCopyClient.new(Params['content_server_hostname'],
                                           Params['content_server_files_port'],
-                                          dynamic_content_data,
+                                          local_dynamic_content_data,
                                           @process_variables)
     all_threads.concat(file_copy_client.threads)
 
@@ -94,7 +109,7 @@ module ContentServer
     all_threads << Thread.new do
       loop do
         sleep(Params['backup_check_delay'])
-        local_cd = dynamic_content_data.last_content_data()
+        local_cd = local_dynamic_content_data.last_content_data()
         remote_cd = content_server_dynamic_content_data.last_content_data()
         diff = ContentData.remove(local_cd, remote_cd)
         #file_copy_client.request_copy(diff) unless diff.empty?

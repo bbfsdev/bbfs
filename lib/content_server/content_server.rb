@@ -68,6 +68,21 @@ module ContentServer
       end
     end
 
+    # # # # # # # # # # # # # # # # # # # # # # # #
+    # Start dump local content data to file thread
+    Log.debug1('Start dump local content data to file thread')
+    all_threads << Thread.new do
+      last_data_flush_time = nil
+      while true do
+        if last_data_flush_time.nil? || last_data_flush_time + Params['data_flush_delay'] < Time.now.to_i
+          Log.info "Writing local content data to #{Params['local_content_data_path']}."
+          local_dynamic_content_data.last_content_data.to_file(Params['local_content_data_path'])
+          last_data_flush_time = Time.now.to_i
+        end
+        sleep(1)
+      end
+    end
+
     remote_content_client = RemoteContentServer.new(local_dynamic_content_data,
                                                     Params['local_content_data_port'])
     all_threads << remote_content_client.tcp_thread
