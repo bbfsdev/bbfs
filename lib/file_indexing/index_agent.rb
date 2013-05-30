@@ -120,12 +120,6 @@ module FileIndexing
         # index only files
         next if file_stats.directory?
 
-        # keep only files with names in UTF-8
-        unless file.force_encoding("UTF-8").valid_encoding?
-          Log.warning("Non UTF-8 file name \"#{file}\", skipping.")
-          next
-        end
-
         # add files present in the given DB to the DB and remove these files
         # from further processing (save checksum calculation)
         if otherDB_table.has_key?(file)
