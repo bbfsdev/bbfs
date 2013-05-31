@@ -289,13 +289,12 @@ module Params
     end
 
     # Add parameters to log init messages (used by Log.init if param:print_params_to_stdout is true)
-    @init_debug_messages << "\n"
     @init_debug_messages << 'Initialized executable parameters:'
     @init_debug_messages << '---------------------------------'
     counter=0
     @globals_db.values.each do |param|
       counter += 1
-      @init_debug_messages << "#{counter}: #{param.name}=#{param.value}"
+      @init_debug_messages << "Param ##{counter}: #{param.name}=#{param.value}"
     end
     @init_debug_messages << '---------------------------------'
   end

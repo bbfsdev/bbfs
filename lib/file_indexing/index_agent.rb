@@ -132,7 +132,8 @@ module FileIndexing
               file_match = true
               break
             else
-              Log.warning("File (#{file}) size or modification file is different.")
+              Log.warning("File (#{file}) size or modification file is different. size=#{size}  actual size=#{file_stats.size}" + \
+                          "   instance_mod_time=#{Time.at(instance_mod_time)}  actual=#{file_mtime}")
             end
           end
         }

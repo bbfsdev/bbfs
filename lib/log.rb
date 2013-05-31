@@ -28,7 +28,9 @@ module Log
   Params.boolean('log_write_to_file', true , \
       'If true then the logger will write the messages to a file.')
   Params.path('log_file_name', "~/.bbfs/log/#{Log.executable_name}.log4r" , \
-      'Default log file name: ~/.bbfs/log/<executable_name>.log')
+      'log file name: ~/.bbfs/log/<executable_name>.log')
+  Params.path('log_rotation_size',1000000 , \
+      'max log file size. when reaching this size, a new file is created for rest of log')
   Params.boolean('log_write_to_console', false , \
       'If true then the logger will write the messages to the console.')
   Params.boolean('log_write_to_email', false , \
@@ -59,14 +61,22 @@ module Log
     end
 
     #file setup
+    # example of log file being split by space constraint 'maxsize'
+
+
     if Params['log_write_to_file']
       if File.exist?(Params['log_file_name'])
-        File.delete Params['log_file_name']
+        File.delete(Params['log_file_name'])
       else
         dir_name = File.dirname(Params['log_file_name'])
         FileUtils.mkdir_p(dir_name) unless File.directory?(dir_name)
       end
-      file_outputter = Log4r::FileOutputter.new('file_log', :filename => Params['log_file_name'])
+      file_config = {
+          "filename" => Params['log_file_name'],
+          "maxsize" => 1024,
+          "trunc" => true
+      }
+      file_outputter = Log4r::RollingFileOutputter.new("file_log", file_config)
       file_outputter.level = log4r_level
       file_outputter.formatter = formatter
       @log4r.outputters << file_outputter
@@ -100,10 +110,10 @@ module Log
     # print params
     if Params['print_params_to_stdout']
       Params.get_init_messages().each { |msg|
-        @log4r.info(msg)
+        Log.info(msg)
       }
     else
-      @log4r.info("Not printing executable parameters since param:'print_params_to_stdout' is false")
+      Log.info("Not printing executable parameters since param:'print_params_to_stdout' is false")
     end
   end
 
