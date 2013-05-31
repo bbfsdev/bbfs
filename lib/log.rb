@@ -29,7 +29,7 @@ module Log
       'If true then the logger will write the messages to a file.')
   Params.path('log_file_name', "~/.bbfs/log/#{Log.executable_name}.log4r" , \
       'log file name: ~/.bbfs/log/<executable_name>.log')
-  Params.path('log_rotation_size',1000000 , \
+  Params.integer('log_rotation_size',1000000 , \
       'max log file size. when reaching this size, a new file is created for rest of log')
   Params.boolean('log_write_to_console', false , \
       'If true then the logger will write the messages to the console.')
@@ -73,7 +73,7 @@ module Log
       end
       file_config = {
           "filename" => Params['log_file_name'],
-          "maxsize" => 1024,
+          "maxsize" => Params['log_rotation_size'],
           "trunc" => true
       }
       file_outputter = Log4r::RollingFileOutputter.new("file_log", file_config)
