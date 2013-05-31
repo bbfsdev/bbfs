@@ -27,17 +27,18 @@ module ContentServer
             file_mtime, file_size = File.open(path) { |f| [f.mtime, f.size] }
             if ((file_size == size) &&
                 (file_mtime.to_i == instance_mod_time))
-              Log.debug1("file exists: #{path}")
+              Log.debug1("indexed path:#{path} matches physical parameters")
               # add instance to local DB
               server_content_data.add_instance(checksum, size, server,
                                                device, path, instance_mod_time)
             else
-              Log.debug1("changed: #{path}")
+              Log.debug1("indexed path:#{path} does not match physical parameters. " \
+                "size:#{size}  actual size:#{file_size}  time:#{Time.at(instance_mod_time)}  actual time:#{file_mtime}")
               # Add non existing and changed files to index queue.
               @input_queue.push([FileMonitoring::FileStatEnum::STABLE, path])
             end
           else  # File.exists?(path) TODO: need to change code
-            Log.debug1("changed: #{path}")
+            Log.debug1("indexed path:#{path} does not exist.")
             # Add non existing and changed files to index queue.
             @input_queue.push([FileMonitoring::FileStatEnum::STABLE, path])
           end
@@ -49,7 +50,7 @@ module ContentServer
         while true do
           Log.debug1 'Waiting on index input queue.'
           state, is_dir, path = @input_queue.pop
-          Log.debug1 "event: #{state}, #{is_dir}, #{path}."
+          Log.debug1 "index event: state:#{state}, dir?#{is_dir}, path:#{path}."
 
             # index files and add to copy queue
             # delete directory with it's sub files
