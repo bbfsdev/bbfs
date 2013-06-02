@@ -68,28 +68,17 @@ module ContentServer
               ContentData.merge_override_b(index_agent.indexed_content, server_content_data)
             elsif ((state == FileMonitoring::FileStatEnum::NON_EXISTING ||
                 state == FileMonitoring::FileStatEnum::CHANGED) && !is_dir)
-              # If file content changed, we should remove old instance.
-              candidate_location = FileIndexing::IndexAgent.global_path(path)
-              # Check if deleted file exists at content data.
-              Log.debug1("Instance candidate to remove: #{candidate_location}")
-              server_content_data.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
-                tmp_location = "%s,%s,%s" % [server, device, path]
-                if (tmp_location == candidate_location)
-                  if !shallow_check(path, size, instance_mod_time)
-                    server_content_data.remove_instance(tmp_location, checksum)
-                  else
-                    Log.error("Code should not reach this point")
-                  end
-                  break
-                end
-              }
+              Log.debug2("NonExisting/Changed: #{path}")
+              # Remove directory but only when non-existing.
+              Log.debug1("File to remove: #{path}")
+              server_content_data = ContentData.remove_directory(
+                  server_content_data, path)
             elsif state == FileMonitoring::FileStatEnum::NON_EXISTING && is_dir
-              Log.debug1("NonExisting/Changed: #{path}")
+              Log.debug2("NonExisting/Changed: #{path}")
               # Remove directory but only when non-existing.
               Log.debug1("Directory to remove: #{path}")
-              global_dir = FileIndexing::IndexAgent.global_path(path)
               server_content_data = ContentData.remove_directory(
-              server_content_data, global_dir)
+              server_content_data, path)
             else
               Log.debug1("This case should not be handled: #{state}, #{is_dir}, #{path}.")
             end
