@@ -44,7 +44,6 @@ module ContentServer
           end
         }
 
-
       # Start indexing on demand and write changes to queue
       thread = Thread.new do
         while true do
@@ -73,6 +72,8 @@ module ContentServer
               Log.debug1("File to remove: #{path}")
               server_content_data = ContentData.remove_directory(
                   server_content_data, path)
+              #TODO: [yaron dror] Currently we remove ALL paths from all instances. If same
+              #TODO: path is shared across many servers this is an issue
             elsif state == FileMonitoring::FileStatEnum::NON_EXISTING && is_dir
               Log.debug2("NonExisting/Changed: #{path}")
               # Remove directory but only when non-existing.
@@ -82,7 +83,7 @@ module ContentServer
             else
               Log.debug1("This case should not be handled: #{state}, #{is_dir}, #{path}.")
             end
-            Log.debug1('Adding server content data to queue.')
+            Log.debug1('Adding server content data to output queue.')
             @output_queue.push(ContentData::ContentData.new(server_content_data))
           end  # while true do
         end  # Thread.new do
