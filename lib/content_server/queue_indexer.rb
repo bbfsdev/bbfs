@@ -40,7 +40,7 @@ module ContentServer
             Log.debug1("Index info:checksum:#{checksum } size:#{file_stats.size} time:#{file_stats.mtime.to_i}")
             Log.debug1('Adding index to content data. put in queue for dynamic update.')
             server_content_data.add_instance(checksum, file_stats.size, Params['local_server_name'], file_stats.dev.to_s, path, file_stats.mtime.to_i)
-            @output_queue.push([checksum.to_s.clone, file_stats.size, file_stats.dev.to_s.clone, path.clone, file_stats.mtime])
+            @output_queue.push(server_content_data)
           elsif ((state == FileMonitoring::FileStatEnum::NON_EXISTING ||
               state == FileMonitoring::FileStatEnum::CHANGED) && !is_dir)
             Log.debug2("NonExisting/Changed: #{path}")
