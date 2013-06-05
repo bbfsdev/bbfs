@@ -172,8 +172,8 @@ module ContentServer
     def handle(message)
       message_type, message_content = message
       if message_type == :SEND_COPY_MESSAGE
-        Log.debug1("Requesting file (content data) to copy.")
-        Log.debug2("File requested: #{message_content.to_s}")
+        Log.debug1("Requesting files to copy.")
+        Log.debug2("Files requested: #{message_content.to_s}")
         bytes_written = @tcp_client.send_obj([:COPY_MESSAGE, message_content])
         Log.debug2("Sending copy message succeeded? bytes_written: #{bytes_written}.")
       elsif message_type == :COPY_CHUNK

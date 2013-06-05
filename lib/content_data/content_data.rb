@@ -77,6 +77,21 @@ module ContentData
       }
     end
 
+    # iterator of instances over specific content
+    # block is provided with: checksum, size, content modification time,
+    #   instance modification time, server, device and file path
+    def content_each_instance(checksum, &block)
+      content_info = @contents_info[checksum]
+      content_info[1].keys.each {|location|
+        # provide checksum, size, content modification time,instance modification time,
+        #   server, device and path to the block
+        instance_modification_time = content_info[1][location]
+        location_arr = location.split(',')
+        block.call(checksum,content_info[0], content_info[2], instance_modification_time,
+                   location_arr[0], location_arr[1], location_arr[2])
+      }
+    end
+
     def contents_size()
       @contents_info.size
     end

@@ -3,6 +3,7 @@ require 'protobuf/rpc/handler'
 require './agent.pb'
 require './index_agent'
 require './agent.pb'
+require 'params'
 
 class ::IndexHandler < Protobuf::Rpc::Handler
   request ::IndexerArgumentsMessage
@@ -15,7 +16,7 @@ class ::IndexHandler < Protobuf::Rpc::Handler
     patterns = IndexerPatterns.new(request.patterns)
     otherDB = ContentData.new(request.otherDB)
 
-    indexer = IndexAgent.new(`hostname`.chomp, "dev")
+    indexer = IndexAgent.new(Params['local_server_name'], "dev")
     indexer.index(patterns, otherDB)
     indexer.db.serialize(response)
     response

@@ -84,11 +84,10 @@ module Log
 
     #email setup
     if Params['log_write_to_email']
-      server_name = `hostname`.strip
       email_outputter = Log4r::EmailOutputter.new('email_log',
                                                   :server => 'smtp.gmail.com',
                                                   :port => 587,
-                                                  :subject => "Error happened at #{server_name} server run by #{ENV['USER']}. Service_name is #{Params['service_name']}",
+                                                  :subject => "Error happened at server:'#{Params['local_server_name']}' run by #{ENV['USER']}. Service_name is #{Params['service_name']}",
                                                   :acct => Params['from_email'],
                                                   :from => Params['from_email'],
                                                   :passwd => Params['from_email_password'],

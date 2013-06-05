@@ -22,6 +22,7 @@ module ContentServer
   # Content server specific flags.
   Params.integer('local_files_port', 4444, 'Remote port in backup server to copy files.')
   Params.integer('local_content_data_port', 3333, 'Listen to incoming content data requests.')
+  Params.string('local_server_name', `hostname`.strip, 'local server name')
 
   def run_content_server
     Log.info('Content server start')
