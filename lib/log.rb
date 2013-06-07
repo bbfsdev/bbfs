@@ -61,9 +61,6 @@ module Log
     end
 
     #file setup
-    # example of log file being split by space constraint 'maxsize'
-
-
     if Params['log_write_to_file']
       if File.exist?(Params['log_file_name'])
         File.delete(Params['log_file_name'])

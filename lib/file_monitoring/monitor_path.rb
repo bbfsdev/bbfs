@@ -105,8 +105,8 @@ module FileMonitoring
       if (@state != new_state or @state == FileStatEnum::CHANGED)
         @state = new_state
         if (@@log)
-          @@log.puts(cur_stat)
-          @@log.flush  #Ruby1.9.3: note that this is Ruby internal buffering only; the OS may buffer the data as well
+          @@log.info(state + ": " + path)
+          @@log.outputters[0].flush if Params['log_flush_each_message']
         end
         if (!@event_queue.nil?)
           Log.debug1 "Writing to event queue [#{self.state}, #{self.path}]"
@@ -123,13 +123,6 @@ module FileMonitoring
     #  Returns path and state of the file with indentation
     def to_s (indent = 0)
       (" " * indent) + path.to_s + " : " + state.to_s
-    end
-
-    #  Reports current state with identification.
-    #  NOTE This format used by log file.
-    def cur_stat
-      # TODO what output format have to be ?
-      Time.now.utc.to_s + " : " + self.state + " : " + self.path
     end
   end
 
