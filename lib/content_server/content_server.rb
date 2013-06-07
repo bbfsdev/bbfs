@@ -23,10 +23,16 @@ module ContentServer
   Params.integer('local_files_port', 4444, 'Remote port in backup server to copy files.')
   Params.integer('local_content_data_port', 3333, 'Listen to incoming content data requests.')
   Params.string('local_server_name', `hostname`.strip, 'local server name')
+  Params.path('tmp_path', '~/.bbfs/tmp', 'tmp path for temporary files')
 
   def run_content_server
     Log.info('Content server start')
     all_threads = []
+
+    # create general tmp dir
+    FileUtils.mkdir_p(Params['tmp_path']) unless File.directory?(Params['tmp_path'])
+    # init tmp content data file
+    tmp_content_data_file = Params['tmp_path'] + '/contnet.data'
 
     @process_variables = ThreadSafeHash::ThreadSafeHash.new
     @process_variables.set('server_name', 'content_server')
@@ -77,7 +83,8 @@ module ContentServer
       while true do
         if last_data_flush_time.nil? || last_data_flush_time + Params['data_flush_delay'] < Time.now.to_i
           Log.info "Writing local content data to #{Params['local_content_data_path']}."
-          local_dynamic_content_data.last_content_data.to_file(Params['local_content_data_path'])
+          local_dynamic_content_data.last_content_data.to_file(tmp_content_data_file)
+          ::FileUtils.mv(tmp_content_data_file, Params['local_content_data_path'])
           last_data_flush_time = Time.now.to_i
         end
         sleep(1)

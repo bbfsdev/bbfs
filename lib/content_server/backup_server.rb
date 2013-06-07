@@ -31,6 +31,11 @@ module ContentServer
     Thread.abort_on_exception = true
     all_threads = []
 
+    # create general tmp dir
+    FileUtils.mkdir_p(Params['tmp_path']) unless File.directory?(Params['tmp_path'])
+    # init tmp content data file
+    tmp_content_data_file = Params['tmp_path'] + '/backup.data'
+
     @process_variables = ThreadSafeHash::ThreadSafeHash.new
     @process_variables.set('server_name', 'backup_server')
 
@@ -83,7 +88,9 @@ module ContentServer
       while true do
         if last_data_flush_time.nil? || last_data_flush_time + Params['data_flush_delay'] < Time.now.to_i
           Log.info "Writing local content data to #{Params['local_content_data_path']}."
-          local_dynamic_content_data.last_content_data.to_file(Params['local_content_data_path'])
+          local_dynamic_content_data.last_content_data.to_file(tmp_content_data_file)
+          ::FileUtils.mv(tmp_content_data_file, Params['local_content_data_path'])
+
           last_data_flush_time = Time.now.to_i
         end
         sleep(1)
