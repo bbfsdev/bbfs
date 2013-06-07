@@ -232,9 +232,8 @@ module Params
   # full user directory).
   def Params.path(name, value, description)
     raise_error_if_param_exists(name)
-    expanded_path = nil
-    expanded_path = File.expand_path(value) if not value.nil?
-    @globals_db[name] = Param.new(name, expanded_path, 'Path', description)
+    value = File.expand_path(value) unless value.nil?
+    @globals_db[name] = Param.new(name, value, 'Path', description)
   end
 
   def Params.complex(name, value, description)
