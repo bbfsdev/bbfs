@@ -13,15 +13,14 @@ require 'log'
 require 'networking/tcp'
 require 'params'
 require 'process_monitoring/thread_safe_hash'
-require 'process_monitoring/monitoring'
 require 'process_monitoring/monitoring_info'
 
 # Content server. Monitors files, index local files, listen to backup server content,
 # copy changes and new files to backup server.
 module ContentServer
   # Content server specific flags.
-  Params.integer('local_files_port', 4444, 'Remote port in backup server to copy files.')
-  Params.integer('local_content_data_port', 3333, 'Listen to incoming content data requests.')
+  Params.integer('local_files_port', 4444, 'Remote port in backup server to copy files')
+  Params.integer('local_content_data_port', 3333, 'Listen to incoming content data requests')
   Params.string('local_server_name', `hostname`.strip, 'local server name')
   Params.path('tmp_path', '~/.bbfs/tmp', 'tmp path for temporary files')
 
@@ -33,9 +32,6 @@ module ContentServer
     FileUtils.mkdir_p(Params['tmp_path']) unless File.directory?(Params['tmp_path'])
     # init tmp content data file
     tmp_content_data_file = Params['tmp_path'] + '/contnet.data'
-
-    @process_variables = ThreadSafeHash::ThreadSafeHash.new
-    @process_variables.set('server_name', 'content_server')
 
     # # # # # # # # # # # #
     # Initialize/Start monitoring
@@ -101,13 +97,28 @@ module ContentServer
     copy_server = FileCopyServer.new(copy_files_events, Params['local_files_port'])
     all_threads.concat(copy_server.run())
 
+    # # # # # # # # # # # # # # # # # # # # # # # #
+    # Start process vars thread
     if Params['enable_monitoring']
-      mon = Monitoring::Monitoring.new(@process_variables)
-      Log.add_consumer(mon)
-      all_threads << mon.thread
-      monitoring_info = MonitoringInfo::MonitoringInfo.new(@process_variables)
+      Log.info("Initializing monitoring of process params on port:#{Params['process_monitoring_web_port']}")
+      Params['process_vars'] = ThreadSafeHash::ThreadSafeHash.new
+      Params['process_vars'].set('server_name', 'content_server')
+      monitoring_info = MonitoringInfo::MonitoringInfo.new()
+      all_threads << Thread.new do
+        last_data_flush_time = nil
+        while true do
+          if last_data_flush_time.nil? || last_data_flush_time + Params['process_vars_delay'] < Time.now
+            Params['process_vars'].set('time', Time.now)
+            Log.info("process_vars:monitoring queue size:#{monitoring_events.size}")
+            Params['process_vars'].set('monitoring queue size', monitoring_events.size)
+            Log.info("process_vars:content data queue size:#{monitoring_events.size}")
+            Params['process_vars'].set('content data queue', local_server_content_data_queue.size)
+            last_data_flush_time = Time.now
+          end
+          sleep(0.3)
+        end
+      end
     end
-
     # Finalize server threads.
     all_threads.each { |t| t.abort_on_exception = true }
     all_threads.each { |t| t.join }

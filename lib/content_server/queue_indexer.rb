@@ -35,6 +35,9 @@ module ContentServer
                 digest << buffer
               end
             }
+            if Params['enable_monitoring']
+              Params['process_vars'].inc('indexed_files')
+            end
             checksum = digest.hexdigest.downcase
             file_stats = File.lstat(path)
             Log.debug1("Index info:checksum:#{checksum } size:#{file_stats.size} time:#{file_stats.mtime.to_i}")

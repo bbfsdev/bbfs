@@ -23,7 +23,6 @@ module ContentServer
   Params.string('content_server_hostname', nil, 'IP or DNS of backup server.')
   Params.integer('content_server_data_port', 3333, 'Port to copy content data from.')
   Params.integer('content_server_files_port', 4444, 'Listening port in backup server for files')
-
   Params.integer('backup_check_delay', 5, 'Delay in seconds between two content vs backup checks.')
 
   def run_backup_server
@@ -133,11 +132,27 @@ module ContentServer
       end
     end
 
+    # # # # # # # # # # # # # # # # # # # # # # # #
+    # Start process vars thread
     if Params['enable_monitoring']
-      mon = Monitoring::Monitoring.new(@process_variables)
-      Log.add_consumer(mon)
-      all_threads << mon.thread
-      monitoring_info = MonitoringInfo::MonitoringInfo.new(@process_variables)
+      Log.info("Initializing monitoring of process params on port:#{Params['process_monitoring_web_port']}")
+      Params['process_vars'] = ThreadSafeHash::ThreadSafeHash.new
+      Params['process_vars'].set('server_name', 'content_server')
+      monitoring_info = MonitoringInfo::MonitoringInfo.new()
+      all_threads << Thread.new do
+        last_data_flush_time = nil
+        while true do
+          if last_data_flush_time.nil? || last_data_flush_time + Params['process_vars_delay'] < Time.now
+            Params['process_vars'].set('time', Time.now)
+            Log.info("process_vars:monitoring queue size:#{monitoring_events.size}")
+            Params['process_vars'].set('monitoring queue size', monitoring_events.size)
+            Log.info("process_vars:content data queue size:#{monitoring_events.size}")
+            Params['process_vars'].set('content data queue', local_server_content_data_queue.size)
+            last_data_flush_time = Time.now
+          end
+          sleep(0.3)
+        end
+      end
     end
 
     all_threads.each { |t| t.abort_on_exception = true }
