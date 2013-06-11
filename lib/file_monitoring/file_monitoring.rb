@@ -9,18 +9,6 @@ module FileMonitoring
   # Manages file monitoring of number of file system locations
   class FileMonitoring
 
-    def initialize
-      ObjectSpace.define_finalizer(self,
-                                   self.class.method(:finalize).to_proc)
-      if Params['enable_monitoring']
-        Params['process_vars'].inc('obj add FileMonitoring')
-      end
-    end
-    def self.finalize(id)
-      if Params['enable_monitoring']
-        Params['process_vars'].inc('obj rem FileMonitoring')
-      end
-    end
     # Set event queue used for communication between different proceses.
     # @param queue [Queue]
     def set_event_queue(queue)

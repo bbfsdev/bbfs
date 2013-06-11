@@ -204,10 +204,10 @@ module FileMonitoring
       child_indent = indent + indent_increment
       res = super
       @files.each_value do |file|
-        res += "\n" + file.to_s(child_ident)
+        res += "\n" + file.to_s(child_indent)
       end if @files
       @dirs.each_value do |dir|
-        res += "\n" + dir.to_s(child_ident)
+        res += "\n" + dir.to_s(child_indent)
       end if @dirs
       res
     end
