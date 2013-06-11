@@ -159,6 +159,7 @@ module ContentServer
             #enable following line to see full list of object:count
             #Params['process_vars'].set('Live objs full', obj_array)
             Params['process_vars'].set('Live objs cnt', total_obj_count)
+            Params['process_vars'].set('Live String obj cnt', ObjectSpace.each_object(String).count)
             last_data_flush_time = Time.now
           end
           sleep(0.3)

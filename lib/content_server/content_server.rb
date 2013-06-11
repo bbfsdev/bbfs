@@ -121,7 +121,7 @@ module ContentServer
             #enable following line to see full list of object:count
             #obj_array = ''
             total_obj_count = 0
-              ObjectSpace.each_object(Class) {|obj|
+            ObjectSpace.each_object(Class) {|obj|
               obj_count_per_class = ObjectSpace.each_object(obj).count
               #enable following line to see full list of object:count
               #obj_array = "#{obj_array} * #{obj.name}:#{obj_count_per_class}"
@@ -130,6 +130,7 @@ module ContentServer
             #enable following line to see full list of object:count
             #Params['process_vars'].set('Live objs full', obj_array)
             Params['process_vars'].set('Live objs cnt', total_obj_count)
+            Params['process_vars'].set('Live String obj cnt', ObjectSpace.each_object(String).count)
             last_data_flush_time = Time.now
           end
           sleep(0.3)
