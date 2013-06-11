@@ -30,12 +30,17 @@ module ContentServer
           if state == FileMonitoring::FileStatEnum::STABLE && !is_dir
             Log.info "Indexing file:'#{path}'."
             # Calculating checksum
-            digest = Digest::SHA1.new
-            File.open(path, 'rb') { |f|
-              while buffer = f.read(65536) do
-                digest << buffer
-              end
-            }
+            begin
+              digest = Digest::SHA1.new
+              File.open(path, 'rb') { |f|
+                while buffer = f.read(65536) do
+                  digest << buffer
+                end
+              }
+            rescue
+              Log.warning("Monitored path'#{path}' does not exist. Probably file changed")
+              next
+            end
             if Params['enable_monitoring']
               Params['process_vars'].inc('indexed_files')
             end
