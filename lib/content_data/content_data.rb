@@ -29,10 +29,21 @@ module ContentData
   class ContentData
 
     def initialize(other = nil)
+      ObjectSpace.define_finalizer(self,
+                                   self.class.method(:finalize).to_proc)
+      if Params['enable_monitoring']
+        Params['process_vars'].inc('obj add ContentData')
+      end
       if other.nil?
         @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
       else
         @contents_info = other.clone_contents_info
+      end
+    end
+
+    def self.finalize(id)
+      if Params['enable_monitoring']
+        Params['process_vars'].inc('obj rem ContentData')
       end
     end
 

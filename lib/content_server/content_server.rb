@@ -33,6 +33,12 @@ module ContentServer
     # init tmp content data file
     tmp_content_data_file = Params['tmp_path'] + '/contnet.data'
 
+    if Params['enable_monitoring']
+      Log.info("Initializing monitoring of process params on port:#{Params['process_monitoring_web_port']}")
+      Params['process_vars'] = ThreadSafeHash::ThreadSafeHash.new
+      Params['process_vars'].set('server_name', 'content_server')
+    end
+
     # # # # # # # # # # # #
     # Initialize/Start monitoring
     Log.info('Start monitoring following directories:')
@@ -60,7 +66,6 @@ module ContentServer
     # # # # # # # # # # # # # # # # # # # # # #
     # Initialize/Start content data comparator
     Log.debug1('Start content data comparator')
-    copy_files_events = Queue.new  # TODO(kolman): Remove this initialization and merge to FileCopyServer.
     local_dynamic_content_data = ContentData::DynamicContentData.new
     all_threads << Thread.new do  # TODO(kolman): Seems like redundant, check how to update dynamic directly.
       while true do
@@ -94,15 +99,13 @@ module ContentServer
     # # # # # # # # # # # # # # # #
     # Start copying files on demand
     Log.debug1('Start copy data on demand')
+    copy_files_events = Queue.new  # TODO(kolman): Remove this initialization and merge to FileCopyServer.
     copy_server = FileCopyServer.new(copy_files_events, Params['local_files_port'])
     all_threads.concat(copy_server.run())
 
     # # # # # # # # # # # # # # # # # # # # # # # #
     # Start process vars thread
     if Params['enable_monitoring']
-      Log.info("Initializing monitoring of process params on port:#{Params['process_monitoring_web_port']}")
-      Params['process_vars'] = ThreadSafeHash::ThreadSafeHash.new
-      Params['process_vars'].set('server_name', 'content_server')
       monitoring_info = MonitoringInfo::MonitoringInfo.new()
       all_threads << Thread.new do
         last_data_flush_time = nil
@@ -110,9 +113,11 @@ module ContentServer
           if last_data_flush_time.nil? || last_data_flush_time + Params['process_vars_delay'] < Time.now
             Params['process_vars'].set('time', Time.now)
             Log.info("process_vars:monitoring queue size:#{monitoring_events.size}")
-            Params['process_vars'].set('monitoring queue size', monitoring_events.size)
+            Params['process_vars'].set('monitoring queue', monitoring_events.size)
             Log.info("process_vars:content data queue size:#{monitoring_events.size}")
             Params['process_vars'].set('content data queue', local_server_content_data_queue.size)
+            Log.info("process_vars:copy files events queue size:#{copy_files_events.size}")
+            Params['process_vars'].set('copy files events queue', copy_files_events.size)
             last_data_flush_time = Time.now
           end
           sleep(0.3)

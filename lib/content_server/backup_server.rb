@@ -35,8 +35,11 @@ module ContentServer
     # init tmp content data file
     tmp_content_data_file = Params['tmp_path'] + '/backup.data'
 
-    @process_variables = ThreadSafeHash::ThreadSafeHash.new
-    @process_variables.set('server_name', 'backup_server')
+    if Params['enable_monitoring']
+      Log.info("Initializing monitoring of process params on port:#{Params['process_monitoring_web_port']}")
+      Params['process_vars'] = ThreadSafeHash::ThreadSafeHash.new
+      Params['process_vars'].set('server_name', 'backup_server')
+    end
 
     # # # # # # # # # # # #
     # Initialize/Start monitoring
@@ -106,8 +109,7 @@ module ContentServer
 
     file_copy_client = FileCopyClient.new(Params['content_server_hostname'],
                                           Params['content_server_files_port'],
-                                          local_dynamic_content_data,
-                                          @process_variables)
+                                          local_dynamic_content_data)
     all_threads.concat(file_copy_client.threads)
 
     # Each
@@ -135,9 +137,6 @@ module ContentServer
     # # # # # # # # # # # # # # # # # # # # # # # #
     # Start process vars thread
     if Params['enable_monitoring']
-      Log.info("Initializing monitoring of process params on port:#{Params['process_monitoring_web_port']}")
-      Params['process_vars'] = ThreadSafeHash::ThreadSafeHash.new
-      Params['process_vars'].set('server_name', 'content_server')
       monitoring_info = MonitoringInfo::MonitoringInfo.new()
       all_threads << Thread.new do
         last_data_flush_time = nil
@@ -145,7 +144,7 @@ module ContentServer
           if last_data_flush_time.nil? || last_data_flush_time + Params['process_vars_delay'] < Time.now
             Params['process_vars'].set('time', Time.now)
             Log.info("process_vars:monitoring queue size:#{monitoring_events.size}")
-            Params['process_vars'].set('monitoring queue size', monitoring_events.size)
+            Params['process_vars'].set('monitoring queue', monitoring_events.size)
             Log.info("process_vars:content data queue size:#{monitoring_events.size}")
             Params['process_vars'].set('content data queue', local_server_content_data_queue.size)
             last_data_flush_time = Time.now

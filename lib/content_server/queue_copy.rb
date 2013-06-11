@@ -4,6 +4,7 @@ require 'content_server/file_streamer'
 require 'file_indexing/index_agent'
 require 'log'
 require 'networking/tcp'
+require 'params'
 
 
 module ContentServer
@@ -118,8 +119,9 @@ module ContentServer
   end  # class QueueCopy
 
   class FileCopyClient
-    def initialize(host, port, dynamic_content_data, process_variables)
+    def initialize(host, port, dynamic_content_data)
       @local_queue = Queue.new
+      start_process_var_monitoring
       @dynamic_content_data = dynamic_content_data
       @tcp_client = Networking::TCPClient.new(host, port, method(:handle_message))
       @file_receiver = FileReceiver.new(method(:done_copy),
@@ -131,8 +133,23 @@ module ContentServer
         end
       end
       @local_thread.abort_on_exception = true
-      @process_variables = process_variables
       Log.debug3("initialize FileCopyClient  host:#{host}  port:#{port}")
+    end
+
+    def start_process_var_monitoring
+      if Params['enable_monitoring']
+        @process_var_thread = Thread.new do
+          last_data_flush_time = nil
+          while true do
+            if last_data_flush_time.nil? || last_data_flush_time + Params['process_vars_delay'] < Time.now
+              Log.info("process_vars:FileCopyClient queue size:#{@local_queue.size}")
+              Params['process_vars'].set('File Copy Client queue', @local_queue.size)
+              last_data_flush_time = Time.now
+            end
+            sleep(0.3)
+          end
+        end
+      end
     end
 
     def threads
@@ -154,12 +171,8 @@ module ContentServer
     end
 
     def done_copy(local_file_checksum, local_path)
-      add_process_variables_info()
+      Params['process_vars'].inc('num_files_received')
       Log.debug1("Done copy file: #{local_path}, #{local_file_checksum}")
-    end
-
-    def add_process_variables_info()
-      @process_variables.inc('num_files_received')
     end
 
     def handle_message(message)

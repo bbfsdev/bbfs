@@ -1,6 +1,7 @@
 require 'file_indexing/index_agent'
 require 'file_indexing/indexer_patterns'
 require 'log'
+require 'params'
 
 module ContentServer
 

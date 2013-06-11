@@ -51,10 +51,27 @@ module ContentServer
       @send_chunk_clb = send_chunk_clb
       @abort_streaming_clb = abort_streaming_clb
       @stream_queue = Queue.new
+      start_process_var_monitoring
 
       # Used from internal thread only.
       @streams = {}
       @thread = run
+    end
+
+    def start_process_var_monitoring
+      if Params['enable_monitoring']
+        @process_var_thread = Thread.new do
+          last_data_flush_time = nil
+          while true do
+            if last_data_flush_time.nil? || last_data_flush_time + Params['process_vars_delay'] < Time.now
+              Log.info("process_vars:File Streamer queue size:#{@stream_queue.size}")
+              Params['process_vars'].set('File Streamer queue', @stream_queue.size)
+              last_data_flush_time = Time.now
+            end
+            sleep(0.3)
+          end
+        end
+      end
     end
 
     def copy_another_chuck(checksum)

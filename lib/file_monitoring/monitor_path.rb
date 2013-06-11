@@ -32,6 +32,11 @@ module FileMonitoring
     # * <tt>path</tt> - File location
     # * <tt>stable_state</tt> - Number of iterations to move unchanged file to stable state
     def initialize(path, stable_state = DEFAULT_STABLE_STATE)
+      ObjectSpace.define_finalizer(self,
+                                   self.class.method(:finalize).to_proc)
+      if Params['enable_monitoring']
+        Params['process_vars'].inc('obj add FileStat')
+      end
       @path ||= path
       @size = nil
       @creation_time = nil
@@ -40,6 +45,12 @@ module FileMonitoring
       @state = FileStatEnum::NON_EXISTING
 
       @stable_state = stable_state  # number of iteration to move unchanged file to stable state
+    end
+
+    def self.finalize(id)
+      if Params['enable_monitoring']
+        Params['process_vars'].inc('obj rem FileStat')
+      end
     end
 
     def set_output_queue(event_queue)
@@ -70,7 +81,10 @@ module FileMonitoring
         @size = file_stats.size
         @creation_time = file_stats.ctime.utc
         @modification_time = file_stats.mtime.utc
-        @cycles = 0
+        @cycles = 1
+        if @cycles >= @stable_state
+          new_state = FileStatEnum::STABLE
+        end
       elsif changed?(file_stats)
         new_state = FileStatEnum::CHANGED
         @size = file_stats.size
@@ -128,16 +142,30 @@ module FileMonitoring
 
   #  This class holds current state of directory and methods to control changes
   class DirStat < FileStat
+    attr_reader :files
     #  Initializes new directory monitoring object
     # ==== Arguments:
     #
     # * <tt>path</tt> - File location
     # * <tt>stable_state</tt> - Number of iterations to move unchanged directory to stable state
     def initialize(path, stable_state = DEFAULT_STABLE_STATE)
+      ObjectSpace.define_finalizer(self,
+                                   self.class.method(:finalize).to_proc)
+      if Params['enable_monitoring']
+        Params['process_vars'].inc('obj add DirStat')
+      end
       super
       @dirs = nil
       @files = nil
       @non_utf8_paths = {}
+      ObjectSpace.define_finalizer(self,
+                                   self.class.method(:finalize).to_proc)
+    end
+
+    def self.finalize(id)
+      if Params['enable_monitoring']
+        Params['process_vars'].inc('obj rem DirStat')
+      end
     end
 
     #  Adds directory for monitoring.
@@ -199,8 +227,11 @@ module FileMonitoring
         new_state = FileStatEnum::NEW
         @files = Hash.new
         @dirs = Hash.new
-        @cycles = 0
+        @cycles = 1
         update_dir
+        if @cycles >= @stable_state
+          new_state = FileStatEnum::STABLE
+        end
       elsif update_dir
         new_state = FileStatEnum::CHANGED
         @cycles = 0

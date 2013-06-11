@@ -9,6 +9,18 @@ module FileMonitoring
   # Manages file monitoring of number of file system locations
   class FileMonitoring
 
+    def initialize
+      ObjectSpace.define_finalizer(self,
+                                   self.class.method(:finalize).to_proc)
+      if Params['enable_monitoring']
+        Params['process_vars'].inc('obj add FileMonitoring')
+      end
+    end
+    def self.finalize(id)
+      if Params['enable_monitoring']
+        Params['process_vars'].inc('obj rem FileMonitoring')
+      end
+    end
     # Set event queue used for communication between different proceses.
     # @param queue [Queue]
     def set_event_queue(queue)
@@ -69,7 +81,7 @@ module FileMonitoring
 
         # time remains to wait before directory should be checked
         time_span = time - Time.now.to_i
-        if (time_span > 0)
+        if (time_span > 0) # [yarondbb] enable to start on first time. Code: and (!dir_stat.files.nil?)
           sleep(time_span)
         end
         dir_stat.monitor
