@@ -147,6 +147,18 @@ module ContentServer
             Params['process_vars'].set('monitoring queue', monitoring_events.size)
             Log.info("process_vars:content data queue size:#{monitoring_events.size}")
             Params['process_vars'].set('content data queue', local_server_content_data_queue.size)
+            #enable following line to see full list of object:count
+            #obj_array = ''
+            total_obj_count = 0
+            ObjectSpace.each_object(Class) {|obj|
+              obj_count_per_class = ObjectSpace.each_object(obj).count
+              #enable following line to see full list of object:count
+              #obj_array = "#{obj_array} * #{obj.name}:#{obj_count_per_class}"
+              total_obj_count = total_obj_count + obj_count_per_class
+            }
+            #enable following line to see full list of object:count
+            #Params['process_vars'].set('Live objs full', obj_array)
+            Params['process_vars'].set('Live objs cnt', total_obj_count)
             last_data_flush_time = Time.now
           end
           sleep(0.3)
