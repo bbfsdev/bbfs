@@ -11,9 +11,9 @@ require 'validations'
 # Testing server. Assumes that content and backup servers are running.
 # The server runs 24-7, generates/deletes files and validates content at backup periodically.
 module TestingServer
-  # TODO get latest ContentData object from Content/BackupServer
-  # Therefore need changes in Content/BackupServers
-  # TODO split to Backup/ContentTestingServers ?
+  # TODO get latest ContentData object directly from Content/BackupServer
+  # Then need changes in Content/BackupServers API
+  # TODO split to Backup/ContentTestingServers separate classes ?
   # TODO split long methods
   # TODO Tests
   # TODO No default config taken by Params
