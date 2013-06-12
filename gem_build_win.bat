@@ -1,12 +1,12 @@
-echo ---------------
-echo install bundler
-echo ----------------
-call gem install bundle
-echo --------------------------------------------
-echo install infrastructure gems (bundle install)
-echo -------------------------------------------
-call bundle install
-echo ---------------------------------
+rem echo ---------------
+rem echo install bundler
+rem echo ----------------
+rem call gem install bundle
+rem echo --------------------------------------------
+rem echo install infrastructure gems (bundle install)
+rem echo -------------------------------------------
+rem call bundle install
+rem echo ---------------------------------
 echo Start build content server gems:
 echo --------------------------------
 call gem build log.gemspec

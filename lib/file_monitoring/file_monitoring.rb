@@ -69,7 +69,7 @@ module FileMonitoring
 
         # time remains to wait before directory should be checked
         time_span = time - Time.now.to_i
-        if (time_span > 0) # [yarondbb] enable to start on first time. Code: and (!dir_stat.files.nil?)
+        if (time_span > 0)
           sleep(time_span)
         end
         dir_stat.monitor

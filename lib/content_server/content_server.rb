@@ -31,7 +31,7 @@ module ContentServer
     # create general tmp dir
     FileUtils.mkdir_p(Params['tmp_path']) unless File.directory?(Params['tmp_path'])
     # init tmp content data file
-    tmp_content_data_file = Params['tmp_path'] + '/contnet.data'
+    tmp_content_data_file = Params['tmp_path'] + '/content.data'
 
     if Params['enable_monitoring']
       Log.info("Initializing monitoring of process params on port:#{Params['process_monitoring_web_port']}")
@@ -85,6 +85,7 @@ module ContentServer
         if last_data_flush_time.nil? || last_data_flush_time + Params['data_flush_delay'] < Time.now.to_i
           Log.info "Writing local content data to #{Params['local_content_data_path']}."
           local_dynamic_content_data.last_content_data.to_file(tmp_content_data_file)
+          sleep(0.1)  # Added to prevent mv access issue
           ::FileUtils.mv(tmp_content_data_file, Params['local_content_data_path'])
           last_data_flush_time = Time.now.to_i
         end
@@ -109,6 +110,7 @@ module ContentServer
       monitoring_info = MonitoringInfo::MonitoringInfo.new()
       all_threads << Thread.new do
         last_data_flush_time = nil
+        mutex = Mutex.new
         while true do
           if last_data_flush_time.nil? || last_data_flush_time + Params['process_vars_delay'] < Time.now
             Params['process_vars'].set('time', Time.now)
@@ -121,16 +123,34 @@ module ContentServer
             #enable following line to see full list of object:count
             #obj_array = ''
             total_obj_count = 0
-            ObjectSpace.each_object(Class) {|obj|
-              obj_count_per_class = ObjectSpace.each_object(obj).count
-              #enable following line to see full list of object:count
-              #obj_array = "#{obj_array} * #{obj.name}:#{obj_count_per_class}"
-              total_obj_count = total_obj_count + obj_count_per_class
-            }
+            string_count = 0
+            file_count = 0
+            dir_count = 0
+            content_count = 0
+            mutex.synchronize do
+              ObjectSpace.each_object(Class) {|obj|
+                obj_count_per_class = ObjectSpace.each_object(obj).count
+                #enable following line to see full list of object:count
+                #obj_array = "#{obj_array} * #{obj.name}:#{obj_count_per_class}"
+                total_obj_count = total_obj_count + obj_count_per_class
+              }
+              string_count = ObjectSpace.each_object(String).count
+              file_count = ObjectSpace.each_object(::FileMonitoring::FileStat).count
+              dir_count = ObjectSpace.each_object(::FileMonitoring::DirStat).count
+              content_count = ObjectSpace.each_object(::ContentData::ContentData).count
+            end
             #enable following line to see full list of object:count
             #Params['process_vars'].set('Live objs full', obj_array)
+            Log.info("process_vars:Live objs cnt:#{total_obj_count}")
+            Log.info("process_vars:Live String obj cnt:#{string_count}")
+            Log.info("process_vars:Live File obj cnt:#{file_count}")
+            Log.info("process_vars:Live Dir obj cnt:#{dir_count}")
+            Log.info("process_vars:Live Content data obj cnt:#{content_count}")
             Params['process_vars'].set('Live objs cnt', total_obj_count)
-            Params['process_vars'].set('Live String obj cnt', ObjectSpace.each_object(String).count)
+            Params['process_vars'].set('Live String obj cnt', string_count)
+            Params['process_vars'].set('Live File obj cnt', file_count)
+            Params['process_vars'].set('Live Dir obj cnt', dir_count)
+            Params['process_vars'].set('Live Content data obj cnt', content_count)
             last_data_flush_time = Time.now
           end
           sleep(0.3)

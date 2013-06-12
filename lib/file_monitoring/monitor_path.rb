@@ -81,10 +81,7 @@ module FileMonitoring
         @size = file_stats.size
         @creation_time = file_stats.ctime.utc
         @modification_time = file_stats.mtime.utc
-        @cycles = 1
-        if @cycles >= @stable_state
-          new_state = FileStatEnum::STABLE
-        end
+        @cycles = 0
       elsif changed?(file_stats)
         new_state = FileStatEnum::CHANGED
         @size = file_stats.size
@@ -142,7 +139,6 @@ module FileMonitoring
 
   #  This class holds current state of directory and methods to control changes
   class DirStat < FileStat
-    attr_reader :files
     #  Initializes new directory monitoring object
     # ==== Arguments:
     #
@@ -227,11 +223,8 @@ module FileMonitoring
         new_state = FileStatEnum::NEW
         @files = Hash.new
         @dirs = Hash.new
-        @cycles = 1
+        @cycles = 0
         update_dir
-        if @cycles >= @stable_state
-          new_state = FileStatEnum::STABLE
-        end
       elsif update_dir
         new_state = FileStatEnum::CHANGED
         @cycles = 0
