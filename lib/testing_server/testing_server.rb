@@ -117,7 +117,6 @@ module TestingServer
 
       case msg_type
       when :PUT_INDEX
-        time_now = Time.now.to_i
         # index of already backuped contents
         backuped_index = ContentData::ContentData.new
         backuped_index.from_file Params['local_content_data_path']
@@ -126,7 +125,7 @@ module TestingServer
         index_must_be_backuped = ContentData::ContentData.new(msg_body)
         # we backup contents, so content mtime used to determine contents should be validated
         index_must_be_backuped.each_content do |checksum, size, mtime|
-          if (time_now - mtime > Params['backup_time_requirement'])
+          if (validation_timestamp - mtime < Params['backup_time_requirement'])
             index_must_be_backuped.remove_content checksum
           end
         end
