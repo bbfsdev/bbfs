@@ -136,6 +136,9 @@ module TestingServer
 
       unless (is_master_ok.nil? || is_cur_synch_ok.nil? || is_backup_ok.nil?)
         send_email is_master_ok, is_cur_synch_ok, is_backup_ok
+        is_master_ok = nil
+        is_cur_synch_ok = nil
+        is_backup_ok = nil
       end
     end
   end
