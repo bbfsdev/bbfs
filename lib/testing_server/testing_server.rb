@@ -16,6 +16,7 @@ module TestingServer
   # TODO split to Backup/ContentTestingServers ?
   # TODO split long methods
   # TODO Tests
+  # TODO No default config taken by Params
 
   # Messages types
   :GET_INDEX  # get index from remote master
