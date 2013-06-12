@@ -17,6 +17,7 @@ module TestingServer
   # TODO split long methods
   # TODO Tests
   # TODO No default config taken by Params
+  # TODO Additional testing scenarios (remove/rename/change)
 
   # Messages types
   :GET_INDEX  # get index from remote master
@@ -77,6 +78,10 @@ module TestingServer
     is_backup_ok = nil
     # holds boolean whether master is valid. receive from master
     is_master_ok = nil
+    # number of contents must be backuped this synch
+    # with current scenarios this number expected to grow
+    # used to check that file_generator is actually running
+    numb_backuped_contents = 0
 
     all_threads << Thread.new do
       ContentServer.run_backup_server
@@ -128,6 +133,7 @@ module TestingServer
         is_cur_synch_ok =
           Validations::IndexValidations.validate_remote_index index_must_be_backuped, backuped_index
         is_backup_ok = backuped_index.validate
+        numb_backuped_contents = index_must_be_backuped.contents_size
       when :PUT_VALIDATION
         is_master_ok = msg_body
       else
@@ -135,20 +141,22 @@ module TestingServer
       end
 
       unless (is_master_ok.nil? || is_cur_synch_ok.nil? || is_backup_ok.nil?)
-        send_email is_master_ok, is_cur_synch_ok, is_backup_ok
+        send_email is_master_ok, is_cur_synch_ok, is_backup_ok, numb_backuped_contents
         is_master_ok = nil
         is_cur_synch_ok = nil
         is_backup_ok = nil
+        numb_backuped_contents = 0
       end
     end
   end
   module_function :run_backup_testing_server
 
-  def send_email(is_master_ok, is_cur_synch_ok, is_backup_ok)
+  def send_email(is_master_ok, is_cur_synch_ok, is_backup_ok, numb_backuped_contents)
     msg =<<EOF
 Master index ok: #{is_master_ok}
 Backup index ok: #{is_backup_ok}
 Backup includes all master files upto -#{Params['backup_time_requirement']} sec: #{is_cur_synch_ok}
+Number of contents must be back-up: #{numb_backuped_contents}
 EOF
     Email.send_email(Params['from_email'],
                      Params['from_email_password'],
