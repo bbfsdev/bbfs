@@ -10,7 +10,7 @@ require 'log'
 
 module FileGenerator
   Params.path('target_path', '~/.bbfs/test_files', 'Represents the target path for files generation')
-  Params.boolean('is_clear_target_path', false, 'Should files and directories presented in target path be removed')
+  Params.boolean('is_clear_target_path', false, 'Should files and directories already presented in target path be removed')
   Params.string('file_name_prefix', 'auto_generated_file_4_backup_server',
                 'Represents the file name template for generated file')
   Params.string('dir_name_prefix', 'test_dir_4_backup_server',
