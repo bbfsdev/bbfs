@@ -3,6 +3,12 @@
 # Runs content server. This server monitors a set of directories (blobs/patterns).
 # The files in those directories are indexed (calculating their SHA1).
 # Each unique content is backed up to the remote (backup) server.
+# How to run on content side:
+# testing_server --conf_file=~/.bbfs/etc/content_testing_server.yml --server_to_test=content
+# How to run on backup side:
+# testing_server --conf_file=~/.bbfs/etc/backup_testing_server.yml --server_to_test=backup
+
+# TODO add command line help/usage
 
 require 'params'
 require 'run_in_background'
