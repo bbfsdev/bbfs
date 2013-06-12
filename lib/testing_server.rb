@@ -7,5 +7,6 @@ module TestingServer
   Params.integer('backup_time_requirement', 60*60,
                  'Max diff in seconds between timestamps of file indexation on master ' +
                  'and its content indexation on backup.' +
-                 ' NOTE Machines must have time synchronization.')
+                 ' NOTE Machines must have time synchronization.' +
+                 ' NOTE This requirement must be set sufficient, i.e. enough to finish copy file process')
 end # module TestingServer
