@@ -1,0 +1,106 @@
+############# Testing Server (content side) Config #################
+# Copy and change the configuration file before using.
+# To run this file use the following commandline:
+# testing_server --conf_file=examples/content_testing_server.yml [--bg_command=start]
+#Remote port to synchronization between testing servers
+testing_server_port: 4445
+
+# Logging options
+log_write_to_console: true # Will print all log messages to standard output. Default is false.
+log_write_to_file: true # Will print all log messages to file
+log_write_to_email: false # Will print errors to mail on system crush only . Default is false.
+log_debug_level: 3 # Verbosity of logging. Default is 0, max is 3.
+log_file_name: '~/.bbfs/log/content_testing_server.log' # General log
+# Log to email on system crush options
+from_email: 'jhon.doe@gmail.com'  # user should change to real value
+from_email_password: 'hihahu'  # user should change to real value
+to_email: 'jhon.doe@gmail.com'  # user should change to real value
+############# Content Server Config #################
+# Content server parameters
+local_files_port: 4444 # TCP/IP port to start server to send files to backup.
+local_content_data_port: 3333 # TCP/IP port to start server to send content data upon request from client.
+#content data file, i.e., state of content server.
+local_content_data_path: '~/.bbfs/var/test.content.data' # File to store content data
+default_monitoring_log_path: '~/.bbfs/log/content_file_monitoring.log' # Log of file changes
+# Paths to monitor\backup files from. All path files and recursive sub paths are used.
+monitoring_paths:
+  - path: '~/.bbfs/test_files'
+    scan_period: 1 # Number of seconds before initiating another directory scan.
+    stable_state: 5 # Number of scan times for a file to be unchanged before his state becomes stable.
+# … optional more paths here
+# print all parameters to console at the beginning of execution log.
+print_params_to_stdout: true
+############# File Generator Config ##################
+# Represents the root path where directories and files will be
+# generated.
+target_path: '~/.bbfs/test_files'
+
+# Represents the directory name template. Name of created
+# directories will be dir_name_prefix_xxx. where xxx is random
+# characters
+dir_name_prefix: 'auto_gen_dir'
+
+# Represents the file name template for generated file. Name of
+# created files will be dir_name_prefix_xxx. where xxx is random
+# characters
+file_name_prefix: 'auto_gen_file'
+
+#*******************************************Processing**********************************************
+# Represents the total created directories. Use any
+# negative value or zero for Infinity. Not relevant if
+# random calculation is triggered.
+total_created_directories: -1
+
+# Indicates that total files in a directory will be
+# calculated randomly. If false then value will be
+# taken from parameter:'total_files_in_dir'.
+# Also lower\upper_limit_4_files_in_dir parameters will
+# not be used.
+is_tot_files_in_dir_random: false  
+
+# - Represents the Lower limit for total files in
+#   directory for random calculation. Active only if
+#   parameter:'is_tot_files_in_dir_random' is true.
+lower_limit_4_files_in_dir: 3
+
+# Represents the Upper limit for total files in
+# directory for random calculation. Active only if
+# parameter:'is_tot_files_in_dir_random' is true.
+upper_limit_4_files_in_dir: 100
+
+# Maximum number of files to generate, 0 for no limit.
+max_total_files: 10
+
+# Represents the total files in directory. Use any
+# negative value or zero for Infinity. Active only if
+# parameter:'is_tot_files_in_dir_random' is false.
+total_files_in_dir: -1
+
+# Indicates that file size will be calculated randomly.
+# If false then value will be taken from
+# parameter:'file_size_in_bytes'. Also next 2 parameters
+# will not be used.
+is_use_random_size: true 
+
+# Represents the upper limit file size in MB for random
+# size calculation.
+# Active only if parameter:'is_use_random_size' is
+# true.
+upper_size_in_bytes: 100000
+
+# Represents the Lower limit file size in MB for random
+# size calculation. Active only if
+# parameter:'is_use_random_size' is true.
+down_size_in_bytes: 10000
+
+# Represents the file size in MB. Not relevant if
+# random calculation is triggered. Active only if
+# parameter:'is_use_random_size' is false.
+file_size_in_bytes: -1
+
+# Represent delay between two close cycles of
+# processing. In each cycle of processing
+# file\s and\or folder\s created.
+sleep_time_in_seconds: 60
+
+is_clear_target_path: true  
