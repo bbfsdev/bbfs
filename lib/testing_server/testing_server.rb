@@ -1,150 +1,158 @@
-require 'net/sftp'
-require 'net/ssh'
-
-require 'email'
-require 'log4r'
-require 'log4r/outputter/emailoutputter'
+#require 'net/sftp'
+#require 'net/ssh'
+require 'log'
 require 'params'
+require 'content_server'
+require 'content_data'
+require 'email'
+require 'file_utils/file_generator/file_generator'
 require 'validations'
 
 # Testing server. Assumes that content and backup servers are running.
 # The server runs 24-7, generates/deletes files and validates content at backup periodically.
 module TestingServer
+  # TODO get latest ContentData object from Content/BackupServer
+  # Therefore need changes in Content/BackupServers
+  # TODO split to Backup/ContentTestingServers ?
+  # TODO split long methods
+  # TODO Tests
 
-  #Parameters
-  Params.string('master_host', nil, 'Remote host name of master (content) server.')
-  Params.string('master_username', nil, 'Remote master (content) server username.')
-  Params.string('master_file_generator_config', nil, 'Path to config file in remote master (content) server.')
-  Params.string('remote_master_content_data', nil, 'Path to remote master (content) server index (content data) file.')
-  Params.string('remote_master_validation_log', nil, 'Path to ')
-  Params.string('local_master_content_data', nil, 'Local path to copy master server index file to.')
-  Params.path('backup_content_data', '', 'Local path to index (content data) file.')
+  # Messages types
+  :GET_INDEX  # get index from remote master
+  :PUT_INDEX  # message contains requested index from master
+  # TODO in thus implementation validation called automatically on master side
+  # with receiving GET_INDEX message
+  # More flexible will be separating it to two separate operations:
+  # GET_INDEX and VALIDATE
+  #:VALIDATE  # validate index on master
+  :PUT_VALIDATION  # message contains validation result from master
 
-  Params.integer('sleep_seconds_after_file_generation', 120, '')
+  def run_content_testing_server
+    Log.info 'Testing server started'
+    all_threads = [];
+    messages = Queue.new
 
-  Params.integer('email_delay_in_seconds', 60*60*6, 'Number of seconds before sending email again.')
+    all_threads << Thread.new do
+      ContentServer.run_content_server
+    end
 
-  def run_testing_server
-    log = Log4r::Logger.new 'mylog'
-    log.trace = true
+    all_threads << Thread.new do
+      fg = FileGenerator::FileGenerator.new
+      fg.run
+    end
 
-    formatter = Log4r::PatternFormatter.new(:pattern => "[%l] %d #{self.class} %t :: %m")
+    receive_msg_proc = lambda do |addr_info, message|
+      Log.debug2("message received: #{message}")
+      messages.push(message)
+    end
+    tcp = Networking::TCPServer.new(Params['testing_server_port'], receive_msg_proc)
 
-    stdout_outputtter = Log4r::Outputter.stdout
-    stdout_outputtter.formatter = formatter
+    all_threads << tcp.tcp_thread
 
-    file_outputter = Log4r::FileOutputter.new('file_log', :filename =>  "#{Params['log_file_name']}.log4r")
-    file_outputter.formatter = formatter
-
-    email_outputter = Log4r::EmailOutputter.new('email_log',
-        :server => 'smtp.gmail.com',
-        :port => 587,
-        :subject => 'Error happened in Testing server.',
-        :acct => Params['from_email'],
-        :from => Params['from_email'],
-        :passwd => Params['from_email_password'],
-        :to => Params['to_email'],
-        :immediate_at => "FATAL,ERROR",
-        :authtype => :plain,
-        :tls => true
-    )
-    email_outputter.level = Log4r::ERROR
-    email_outputter.formatter = formatter
-
-    log.outputters << stdout_outputtter
-    log.outputters << file_outputter
-    log.outputters << email_outputter
-
-    email_timestamp_sent = -1
     while(true) do
-      begin  # Handle any type
-        # Generate files in remote content server (master).
-        # Assumes file_utils gem is installed.
-        # Assumes run finishes after some time.
-        # Assumes configuration file exists in place.
-        log.info("Generating files remotely on #{Params['master_host']} with configuration file " \
-                 "#{Params['master_file_generator_config']}")
-        command = "file_utils --conf_file=#{Params['master_file_generator_config']} --command=generate_files"
-        fg_ret = execute_remotely(command)
-        log.info("#{command}: #{fg_ret}")
+      msg_type, validation_timestamp = messages.pop
+      if msg_type == :GET_INDEX
+        cur_index = ContentData::ContentData.new
+        cur_index.from_file(Params['local_content_data_path'])
+        tcp.send_obj([:PUT_INDEX, validation_timestamp, cur_index])
+        Log.debug2 "PUT_INDEX sent with timestamp #{validation_timestamp}"
+        is_index_ok = cur_index.validate
+        tcp.send_obj([:PUT_VALIDATION, validation_timestamp, is_index_ok])
+        Log.debug2 "PUT_VALIDATION sent with timestamp #{validation_timestamp}"
+      end
+    end
+  end
+  module_function :run_content_testing_server
 
-        # Wait some time.
-        log.info("Done, sleeping #{Params['sleep_seconds_after_file_generation']} seconds.")
-        sleep(Params['sleep_seconds_after_file_generation'])
+  def run_backup_testing_server
+    Log.info 'Testing server started'
+    all_threads = [];
+    messages = Queue.new
+    # used for synchronization between servers
+    validation_timestamp = Time.now.to_i
+    # holds boolean whether all contents according to this timestamp that should be backed are backed and OK
+    is_cur_synch_ok = nil
+    # holds boolean whether all already backuped files are OK
+    is_backup_ok = nil
+    # holds boolean whether master is valid. receive from master
+    is_master_ok = nil
 
-        # Validate master local files.
-        # Assumes index_validator gem installed.
-        command = "index_validator --local_index=#{Params['remote_master_content_data']}"
-        log.info("Remotely validating index: #{command}")
-        iv_ret = execute_remotely(command)
-        log.info("#{command}: #{iv_ret}")
+    all_threads << Thread.new do
+      ContentServer.run_backup_server
+    end
 
-        # Validate backup local files.
-        log.info("Locally validating index: #{Params['backup_content_data']}")
-        index = ContentData::ContentData.new
-        index.from_file(Params['backup_content_data'])
-        local_ret = index.validate
-        log.info("Validation result: #{local_ret}")
+    receive_msg_proc = lambda do |message|
+      Log.debug2("message received: #{message}")
+      messages.push(message)
+    end
+    tcp = Networking::TCPClient.new(Params['content_server_hostname'],
+                                    Params['testing_server_port'], receive_msg_proc)
+    all_threads << tcp.tcp_thread
 
-        # Validate existence of master files in backup.
-        log.info("Copy remote master index: #{Params['remote_master_content_data']} to " \
-                 "#{Params['local_master_content_data']}")
-        copy_master_index(Params['remote_master_content_data'], Params['local_master_content_data'])
-        log.info("Validating remote index locally (#{Params['local_master_content_data']})}")
-        remote_index = ContentData::ContentData.new
-        remote_index.from_file(Params['local_master_content_data'])
-        remote_ret = Validations::IndexValidations.validate_remote_index remote_index, index
-        log.info("Validation result: #{remote_ret}")
+    # used to request index from master per validation interval of time
+    all_threads << Thread.new do
+      while(true) do
+        sleep Params['validation_interval']
+        validation_timestamp = Time.now.to_i
+        tcp.send_obj([:GET_INDEX, validation_timestamp])
+        Log.debug2 "GET_INDEX sent with timestamp #{validation_timestamp}"
+      end
+    end
 
-        if (email_timestamp_sent == -1 ||
-            Time.now.to_i - email_timestamp_sent > Params['email_delay_in_seconds'])
-          # Send email.
-          log.info("Sending email...")
-          msg =<<EOF
-Master index ok: #{iv_ret}
-Backup index ok: #{local_ret}
-Backup includes all master files: #{remote_ret}
-EOF
-          Email.send_email(Params['from_email'],
-                           Params['from_email_password'],
-                           Params['to_email'],
-                           'Testing server update',
-                           msg)
-          email_timestamp_sent = Time.now.to_i
+    # gets messages from master via queue
+    # handles them according to type
+    while(true) do
+      msg_type, response_validation_timestamp, msg_body = messages.pop
+      Log.debug2 "#{msg_type} : #{validation_timestamp} : #{msg_body.class}"
+      unless (validation_timestamp == response_validation_timestamp)
+        # TODO problem of servers synch. What should be done here?
+        Log.warning "Timestamps differs: requested #{validation_timestamp} : received #{response_validation_timestamp}"
+      end
+
+      case msg_type
+      when :PUT_INDEX
+        time_now = Time.now.to_i
+        # index of already backuped contents
+        backuped_index = ContentData::ContentData.new
+        backuped_index.from_file Params['local_content_data_path']
+        # index contains only master current contents
+        # that must be backuped according to backup_time_requirement parameter
+        index_must_be_backuped = ContentData::ContentData.new(msg_body)
+        # we backup contents, so content mtime used to determine contents should be validated
+        index_must_be_backuped.each_content do |checksum, size, mtime|
+          if (mtime - time_now < Params['backup_time_requirement'])
+            index_must_be_backuped.remove_content checksum
+          end
         end
-        log.info("Done.")
-      rescue SystemExit, SignalException, Interrupt => exc
-        log.error("Interrupt or Exit happened in testing server: #{exc.class}, stopping process.\nBacktrace:\n#{exc.backtrace.join("\n")}")
-        raise
-      rescue Exception => exc
-        log.error("Exception happened in testing server: #{exc.class}:#{exc.message}, restarting testing loop.\nBacktrace:\n#{exc.backtrace.join("\n")}")
-        email_timestamp_sent = -1
+        is_cur_synch_ok =
+          Validations::IndexValidations.validate_remote_index index_must_be_backuped, backuped_index
+        is_backup_ok = backuped_index.validate
+      when :PUT_VALIDATION
+        is_master_ok = msg_body
+      else
+        Log.error "Incorrect message received: #{msg_type}"
+      end
+
+      unless (is_master_ok.nil? || is_cur_synch_ok.nil? || is_backup_ok.nil?)
+        send_email is_master_ok, is_cur_synch_ok, is_backup_ok
       end
     end
   end
-  module_function :run_testing_server
+  module_function :run_backup_testing_server
 
-  # Copies master (remote) content data (index) locally and returns the pass.
-  def copy_master_index(from, to, host=Params['master_host'], username=Params['master_username'])
-    Net::SFTP.start(host, username) do |sftp|
-      sftp.download!(from, to)
-    end
+  def send_email(is_master_ok, is_cur_synch_ok, is_backup_ok)
+    msg =<<EOF
+Master index ok: #{is_master_ok}
+Backup index ok: #{is_backup_ok}
+Backup includes all master files upto -#{Params['backup_time_requirement']} sec: #{is_cur_synch_ok}
+EOF
+    Email.send_email(Params['from_email'],
+                     Params['from_email_password'],
+                     Params['to_email'],
+                     'Testing server update',
+                     msg)
   end
-  module_function :copy_master_index
-
-  # Returns the text output
-  def execute_remotely(cmd,
-      host=Params['master_host'],
-      username=Params['master_username'])
-    ret = nil
-    Net::SSH.start(host, username) do |ssh|
-      ssh.exec!(cmd) do |ch, stream, data|
-        ret = data
-      end
-    end
-    return ret
-  end
-  module_function :execute_remotely
+  module_function :send_email
 
 end # module TestingServer
 
