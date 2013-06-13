@@ -12,9 +12,6 @@ module ContentServer
                  'Max number of content bytes to send in one chunk.')
   Params.integer('file_streaming_timeout', 5*60,
                  'If no action is taken on a file streamer, abort copy.')
-  Params.path('backup_destination_folder', '',
-              'Backup server destination folder, default is the relative local folder.')
-
   class Stream
     attr_reader :checksum, :path, :tmp_path, :file, :size
     def initialize(checksum, path, file, size)
@@ -210,9 +207,9 @@ module ContentServer
     def handle_new_stream(file_checksum, file_size)
       # final destination path
       tmp_path = FileReceiver.destination_filename(
-          File.join(Params['backup_destination_folder'], 'tmp'),
+          File.join(Params['backup_destination_folder']['path'], 'tmp'),
           file_checksum)
-      path = FileReceiver.destination_filename(Params['backup_destination_folder'],
+      path = FileReceiver.destination_filename(Params['backup_destination_folder'['path']],
                                                file_checksum)
       if File.exists?(path)
         Log.warning("File already exists (#{path}) not writing.")
@@ -251,7 +248,7 @@ module ContentServer
       # Should always be true, unless file creation failed.
       if @streams.key?(file_checksum)
         # Make the directory if does not exists.
-        path = FileReceiver.destination_filename(Params['backup_destination_folder'],
+        path = FileReceiver.destination_filename(Params['backup_destination_folder']['path'],
                                                  file_checksum)
         Log.debug1("Moving tmp file #{@streams[file_checksum].path} to #{path}")
         Log.debug1("Creating directory: #{path}")

@@ -24,6 +24,9 @@ module ContentServer
   Params.integer('content_server_data_port', 3333, 'Port to copy content data from.')
   Params.integer('content_server_files_port', 4444, 'Listening port in backup server for files')
   Params.integer('backup_check_delay', 5, 'Delay in seconds between two content vs backup checks.')
+  Params.complex('backup_destination_folder', \
+                 {"path"=>File.expand_path(''), 'scan_period'=>300, 'stable_state'=>1}, \
+                 'Backup server destination folder, default is the relative local folder.')
 
   def run_backup_server
     Log.info('Start backup server')
@@ -42,11 +45,15 @@ module ContentServer
     end
 
     # # # # # # # # # # # #
-    # Initialize/Start monitoring
+    # Initialize/start monitoring and destination folder
+    Log.info("backup_destination_folder is:#{Params['backup_destination_folder']['path']}")
+    #adding destination folder to monitoring paths
+    Params['monitoring_paths'] << Params['backup_destination_folder']
     Log.info('Start monitoring following directories:')
     Params['monitoring_paths'].each {|path|
       Log.info("  Path:'#{path['path']}'")
     }
+
     monitoring_events = Queue.new
     fm = FileMonitoring::FileMonitoring.new
     fm.set_event_queue(monitoring_events)
@@ -98,13 +105,11 @@ module ContentServer
         sleep(1)
       end
     end
-    Params['backup_destination_folder'] = File.expand_path(Params['monitoring_paths'][0]['path'])
-    Log.info("backup_destination_folder is:#{Params['backup_destination_folder']}")
     content_server_dynamic_content_data = ContentData::DynamicContentData.new
     remote_content = ContentServer::RemoteContentClient.new(content_server_dynamic_content_data,
                                                             Params['content_server_hostname'],
                                                             Params['content_server_data_port'],
-                                                            Params['backup_destination_folder'])
+                                                            Params['backup_destination_folder']['path'])
     all_threads.concat(remote_content.run())
 
     file_copy_client = FileCopyClient.new(Params['content_server_hostname'],

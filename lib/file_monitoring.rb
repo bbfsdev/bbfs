@@ -18,7 +18,7 @@ module FileMonitoring
   Params.path('default_monitoring_log_path', '~/.bbfs/log/file_monitoring.log',
               'Default path for file monitoring log file. ' \
               'This log containd track of changes found during monitoring')
-  Params.complex('monitoring_paths', nil, 'Array of Hashes with 3 fields: ' \
+  Params.complex('monitoring_paths', [], 'Array of Hashes with 3 fields: ' \
                  'path, scan_period and stable_state.')
 
   # @see FileMonitoring#monitor_files

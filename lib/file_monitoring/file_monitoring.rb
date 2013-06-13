@@ -28,7 +28,6 @@ module FileMonitoring
     # that provides path and file monitoring configuration data
     def monitor_files
       conf_array = Params['monitoring_paths']
-
       # Directories states stored in the priority queue,
       # where the key (priority) is a time when it should be checked next time.
       # Priority queue means that all entries arranged by key (time to check) in increasing order.
@@ -66,7 +65,6 @@ module FileMonitoring
         # pull entry that should be checked next,
         # according to it's scan_period
         time, conf, dir_stat = pq.pop
-
         # time remains to wait before directory should be checked
         time_span = time - Time.now.to_i
         if (time_span > 0)
