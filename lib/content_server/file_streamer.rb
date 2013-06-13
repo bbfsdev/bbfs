@@ -209,7 +209,7 @@ module ContentServer
       tmp_path = FileReceiver.destination_filename(
           File.join(Params['backup_destination_folder']['path'], 'tmp'),
           file_checksum)
-      path = FileReceiver.destination_filename(Params['backup_destination_folder'['path']],
+      path = FileReceiver.destination_filename(Params['backup_destination_folder']['path'],
                                                file_checksum)
       if File.exists?(path)
         Log.warning("File already exists (#{path}) not writing.")
