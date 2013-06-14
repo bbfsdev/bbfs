@@ -566,13 +566,13 @@ module ContentData
     c
   end
 
-  def self.remove_directory(content_data, dir_to_remove)
+  def self.remove_directory(content_data, dir_to_remove, server_to_remove)
     return nil if content_data.nil?
     result_content_data = ContentData.new()
     content_data.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
-      if path.scan(dir_to_remove).size == 0
-        # instance location is valid
-        result_content_data.add_instance(checksum, size, server, path, instance_mod_time)
+      # Keep instance if path is not of server to remove or path does not include dir to remove
+      if (server_to_remove!=server) or (path.scan(dir_to_remove).size == 0)
+        result_content_data.add_instance(checksum.clone, size, server, path.clone, instance_mod_time)
       end
     }
     result_content_data

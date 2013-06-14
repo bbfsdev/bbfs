@@ -55,8 +55,7 @@ module ContentServer
             Log.debug2("NonExisting/Changed: #{path}")
             # Remove directory but only when non-existing.
             Log.debug1("File to remove: #{path}")
-            server_content_data = ContentData.remove_directory(
-                server_content_data, path)
+            server_content_data.remove_instance([Params['local_server_name'],path])
             Log.debug1('Adding server content data to output queue.')
             @output_queue.push(server_content_data)
           elsif state == FileMonitoring::FileStatEnum::NON_EXISTING && is_dir
@@ -64,7 +63,7 @@ module ContentServer
             # Remove directory but only when non-existing.
             Log.debug1("Directory to remove: #{path}")
             server_content_data = ContentData.remove_directory(
-                server_content_data, path)
+                server_content_data, path, Params['local_server_name'])
             Log.debug1('Adding server content data to output queue.')
             @output_queue.push(server_content_data)
           else

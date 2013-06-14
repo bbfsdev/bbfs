@@ -243,7 +243,7 @@ require_relative '../../lib/content_data/content_data.rb'
                                     "/home/file_2", 44444444444)
         content_data_b.add_instance("B1", 60, "server_1",
                                     "/home/file_3", 55555555555)
-        content_data_removed = ContentData.remove_directory(content_data_b, 'home')
+        content_data_removed = ContentData.remove_directory(content_data_b, 'home', "server_1")
         assert_equal(content_data_removed.to_s, "1\nA1,50,66666666666\n1\nA1,50,server_1,extra_inst,66666666666\n")
 
         content_data_b.remove_instance(['server_1','home/file_2'])
@@ -251,9 +251,9 @@ require_relative '../../lib/content_data/content_data.rb'
 
         assert_equal(content_data_b.to_s, "2\nA1,50,22222222222\nB1,60,44444444444\n3\nA1,50,server_1,/home/file_1,22222222222\nA1,50,server_1,extra_inst,66666666666\nB1,60,server_1,/home/file_3,55555555555\n")
         content_data_b = ContentData::ContentData.new
-        content_data_removed = ContentData.remove_directory(content_data_b, 'home')
+        content_data_removed = ContentData.remove_directory(content_data_b, 'home', "server_1")
         assert_equal(0, content_data_removed.contents_size)
-        content_data_removed = ContentData.remove_directory(nil, 'home')
+        content_data_removed = ContentData.remove_directory(nil, 'home', "server_1")
         assert_equal(content_data_removed, nil)
       end
 
