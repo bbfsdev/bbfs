@@ -203,9 +203,9 @@ module FileUtils
       def self.unify_time(content_data)
         orig_content_data = ContentData::ContentData.new(content_data)
         content_data.unify_time
-        content_data.each_instance { |checksum, size, content_mod_time, unified_inst_mod_time, server, device, path|
-          location = "%s,%s,%s" % [server, device, path]
-          orig_inst_mod_time = orig_content_data.instance_mod_time(checksum, location)
+        content_data.each_instance { |checksum, size, content_mod_time, unified_inst_mod_time, server, path|
+          location = [server, path]
+          orig_inst_mod_time = orig_content_data.get_instance_mod_time(checksum, location)
           file_mtime, file_size = File.open(path) { |f| [f.mtime, f.size] }
           Log.debug1 "file:#{path} file_mtime:#{file_mtime}."
           Log.debug1 "update mtime:#{unified_inst_mod_time}"
@@ -240,14 +240,14 @@ module FileUtils
         warnings = []
         dest.chop! if (dest.end_with?("/") or dest.end_with?("\\"))
 
-        ref_cd.each_instance { |checksum, size, content_mod_time, inst_mod_time, server, device, path|
+        ref_cd.each_instance { |checksum, size, content_mod_time, inst_mod_time, server, path|
           if base_cd.content_exists(checksum)
             symlink_path = dest + path
             ::FileUtils.mkdir_p(File.dirname(symlink_path)) unless (Dir.exists?(File.dirname(symlink_path)))
             File.symlink(path, symlink_path)
           else
             # add instance to not_found cd
-            not_found_cd.add_instance(checksum, size, server, device, path, inst_mod_time)
+            not_found_cd.add_instance(checksum, size, server, path, inst_mod_time)
             warnings << "Warning: base content does not contains:'%s'" % checksum
           end
         }

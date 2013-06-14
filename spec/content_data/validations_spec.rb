@@ -14,13 +14,12 @@ module ContentData
         @checksum = 'abcde987654321'
         @checksum2 = '987654321abcde'
         @server = 'server_1'
-        @device = 'dev_1'
       end
 
       before :each do
         @index = ContentData.new
-        @index.add_instance @checksum, @size, @server, @device, @path, @mod_time
-        @index.add_instance @checksum2, @size, @server, @device, @path2, @mod_time
+        @index.add_instance @checksum, @size, @server, @path, @mod_time
+        @index.add_instance @checksum2, @size, @server, @path2, @mod_time
       end
 
       context 'with shallow check' do
@@ -91,7 +90,7 @@ module ContentData
           # one instance that absent,
           absent_checksum = '123'
           absent_path = @path2 + '1'
-          @index.add_instance absent_checksum, @size, @server, @device, absent_path, @mod_time
+          @index.add_instance absent_checksum, @size, @server, absent_path, @mod_time
           File.stub(:exists?).with(absent_path).and_return(false)
 
           # another instance with different content was changed
@@ -105,8 +104,8 @@ module ContentData
           failed.content_exists(@checksum2).should be_true
           failed.instances_size(absent_checksum).should eq(1)
           failed.instances_size(@checksum2).should eq(1)
-          failed.instance_exists(absent_path, @server, @device, absent_checksum).should be_true
-          failed.instance_exists(@path2, @server, @device, @checksum2).should be_true
+          failed.instance_exists(absent_path, @server, absent_checksum).should be_true
+          failed.instance_exists(@path2, @server, @checksum2).should be_true
         end
       end
     end

@@ -48,7 +48,7 @@ module ContentServer
             file_stats = File.lstat(path)
             Log.debug1("Index info:checksum:#{checksum } size:#{file_stats.size} time:#{file_stats.mtime.to_i}")
             Log.debug1('Adding index to content data. put in queue for dynamic update.')
-            server_content_data.add_instance(checksum, file_stats.size, Params['local_server_name'], file_stats.dev.to_s, path, file_stats.mtime.to_i)
+            server_content_data.add_instance(checksum, file_stats.size, Params['local_server_name'], path, file_stats.mtime.to_i)
             @output_queue.push(server_content_data)
           elsif ((state == FileMonitoring::FileStatEnum::NON_EXISTING ||
               state == FileMonitoring::FileStatEnum::CHANGED) && !is_dir)
@@ -57,8 +57,6 @@ module ContentServer
             Log.debug1("File to remove: #{path}")
             server_content_data = ContentData.remove_directory(
                 server_content_data, path)
-            #TODO: [yaron dror] Currently we remove ALL paths from all instances. If same
-            #TODO: path is shared across many servers this is an issue
             Log.debug1('Adding server content data to output queue.')
             @output_queue.push(server_content_data)
           elsif state == FileMonitoring::FileStatEnum::NON_EXISTING && is_dir
@@ -67,8 +65,6 @@ module ContentServer
             Log.debug1("Directory to remove: #{path}")
             server_content_data = ContentData.remove_directory(
                 server_content_data, path)
-            #TODO: [yaron dror] Currently we remove ALL paths from all instances. If same
-            #TODO: path is shared across many servers this is an issue
             Log.debug1('Adding server content data to output queue.')
             @output_queue.push(server_content_data)
           else

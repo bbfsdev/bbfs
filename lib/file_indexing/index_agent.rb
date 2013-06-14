@@ -83,10 +83,10 @@ module FileIndexing
       # if there is a given DB then populate table with files
       # that was already indexed on this server/device
       if !otherDB.nil?
-        otherDB.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+        otherDB.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
           if (server == local_server_name)
             # add instance
-            otherDB_updated.add_instance(checksum, size, server, device, path, instance_mod_time)
+            otherDB_updated.add_instance(checksum, size, server, path, instance_mod_time)
           end
         }
       end
@@ -125,10 +125,10 @@ module FileIndexing
         # add files present in the given DB to the DB and remove these files
         # from further processing (save checksum calculation)
         file_match = false
-        otherDB_updated.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
-          if otherDB_updated.instance_exists(file, local_server_name, device, checksum)
+        otherDB_updated.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
+          if otherDB_updated.instance_exists(file, local_server_name, checksum)
             if size == file_stats.size and instance_mod_time == file_mtime.to_i
-              @indexed_content.add_instance(checksum, size, server, file_stats.dev.to_s, file, instance_mod_time)
+              @indexed_content.add_instance(checksum, size, server, file, instance_mod_time)
               file_match = true
               break
             else
@@ -146,8 +146,7 @@ module FileIndexing
         end
 
         @indexed_content.add_instance(checksum, file_stats.size, local_server_name,
-                                      file_stats.dev.to_s, File.expand_path(file),
-                                      file_mtime.to_i)
+                                      File.expand_path(file), file_mtime.to_i)
       end
     end
 

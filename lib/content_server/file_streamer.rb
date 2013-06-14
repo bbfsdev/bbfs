@@ -205,6 +205,7 @@ module ContentServer
 
     # open new stream
     def handle_new_stream(file_checksum, file_size)
+      Log.info("enter handle_new_stream")
       # final destination path
       tmp_path = FileReceiver.destination_filename(
           File.join(Params['backup_destination_folder']['path'], 'tmp'),
@@ -218,7 +219,7 @@ module ContentServer
         # The file will be moved from tmp location once the transfer will be done
         # system will use the checksum and some more unique key for tmp file name
         FileUtils.makedirs(File.dirname(tmp_path)) unless File.directory?(File.dirname(tmp_path))
-        tmp_file = file = File.new(tmp_path, 'wb')
+        tmp_file = File.new(tmp_path, 'wb')
         @streams[file_checksum] = Stream.new(file_checksum, tmp_path, tmp_file, file_size)
       end
     end

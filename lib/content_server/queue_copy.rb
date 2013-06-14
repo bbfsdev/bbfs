@@ -55,7 +55,7 @@ module ContentServer
           if message_type == :COPY_MESSAGE
             Log.debug1 "Copy files event: #{message_content}"
             # Prepare source,dest map for copy.
-              message_content.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+              message_content.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
                 if !@copy_prepare.key?(checksum) || !@copy_prepare[checksum][1]
                   @copy_prepare[checksum] = [path, false]
                   Log.debug1("Sending ack for: #{checksum}")
