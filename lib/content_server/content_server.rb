@@ -38,7 +38,18 @@ module ContentServer
       Log.info("  Path:'#{path['path']}'")
     }
     monitoring_events = Queue.new
-    fm = FileMonitoring::FileMonitoring.new
+
+    #Read here for initial content data that exist from previous system run
+    content_data_path = Params['local_content_data_path']
+    initial_content_data = ContentData::ContentData.new
+    initial_content_data.from_file(content_data_path) if File.exists?(content_data_path)
+
+    #Update local dynamic content with existing content
+    local_dynamic_content_data = ContentData::DynamicContentData.new
+    local_dynamic_content_data.update(initial_content_data)
+
+    #Start files monitor taking into consideration  existing content  data
+    fm = FileMonitoring::FileMonitoring.new(local_dynamic_content_data)
     fm.set_event_queue(monitoring_events)
     # Start monitoring and writing changes to queue
     all_threads << Thread.new do
@@ -59,7 +70,7 @@ module ContentServer
     # Initialize/Start content data comparator
     Log.debug1('Start content data comparator')
     copy_files_events = Queue.new  # TODO(kolman): Remove this initialization and merge to FileCopyServer.
-    local_dynamic_content_data = ContentData::DynamicContentData.new
+    local_dynamic_content_data
     all_threads << Thread.new do  # TODO(kolman): Seems like redundant, check how to update dynamic directly.
       while true do
         # Note: This thread should be the only consumer of local_server_content_data_queue
