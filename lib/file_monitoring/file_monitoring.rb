@@ -7,7 +7,27 @@ require 'file_monitoring/monitor_path'
 
 module FileMonitoring
   # Manages file monitoring of number of file system locations
+
+
   class FileMonitoring
+
+
+    def initialize
+      @content_data_path = Params['local_content_data_path']
+      @initial_content_data = ContentData::ContentData.new
+      @initial_content_data.from_file(@content_data_path) if File.exists?(@content_data_path)
+
+      @content_data_cache = Set.new
+      @initial_content_data.each_instance(){
+         |checksum,size,content_modification_time,instance_modification_time,server,device,file_path|
+
+        # save files to cache
+        @content_data_cache.add(file_path)
+
+      }
+
+    end
+
 
     # Set event queue used for communication between different proceses.
     # @param queue [Queue]
@@ -35,7 +55,7 @@ module FileMonitoring
       pq = Containers::PriorityQueue.new
       conf_array.each { |elem|
         priority = (Time.now + elem['scan_period']).to_i
-        dir_stat = DirStat.new(File.expand_path(elem['path']), elem['stable_state'])
+        dir_stat = DirStat.new(File.expand_path(elem['path']), elem['stable_state'],@content_data_cache,FileStatEnum::NON_EXISTING)
         dir_stat.set_event_queue(@event_queue) if @event_queue
         Log.debug1 "File monitoring started for: #{elem}"
         pq.push([priority, elem, dir_stat], -priority)
