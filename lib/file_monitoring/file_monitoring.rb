@@ -12,19 +12,21 @@ module FileMonitoring
   class FileMonitoring
 
 
-    def initialize
-      @content_data_path = Params['local_content_data_path']
-      @initial_content_data = ContentData::ContentData.new
-      @initial_content_data.from_file(@content_data_path) if File.exists?(@content_data_path)
+    def initialize (dynamic_content_data)
+      #Get content data from dynamic content
+      @initial_content_data = dynamic_content_data.last_content_data()
 
-      @content_data_cache = Set.new
-      @initial_content_data.each_instance(){
-         |checksum,size,content_modification_time,instance_modification_time,server,device,file_path|
-
-        # save files to cache
-        @content_data_cache.add(file_path)
-
-      }
+      if !(@initial_content_data.empty?)
+        #Use Set to add already existing files to cache
+        @content_data_cache = Set.new
+        @initial_content_data.each_instance(){
+            |checksum,size,content_modification_time,instance_modification_time,server,device,file_path|
+          # save files to cache
+          @content_data_cache.add(file_path)
+        }
+      else
+        @initial_content_data = nil
+      end
 
     end
 

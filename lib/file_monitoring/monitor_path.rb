@@ -40,10 +40,6 @@ module FileMonitoring
       @modification_time = nil
       @cycles = 0  # number of iterations from the last file modification
       @state = state
-
-
-
-
       @stable_state = stable_state  # number of iteration to move unchanged file to stable state
     end
 
