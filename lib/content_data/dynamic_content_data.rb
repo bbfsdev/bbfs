@@ -1,4 +1,5 @@
 require 'thread'
+require 'params'
 
 module ContentData
 
@@ -7,6 +8,17 @@ module ContentData
     def initialize()
       @last_content_data = nil
       @last_content_data_available_mutex = Mutex.new
+
+      #update last data in content directory
+      ref = ContentData.new
+      @content_data_path =Params['local_content_data_path']
+      ref.from_file(@content_data_path) if File.exists?(@content_data_path)
+      @last_content_data_available_mutex.synchronize {
+        @last_content_data = ref
+        Log.debug2("updating last content data:#{@last_content_data}\n")
+      }if File.exists?(@content_data_path)
+
+
     end
 
     def update(content_data)
