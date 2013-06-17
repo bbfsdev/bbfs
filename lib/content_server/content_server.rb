@@ -39,12 +39,11 @@ module ContentServer
     }
     monitoring_events = Queue.new
 
-    #Read here for initial content data that exist from previous system run
-    content_data_path = Params['local_content_data_path']
+    # Read here for initial content data that exist from previous system run
     initial_content_data = ContentData::ContentData.new
+    content_data_path = Params['local_content_data_path']
     initial_content_data.from_file(content_data_path) if File.exists?(content_data_path)
-
-    #Update local dynamic content with existing content
+    # Update local dynamic content with existing content
     local_dynamic_content_data = ContentData::DynamicContentData.new
     local_dynamic_content_data.update(initial_content_data)
 

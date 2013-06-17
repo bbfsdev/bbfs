@@ -33,7 +33,7 @@ module FileMonitoring
     #
     # * <tt>path</tt> - File location
     # * <tt>stable_state</tt> - Number of iterations to move unchanged file to stable state
-    def initialize(path, stable_state = DEFAULT_STABLE_STATE,content_data_cache,state)
+    def initialize(path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
       @path ||= path
       @size = nil
       @creation_time = nil
@@ -141,15 +141,13 @@ module FileMonitoring
     #
     # * <tt>path</tt> - File location
     # * <tt>stable_state</tt> - Number of iterations to move unchanged directory to stable state
-    def initialize(path, stable_state = DEFAULT_STABLE_STATE,content_data_cache,state)
+    def initialize(path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
       super
       @dirs = nil
       @files = nil
       @non_utf8_paths = {}
-      @content_data_cache = Set.new
       @content_data_cache = content_data_cache
-
-      end
+    end
 
     #  Adds directory for monitoring.
     def add_dir (dir)
@@ -276,7 +274,7 @@ module FileMonitoring
                                   # change state only for existing directories
                                   # newly added directories have to remain with NEW state
             was_changed = true
-            ds = DirStat.new(file, self.stable_state,@content_data_cache,FileStatEnum::NON_EXISTING)
+            ds = DirStat.new(file, self.stable_state, @content_data_cache, FileStatEnum::NON_EXISTING)
             ds.set_event_queue(@event_queue) unless @event_queue.nil?
             ds.monitor
             add_dir(ds)
@@ -286,14 +284,13 @@ module FileMonitoring
                                   # change state only for existing directories
                                   # newly added directories have to remain with NEW state
             was_changed = true
-            #check if file exist in content data cache - set state to STABLE
-            file_exist = @content_data_cache.include?(file) unless @content_data_cache.empty?
-            if  file_exist
-              fs = FileStat.new(file, self.stable_state,@content_data_cache,FileStatEnum::STABLE)
-            else
-              fs = FileStat.new(file, self.stable_state,@content_data_cache,FileStatEnum::NON_EXISTING)
+            # check if file exist in content data cache - set state to STABLE
+            file_state = FileStatEnum::NON_EXISTING
+            Log.info("File: #{file}")
+            if !@content_data_cache.nil? && @content_data_cache.include?(file)
+              file_state = FileStatEnum::STABLE
             end
-
+            fs = FileStat.new(file, self.stable_state, @content_data_cache, file_state)
 
             fs.set_event_queue(@event_queue) unless @event_queue.nil?
             fs.monitor

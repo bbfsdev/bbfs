@@ -7,27 +7,17 @@ require 'file_monitoring/monitor_path'
 
 module FileMonitoring
   # Manages file monitoring of number of file system locations
-
-
   class FileMonitoring
 
-
     def initialize (dynamic_content_data)
-      #Get content data from dynamic content
-      @initial_content_data = dynamic_content_data.last_content_data()
-
-      if !(@initial_content_data.empty?)
-        #Use Set to add already existing files to cache
-        @content_data_cache = Set.new
-        @initial_content_data.each_instance(){
-            |checksum,size,content_modification_time,instance_modification_time,server,device,file_path|
-          # save files to cache
-          @content_data_cache.add(file_path)
-        }
-      else
-        @initial_content_data = nil
-      end
-
+      @content_data_cache = Set.new
+      dynamic_content_data.each_instance(){
+          |checksum, size, content_modification_time,
+           instance_modification_time, server, device, file_path|
+        # save files to cache
+        Log.info("File in cache: #{file_path}")
+        @content_data_cache.add(file_path)
+      }
     end
 
 
@@ -57,7 +47,7 @@ module FileMonitoring
       pq = Containers::PriorityQueue.new
       conf_array.each { |elem|
         priority = (Time.now + elem['scan_period']).to_i
-        dir_stat = DirStat.new(File.expand_path(elem['path']), elem['stable_state'],@content_data_cache,FileStatEnum::NON_EXISTING)
+        dir_stat = DirStat.new(File.expand_path(elem['path']), elem['stable_state'], @content_data_cache, FileStatEnum::NON_EXISTING)
         dir_stat.set_event_queue(@event_queue) if @event_queue
         Log.debug1 "File monitoring started for: #{elem}"
         pq.push([priority, elem, dir_stat], -priority)
