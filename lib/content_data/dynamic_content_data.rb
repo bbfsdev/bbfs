@@ -1,4 +1,5 @@
 require 'thread'
+require 'params'
 
 module ContentData
 
