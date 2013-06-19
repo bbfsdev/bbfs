@@ -10,6 +10,7 @@ require 'log'
 
 module FileGenerator
   Params.path('target_path', '~/.bbfs/test_files', 'Represents the target path for files generation')
+  Params.boolean('is_clear_target_path', false, 'Should files and directories already presented in target path be removed')
   Params.string('file_name_prefix', 'auto_generated_file_4_backup_server',
                 'Represents the file name template for generated file')
   Params.string('dir_name_prefix', 'test_dir_4_backup_server',
@@ -124,6 +125,10 @@ module FileGenerator
     def run
       dir_counter = 0
       total_file_count = 0
+      if Params['is_clear_target_path']
+        target_path_all_regexp = File.expand_path(File.join(Params['target_path'], '*'))
+        Dir[target_path_all_regexp].each {|file| FileUtils.rm_rf file}
+      end
       while is_generate_dir dir_counter, total_file_count
         new_dir_name = File.expand_path(File.join Params['target_path'], get_new_directory_name)
         ::FileUtils.mkdir_p new_dir_name unless File.directory?(new_dir_name)

@@ -3,11 +3,49 @@
 # Runs content server. This server monitors a set of directories (blobs/patterns).
 # The files in those directories are indexed (calculating their SHA1).
 # Each unique content is backed up to the remote (backup) server.
+# How to run on content side:
+# testing_server --conf_file=~/.bbfs/etc/content_testing_server.yml --server_to_test=content
+# How to run on backup side:
+# testing_server --conf_file=~/.bbfs/etc/backup_testing_server.yml --server_to_test=backup
+
+# TODO add command line help/usage
 
 require 'params'
 require 'run_in_background'
 require 'testing_server'
 
-Params.init ARGV
+Params.string('server_to_test', nil, 'Server that will be run under test_server. Values are: content, backup')
 
-RunInBackground.run { TestingServer.run_testing_server }
+Params.init ARGV
+Log.init
+
+Thread.abort_on_exception = true
+
+retries = 0  # number of retries to run a server
+
+begin
+  case Params['server_to_test']
+  when 'content'
+    RunInBackground.run { TestingServer.run_content_testing_server }
+  when 'backup'
+    RunInBackground.run { TestingServer.run_backup_testing_server }
+  else
+    raise ArgumentError.new "Incorrect server_to_test parameter value: #{Params['server_to_test']}"
+  end
+
+rescue SystemExit, SignalException => exc
+  # TODO (genadyp) do we need to trap signals by types?
+  Log.error("Interrupt or Exit happened in #{Params['service_name']} server: #{exc.class}, " +
+            "stopping process.\nBacktrace:\n#{exc.backtrace.join("\n")}")
+  Log.flush
+  exit
+rescue Exception => exc
+  Log.error("Exception happened in #{Params['service_name']} server: #{exc.class}:#{exc.message}\nBacktrace:\n#{exc.backtrace.join("\n")}")
+  if retries > 0
+    Log.debug1("Restarting (retries:#{retries}).")
+  else
+    Log.debug1("Exiting...")
+    Log.flush
+  end
+  retries -= 1
+end while retries >= 0

@@ -411,8 +411,6 @@ paths:
     Params.path('conf_file', '~/.bbfs/etc/config_content_server.yml', 'Configuration file path.')
   elsif $0 =~ /backup_server/
     Params.path('conf_file', '~/.bbfs/etc/config_backup_server.yml', 'Configuration file path.')
-  elsif $0 =~ /testing_server/
-    Params.path('conf_file', '~/.bbfs/etc/testing_server.yml', 'Configuration file path')
   else
     Params.path('conf_file', nil, 'Configuration file path.')
   end
