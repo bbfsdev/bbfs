@@ -22,17 +22,28 @@ module ContentData
   #   unify time, add/remove instance, queries, merge, remove directory and more.
   # Content info data structure:
   #   @contents_info = { Checksum -> [size, *instances*, content_modification_time] }
-  #     *instances* = {'server,device,path' -> instance_modification_time }
+  #     *instances* = {[server,path] -> instance_modification_time }
   # Notes:
   #   1. content_modification_time is the instance_modification_time of the first
   #      instances which was added to @contents_info
   class ContentData
 
     def initialize(other = nil)
+      ObjectSpace.define_finalizer(self,
+                                   self.class.method(:finalize).to_proc)
+      if Params['enable_monitoring']
+        Params['process_vars'].inc('obj add ContentData')
+      end
       if other.nil?
         @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
       else
         @contents_info = other.clone_contents_info
+      end
+    end
+
+    def self.finalize(id)
+      if Params['enable_monitoring']
+        Params['process_vars'].inc('obj rem ContentData')
       end
     end
 
@@ -41,8 +52,13 @@ module ContentData
       @contents_info.keys.inject({}) { |clone_contents_info, checksum|
         instances = @contents_info[checksum]
         size = instances[0]
-        instances_db_cloned = instances[1].clone  # this shallow clone will work
         content_time = instances[2]
+        instances_db = instances[1]
+        instances_db_cloned = {}
+        instances_db.keys.each { |location|
+          instance_mtime = instances_db[location]
+          instances_db_cloned[[location[0].clone,location[1].clone]]=instance_mtime
+        }
         clone_contents_info[checksum] = [size,
                               instances_db_cloned,
                               content_time]
@@ -62,33 +78,31 @@ module ContentData
 
     # iterator over @contents_info data structure (including instances)
     # block is provided with: checksum, size, content modification time,
-    #   instance modification time, server, device and file path
+    #   instance modification time, server and file path
     def each_instance(&block)
       @contents_info.keys.each { |checksum|
         content_info = @contents_info[checksum]
         content_info[1].keys.each {|location|
-          # provide checksum, size, content modification time,instance modification time,
-          #   server, device and path to the block
+          # provide the block with: checksum, size, content modification time,instance modification time,
+          #   server and path.
           instance_modification_time = content_info[1][location]
-          location_arr = location.split(',')
           block.call(checksum,content_info[0], content_info[2], instance_modification_time,
-                     location_arr[0], location_arr[1], location_arr[2])
+                     location[0], location[1])
         }
       }
     end
 
     # iterator of instances over specific content
     # block is provided with: checksum, size, content modification time,
-    #   instance modification time, server, device and file path
+    #   instance modification time, server and file path
     def content_each_instance(checksum, &block)
       content_info = @contents_info[checksum]
       content_info[1].keys.each {|location|
-        # provide checksum, size, content modification time,instance modification time,
-        #   server, device and path to the block
+        # provide the block with: checksum, size, content modification time,instance modification time,
+        #   server and path.
         instance_modification_time = content_info[1][location]
-        location_arr = location.split(',')
         block.call(checksum,content_info[0], content_info[2], instance_modification_time,
-                   location_arr[0], location_arr[1], location_arr[2])
+                   location[0], location[1])
       }
     end
 
@@ -102,26 +116,28 @@ module ContentData
       content_info[1].size
     end
 
-    def instance_mod_time(checksum, location)
+    def get_instance_mod_time(checksum, location)
       content_info = @contents_info[checksum]
       return nil if content_info.nil?
       instances = content_info[1]
       instance_time = instances[location]
     end
 
-    def add_instance(checksum, size, server, device, path, modification_time)
-      location = "%s,%s,%s" % [server, device, path]
+    def add_instance(checksum, size, server, path, modification_time)
+      location = [server, path]
       content_info = @contents_info[checksum]
       if content_info.nil?
         @contents_info[checksum] = [size,
                                     {location => modification_time},
                                     modification_time]
-      elsif size != content_info[0]
-        Log.warning 'File size different from content size while same checksum'
-        Log.warning sprintf("instance location:'%s'\n", location)
-        Log.warning sprintf("instance mod time:'%d'\n", modification_time)
       else
+        if size != content_info[0]
+          Log.warning 'File size different from content size while same checksum'
+          Log.warning("instance location:server:'#{location[0]}'  path:'#{location[1]}'")
+          Log.warning("instance mod time:'#{modification_time}'")
+        end
         #override file if needed
+        content_info[0] = size
         instances = content_info[1]
         instances[location] = modification_time
       end
@@ -137,8 +153,8 @@ module ContentData
 
 
     # TODO (genadyp) consider about using hash for optional defining of parameters
-    def instance_exists(path, server, device, checksum=nil)
-      location = "%s,%s,%s" % [server, device, path]
+    def instance_exists(path, server, checksum=nil)
+      location = [server, path]
       if checksum.nil?
         @contents_info.values.any? { |content_db|
           content_db[1].has_key?(location)
@@ -148,6 +164,15 @@ module ContentData
         return false if content_info.nil?
         content_info[1].has_key?(location)
       end
+    end
+
+    def stats_by_location(location)
+      @contents_info.values.any? { |content_db|
+        if content_db[1].has_key?(location)
+          return [content_db[0], content_db[1][location]]
+        end
+      }
+      return nil
     end
 
 
@@ -170,10 +195,21 @@ module ContentData
       end
     end
 
+    def remove_directory(dir_to_remove, server)
+      @contents_info.keys.each { |checksum|
+        instances =  @contents_info[checksum][1]
+        instances.delete_if { |location, _|
+          location[0] == server and location[1].scan(dir_to_remove).size > 0
+        }
+        @contents_info.delete(checksum) if instances.empty?
+      }
+    end
+
+
     def ==(other)
       return false if other.nil?
       return false if @contents_info.size != other.contents_size
-      other.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+      other.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
         local_content_info = @contents_info[checksum]
         return false if local_content_info.nil?
         return false if local_content_info[0] != size
@@ -181,7 +217,7 @@ module ContentData
         #check instances
         local_instances =  local_content_info[1]
         return false if other.instances_size(checksum) != local_instances.size
-        location = "%s,%s,%s" % [server, device, path]
+        location = [server, path]
         local_instance_mod_time = local_instances[location]
         return false if local_instance_mod_time.nil?
         return false if local_instance_mod_time != instance_mod_time
@@ -202,55 +238,15 @@ module ContentData
         contents_str << "%s,%d,%d\n" % [checksum, size, content_mod_time]
       }
       instances_counter = 0
-      each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+      each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
         instances_counter += 1
-        instances_str <<  "%s,%d,%s,%s,%s,%d\n" % [checksum, size, server, device, path, instance_mod_time]
+        instances_str <<  "%s,%d,%s,%s,%d\n" % [checksum, size, server, path, instance_mod_time]
       }
       return_str << "%d\n" % [@contents_info.size]
       return_str << contents_str
       return_str << "%d\n" % [instances_counter]
       return_str << instances_str
       return_str
-    end
-
-    def to_a
-      returned_arr = []
-      @contents_info.keys.each { |checksum|
-        instance = @contents_info[checksum]
-        returned_arr.push(checksum)
-        returned_arr.push(instance[0])
-        instances_keys = instance[1].keys
-        #returned_arr.push(instances_keys.size)
-        instances_keys.each { |path|
-          returned_arr.push(path)
-          returned_arr.push(instance[1][path])
-        }
-        returned_arr.push(instance[2])
-      }
-      returned_arr
-    end
-
-    def from_a(arr)
-      @contents_info = nil and return if arr.nil?
-      @contents_info = {}
-      tmp_ind = 0;
-      while tmp_ind < arr.size
-        checksum = arr[tmp_ind]
-        content_size = arr[tmp_ind+1]
-        next_elem = arr[tmp_ind+2]
-        tmp_ind+=2
-        instance_db = Hash.new
-        while next_elem.instance_of?(String)
-          instance_full_path = next_elem
-          instance_time = arr[tmp_ind+1]
-          next_elem = arr[tmp_ind+2]
-          tmp_ind+=2
-          instance_db[instance_full_path]=instance_time
-        end
-        content_time = next_elem
-        @contents_info[checksum] = [content_size,instance_db, content_time]
-        tmp_ind+=1
-      end
     end
 
     def to_file(filename)
@@ -262,44 +258,33 @@ module ContentData
     # TODO validation that file indeed contains ContentData missing
     def from_file(filename)
       lines = IO.readlines(filename)
-      #i = 0
-      #number_of_contents = lines[i].to_i
-      #i += 1
-      #number_of_contents.times {
-      #  parameters = lines[i].split(",")
-
-      #  add_content(parameters[0],
-      #              parameters[1].to_i,
-      #              parameters[2].to_i)
-      #  i += 1
-      #}
       number_of_contents = lines[0].to_i
       i = 1 + number_of_contents
       number_of_instances = lines[i].to_i
       i += 1
       number_of_instances.times {
         if lines[i].nil?
-          Log.debug1 "lines[i] if nil !!!, Backing filename: #{filename} to #{filename}.bad"
+          Log.warning "line ##{i} is nil !!!, Backing filename: #{filename} to #{filename}.bad"
           FileUtils.cp(filename, "#{filename}.bad")
-          Log.debug1 lines[i].join("\n")
-        end
-        parameters = lines[i].split(',')
-        # bugfix: if file name consist a comma then parsing based on comma separating fails
-        if (parameters.size > 6)
-          (5..parameters.size-2).each do |i|
-            parameters[4] = [parameters[4], parameters[i]].join(",")
+          Log.warning("Lines:\n#{lines[i].join("\n")}")
+        else
+          parameters = lines[i].split(',')
+          # bugfix: if file name consist a comma then parsing based on comma separating fails
+          if (parameters.size > 5)
+            (4..parameters.size-2).each do |i|
+              parameters[3] = [parameters[3], parameters[i]].join(",")
+            end
+            (4..parameters.size-2).each do |i|
+              parameters.delete_at(4)
+            end
           end
-          (5..parameters.size-2).each do |i|
-            parameters.delete_at(5)
-          end
-        end
 
-        add_instance(parameters[0],
-                     parameters[1].to_i,
-                     parameters[2],
-                     parameters[3],
-                     parameters[4],
-                     parameters[5].to_i)
+          add_instance(parameters[0],
+                       parameters[1].to_i,
+                       parameters[2],
+                       parameters[3],
+                       parameters[4].to_i)
+        end
         i += 1
       }
     end
@@ -354,9 +339,8 @@ module ContentData
             size = info[2]
             inst_mtime = info[3]
             server = info[4]
-            device = info[5]
-            file_path = info[6]
-            params[:failed].add_instance(checksum, size, server, device, file_path, inst_mtime)
+            file_path = info[5]
+            params[:failed].add_instance(checksum, size, server, file_path, inst_mtime)
           end
         end
       end
@@ -369,7 +353,7 @@ module ContentData
         instances[1].keys.each { |unique_path|
           instance_mtime = instances[1][unique_path]
           instance_info = [checksum, content_mtime, content_size, instance_mtime]
-          instance_info.concat(unique_path.split(','))
+          instance_info.concat(unique_path)
           unless check_instance(instance_info)
             is_valid = false
 
@@ -388,10 +372,9 @@ module ContentData
     #   [2] - content size
     #   [3] - instance mtime
     #   [4] - server name
-    #   [5] - device name
-    #   [6] - file path
+    #   [5] - file path
     def shallow_check(instance_info)
-      path = instance_info[6]
+      path = instance_info[5]
       size = instance_info[2]
       instance_mtime = instance_info[3]
       is_valid = true
@@ -423,12 +406,11 @@ module ContentData
     #   [2] - content size
     #   [3] - instance mtime
     #   [4] - server name
-    #   [5] - device name
-    #   [6] - file path
+    #   [5] - file path
     def deep_check(instance_info)
       if shallow_check(instance_info)
         instance_checksum = instance_info[0]
-        path = instance_info[6]
+        path = instance_info[5]
         current_checksum = FileIndexing::IndexAgent.get_checksum(path)
         if instance_checksum == current_checksum
           true
@@ -521,8 +503,8 @@ module ContentData
     return ContentData.new(b) if a.nil?
     c = ContentData.new(b)
     # Add A instances to content data c
-    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
-      c.add_instance(checksum, size, server, device, path, instance_mod_time)
+    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
+      c.add_instance(checksum, size, server, path, instance_mod_time)
     }
     c
   end
@@ -531,8 +513,8 @@ module ContentData
     return ContentData.new(a) if b.nil?
     return ContentData.new(b) if a.nil?
     # Add A instances to content data B
-    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
-      b.add_instance(checksum, size, server, device, path, instance_mod_time)
+    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
+      b.add_instance(checksum, size, server, path, instance_mod_time)
     }
     b
   end
@@ -599,21 +581,20 @@ module ContentData
     return ContentData.new(b) if a.nil?
     c = ContentData.new(b)  # create new cloned content C from B
     # remove contents of A from newly cloned content A
-    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
-      location = "%s,%s,%s" % [server, device, path]
+    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
+      location = [server, path]
       c.remove_instance(location, checksum)
     }
     c
   end
 
-  def self.remove_directory(content_data, dir_to_remove)
+  def self.remove_directory(content_data, dir_to_remove, server_to_remove)
     return nil if content_data.nil?
     result_content_data = ContentData.new()
-    content_data.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
-      location = "%s,%s,%s" % [server, device, path]
-      if location.scan(dir_to_remove).size == 0
-        # instance location is valid
-        result_content_data.add_instance(checksum, size, server, device, path, instance_mod_time)
+    content_data.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
+      # Keep instance if path is not of server to remove or path does not include dir to remove
+      if (server_to_remove!=server) or (path.scan(dir_to_remove).size == 0)
+        result_content_data.add_instance(checksum.clone, size, server, path.clone, instance_mod_time)
       end
     }
     result_content_data

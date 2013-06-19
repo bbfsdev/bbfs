@@ -28,4 +28,13 @@ monitoring_paths:
 # … optional more paths here
 # print all parameters to console at the beginning of execution log.
 print_params_to_stdout: true
+#Cycles where server write the content data to a local file
+data_flush_delay: 4
+
+######process variables monitoring parameters
+enable_monitoring: true
+#Browing on server:port will show the varialbes
+process_monitoring_web_port: 5556
+#Cycles(seconds) to update variables
+process_vars_delay: 5
 ############# END OF FILE #################

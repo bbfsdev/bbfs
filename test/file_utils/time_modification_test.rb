@@ -107,7 +107,7 @@ module FileUtils
         Log.info "==============="
 
         # checking that content was modified according to the instance with minimal time
-        mod_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+        mod_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
           next unless checksum.eql?(@mod_instance_checksum)
           content_time =  FileUtils.parse_time(content_mod_time.to_s)
           assert_equal(MOD_TIME_INSTANCES, content_time)
@@ -116,7 +116,7 @@ module FileUtils
         }
 
         # checking that files were actually modified
-        mod_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+        mod_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
           indexer = FileIndexing::IndexAgent.new  # (instance.server_name, instance.device)
           patterns = FileIndexing::IndexerPatterns.new
           patterns.add_pattern(File.dirname(path) + '/*')     # this pattern index all files

@@ -1,6 +1,6 @@
 require 'algorithms'
 require 'fileutils'
-require 'log'
+require 'log4r'
 require 'params'
 
 require 'file_monitoring/monitor_path'
@@ -13,7 +13,7 @@ module FileMonitoring
       @content_data_cache = Set.new
       dynamic_content_data.each_instance(){
           |checksum, size, content_modification_time,
-           instance_modification_time, server, device, file_path|
+           instance_modification_time, server, file_path|
         # save files to cache
         Log.info("File in cache: #{file_path}")
         @content_data_cache.add(file_path)
@@ -40,7 +40,6 @@ module FileMonitoring
     # that provides path and file monitoring configuration data
     def monitor_files
       conf_array = Params['monitoring_paths']
-
       # Directories states stored in the priority queue,
       # where the key (priority) is a time when it should be checked next time.
       # Priority queue means that all entries arranged by key (time to check) in increasing order.
@@ -53,19 +52,31 @@ module FileMonitoring
         pq.push([priority, elem, dir_stat], -priority)
       }
 
-      log_path = Params['default_monitoring_log_path']
+      #init log4r
+      monitoring_log_path = Params['default_monitoring_log_path']
+      Log.debug1 'File monitoring log: ' + Params['default_monitoring_log_path']
+      monitoring_log_dir = File.dirname(monitoring_log_path)
+      FileUtils.mkdir_p(monitoring_log_dir) unless File.exists?(monitoring_log_dir)
 
-      Log.debug1 'File monitoring log: ' + log_path
-      log_dir = File.dirname(log_path)
-      FileUtils.mkdir_p(log_dir) unless File.exists?(log_dir)
-      log = File.open(log_path, 'w')
-      FileStat.set_log(log)
+      @log4r = Log4r::Logger.new 'BBFS monitoring log'
+      @log4r.trace = true
+      formatter = Log4r::PatternFormatter.new(:pattern => "[%d] [%m]")
+      #file setup
+      file_config = {
+          "filename" => Params['default_monitoring_log_path'],
+          "maxsize" => Params['log_rotation_size'],
+          "trunc" => true
+      }
+      file_outputter = Log4r::RollingFileOutputter.new("monitor_log", file_config)
+      file_outputter.level = Log4r::INFO
+      file_outputter.formatter = formatter
+      @log4r.outputters << file_outputter
+      FileStat.set_log(@log4r)
 
       while true do
         # pull entry that should be checked next,
         # according to it's scan_period
         time, conf, dir_stat = pq.pop
-
         # time remains to wait before directory should be checked
         time_span = time - Time.now.to_i
         if (time_span > 0)

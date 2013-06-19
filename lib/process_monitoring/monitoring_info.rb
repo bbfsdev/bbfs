@@ -10,23 +10,27 @@ require 'params'
 EventMachine.schedule do
   trap("INT") do
     puts "Caught SIGINT"
-    EventMachine.exit # this is useless
-                      # exit # this stops the EventMachine
+    puts "EventMachine:#{EventMachine}"
+   # EventMachine.stop # this is useless
+    exit                  # exit # this stops the EventMachine
   end
 end
 
 # This module export process info to http port, that way the user may access with the
 # browser to the process to see what is happening inside, what is it's state and parameters.
 module MonitoringInfo
+
   Params.integer('process_monitoring_web_port', 5555,
                  'The port from which monitoring data will be served as http.')
 
   class MonitoringInfo
     attr_reader :thread
 
-    def initialize(process_variables)
-      @process_variables = process_variables
-      @web_interface = Sinatra.new { get('/') { MonitoringInfo.get_json(process_variables.clone) } }
+    def initialize()
+      @web_interface = Sinatra.new {
+        set :bind, '0.0.0.0'
+        get('/') { MonitoringInfo.get_json(Params['process_vars'].clone) }
+      }
       @web_interface.set(:port, Params['process_monitoring_web_port'])
       @thread = Thread.new do
         @web_interface.run!
@@ -38,14 +42,10 @@ module MonitoringInfo
 
       entries = []
       hash.each do |key, value|
-        if value.is_a? String
-          entries << "\"#{key}\": \"#{value}\""
-        else
-          entries << "\"#{key}\": #{value}"
-        end
+        entries << "{#{key}:#{value}}"
       end
 
-      return '{' + entries.join(',') + '}'
+      return entries.join(" , ")
     end
 
     def self.get_html (hash, opts = {})

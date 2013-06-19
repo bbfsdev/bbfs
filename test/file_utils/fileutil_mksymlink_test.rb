@@ -13,7 +13,6 @@ module FileUtils
       RESOURCES_DIR = File.expand_path(File.dirname(__FILE__) + "/mksymlink_test")
       REF_DIR = RESOURCES_DIR + "/ref"
       DEST_DIR = RESOURCES_DIR + "/dest"
-      DEVICE_NAME = "hd1"
       NOT_FOUND_CHECKSUM = "absent_instance"
       @ref_db
       @base_db
@@ -63,7 +62,7 @@ module FileUtils
         @base_db = indexer.indexed_content
         @ref_db = ContentData::ContentData.new
 
-        @base_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+        @base_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
           unless only_in_base.include?(path)
             file_name = File.basename(path)
             base_dir = File.dirname(path)
@@ -73,10 +72,10 @@ module FileUtils
             else
               ref_full_path << "/#{file_name}"
             end
-            @ref_db.add_instance(checksum, size, server, device, path, instance_mod_time)
+            @ref_db.add_instance(checksum, size, server, path, instance_mod_time)
           end
         }
-        @ref_db.add_instance(NOT_FOUND_CHECKSUM, 500, `hostname`.chomp, DEVICE_NAME, "/not/exist/path/file", Time.now.utc.to_i)
+        @ref_db.add_instance(NOT_FOUND_CHECKSUM, 500, `hostname`.chomp, "/not/exist/path/file", Time.now.utc.to_i)
       end
 
       def test_create_symlink_structure
@@ -90,7 +89,7 @@ module FileUtils
         end
 
         base_path2checksum = Hash.new
-        @base_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+        @base_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
           base_path2checksum[path] = checksum
         }
 
@@ -98,12 +97,12 @@ module FileUtils
         not_found_db_contents_size = 0
         not_found_db_instances_size = 0
         not_found_db.each_content { |checksum, size, content_mod_time| not_found_db_contents_size += 1}
-        not_found_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+        not_found_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
           not_found_path2checksum[path] = checksum
           not_found_db_instances_size += 1
         }
 
-        @ref_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, device, path|
+        @ref_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
           next if not_found_path2checksum.has_key?(path)
           ref_path = DEST_DIR + path
           assert(File.exists?(ref_path))

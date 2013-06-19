@@ -12,9 +12,6 @@ module ContentServer
                  'Max number of content bytes to send in one chunk.')
   Params.integer('file_streaming_timeout', 5*60,
                  'If no action is taken on a file streamer, abort copy.')
-  Params.path('backup_destination_folder', '',
-              'Backup server destination folder, default is the relative local folder.')
-
   class Stream
     attr_reader :checksum, :path, :tmp_path, :file, :size
     def initialize(checksum, path, file, size)
@@ -51,10 +48,27 @@ module ContentServer
       @send_chunk_clb = send_chunk_clb
       @abort_streaming_clb = abort_streaming_clb
       @stream_queue = Queue.new
+      start_process_var_monitoring
 
       # Used from internal thread only.
       @streams = {}
       @thread = run
+    end
+
+    def start_process_var_monitoring
+      if Params['enable_monitoring']
+        @process_var_thread = Thread.new do
+          last_data_flush_time = nil
+          while true do
+            if last_data_flush_time.nil? || last_data_flush_time + Params['process_vars_delay'] < Time.now
+              Log.info("process_vars:File Streamer queue size:#{@stream_queue.size}")
+              Params['process_vars'].set('File Streamer queue', @stream_queue.size)
+              last_data_flush_time = Time.now
+            end
+            sleep(0.3)
+          end
+        end
+      end
     end
 
     def copy_another_chuck(checksum)
@@ -191,11 +205,12 @@ module ContentServer
 
     # open new stream
     def handle_new_stream(file_checksum, file_size)
+      Log.info("enter handle_new_stream")
       # final destination path
       tmp_path = FileReceiver.destination_filename(
-          File.join(Params['backup_destination_folder'], 'tmp'),
+          File.join(Params['backup_destination_folder'][0]['path'], 'tmp'),
           file_checksum)
-      path = FileReceiver.destination_filename(Params['backup_destination_folder'],
+      path = FileReceiver.destination_filename(Params['backup_destination_folder'][0]['path'],
                                                file_checksum)
       if File.exists?(path)
         Log.warning("File already exists (#{path}) not writing.")
@@ -204,7 +219,7 @@ module ContentServer
         # The file will be moved from tmp location once the transfer will be done
         # system will use the checksum and some more unique key for tmp file name
         FileUtils.makedirs(File.dirname(tmp_path)) unless File.directory?(File.dirname(tmp_path))
-        tmp_file = file = File.new(tmp_path, 'wb')
+        tmp_file = File.new(tmp_path, 'wb')
         @streams[file_checksum] = Stream.new(file_checksum, tmp_path, tmp_file, file_size)
       end
     end
@@ -234,7 +249,7 @@ module ContentServer
       # Should always be true, unless file creation failed.
       if @streams.key?(file_checksum)
         # Make the directory if does not exists.
-        path = FileReceiver.destination_filename(Params['backup_destination_folder'],
+        path = FileReceiver.destination_filename(Params['backup_destination_folder'][0]['path'],
                                                  file_checksum)
         Log.debug1("Moving tmp file #{@streams[file_checksum].path} to #{path}")
         Log.debug1("Creating directory: #{path}")

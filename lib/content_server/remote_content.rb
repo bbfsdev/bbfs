@@ -25,7 +25,6 @@ module ContentServer
     def receive_content(message)
       Log.debug1("Backup server received Remote content data:#{message.to_s}")
       Log.info("Backup server received Remote content data")
-      ref = @dynamic_content_data.last_content_data
       @dynamic_content_data.update(message)
       @last_fetch_timestamp = Time.now.to_i
 

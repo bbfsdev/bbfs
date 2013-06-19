@@ -37,9 +37,9 @@ module Validations
       # used to process method parameters centrally
       # TODO consider more convenient form of parameters
       # TODO code duplication with ContentData::validate
-      process_params = Proc.new do |checksum, content_mtime, size, instance_mtime, server, device, path|
+      process_params = Proc.new do |checksum, content_mtime, size, instance_mtime, server, path|
         if param_exists.call(:failed)
-          params[:failed].add_instance(checksum, size, server, device, path, instance_mtime)
+          params[:failed].add_instance(checksum, size, server, path, instance_mtime)
         end
       end
 
@@ -63,9 +63,9 @@ module Validations
       end
 
       # add instances of contents that should be check, i.e. exist in local
-      local_index.each_instance do |checksum, size, content_mtime, instance_mtime, server, device, path|
+      local_index.each_instance do |checksum, size, content_mtime, instance_mtime, server, path|
         if remote_index.content_exists checksum
-          local_index_to_check.add_instance checksum, size, server, device, path, instance_mtime
+          local_index_to_check.add_instance checksum, size, server, path, instance_mtime
         end
       end
 
@@ -92,9 +92,9 @@ module Validations
 
       # if needed process output params
       unless params.nil? || params.empty?
-        remote_index.each_instance do |checksum, size, content_mtime, instance_mtime, server, device, path|
+        remote_index.each_instance do |checksum, size, content_mtime, instance_mtime, server, path|
           unless contents_with_succeeded_instances.content_exists checksum
-            process_params.call checksum, content_mtime, size, instance_mtime, server, device, path
+            process_params.call checksum, content_mtime, size, instance_mtime, server, path
           end
         end
       end

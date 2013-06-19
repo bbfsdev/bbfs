@@ -122,6 +122,7 @@ module Params
             end
           end
         when 'Complex' then
+        when 'Global' then
           unless @value.nil?
             unless (value.class.eql? Hash) or (value.class.eql? Array)
               raise("Parameter:'#{@name}' type:'Complex' but value type to override " \
@@ -151,7 +152,7 @@ module Params
   def Params.raise_error_if_param_does_not_exist(name)
     if not @globals_db[name]
       raise("before using parameter:'#{name}', it should first be defined through Param module methods:" \
-               "Params.string, Params.path, Params.integer, Params.float or Params.boolean.")
+               "Params.string, Params.path, Params.integer, Params.float, Params.complex, Params.global or Params.boolean.")
     end
   end
 
@@ -190,7 +191,7 @@ module Params
     if existing_param.nil?
       raise("Parameter:'#{name}' has not been defined and can not be overridden. " \
               "It should first be defined through Param module methods:" \
-              "Params.string, Params.path, Params.integer, Params.float or Params.boolean.")
+              "Params.string, Params.path, Params.integer, Params.float, Params.complex, Params.global or Params.boolean.")
     end
     if value.nil?
       existing_param.value = nil
@@ -239,6 +240,11 @@ module Params
   def Params.complex(name, value, description)
     raise_error_if_param_exists(name)
     @globals_db[name] = Param.new(name, value, 'Complex', description)
+  end
+
+  def Params.global(name, value, description)
+    raise_error_if_param_exists(name)
+    @globals_db[name] = Param.new(name, value, 'Global', description)
   end
 
   # Define new global parameter of type Boolean.

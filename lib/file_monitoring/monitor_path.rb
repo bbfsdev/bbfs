@@ -34,6 +34,11 @@ module FileMonitoring
     # * <tt>path</tt> - File location
     # * <tt>stable_state</tt> - Number of iterations to move unchanged file to stable state
     def initialize(path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
+      ObjectSpace.define_finalizer(self,
+                                   self.class.method(:finalize).to_proc)
+      if Params['enable_monitoring']
+        Params['process_vars'].inc('obj add FileStat')
+      end
       @path ||= path
       @size = nil
       @creation_time = nil
@@ -41,6 +46,12 @@ module FileMonitoring
       @cycles = 0  # number of iterations from the last file modification
       @state = state
       @stable_state = stable_state  # number of iteration to move unchanged file to stable state
+    end
+
+    def self.finalize(id)
+      if Params['enable_monitoring']
+        Params['process_vars'].inc('obj rem FileStat')
+      end
     end
 
     def set_output_queue(event_queue)
@@ -106,12 +117,13 @@ module FileMonitoring
       if (@state != new_state or @state == FileStatEnum::CHANGED)
         @state = new_state
         if (@@log)
-          @@log.puts(cur_stat)
-          @@log.flush  #Ruby1.9.3: note that this is Ruby internal buffering only; the OS may buffer the data as well
+          @@log.info(state + ": " + path)
+          @@log.outputters[0].flush if Params['log_flush_each_message']
         end
         if (!@event_queue.nil?)
           Log.debug1 "Writing to event queue [#{self.state}, #{self.path}]"
-          @event_queue.push([self.state, self.instance_of?(DirStat), self.path])
+          @event_queue.push([self.state, self.instance_of?(DirStat), self.path,
+                             self.modification_time, self.size])
         end
       end
     end
@@ -125,13 +137,6 @@ module FileMonitoring
     def to_s (indent = 0)
       (" " * indent) + path.to_s + " : " + state.to_s
     end
-
-    #  Reports current state with identification.
-    #  NOTE This format used by log file.
-    def cur_stat
-      # TODO what output format have to be ?
-      Time.now.utc.to_s + " : " + self.state + " : " + self.path
-    end
   end
 
   #  This class holds current state of directory and methods to control changes
@@ -142,11 +147,24 @@ module FileMonitoring
     # * <tt>path</tt> - File location
     # * <tt>stable_state</tt> - Number of iterations to move unchanged directory to stable state
     def initialize(path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
+      ObjectSpace.define_finalizer(self,
+                                   self.class.method(:finalize).to_proc)
+      if Params['enable_monitoring']
+        Params['process_vars'].inc('obj add DirStat')
+      end
       super
       @dirs = nil
       @files = nil
       @non_utf8_paths = {}
       @content_data_cache = content_data_cache
+      ObjectSpace.define_finalizer(self,
+                                   self.class.method(:finalize).to_proc)
+    end
+
+    def self.finalize(id)
+      if Params['enable_monitoring']
+        Params['process_vars'].inc('obj rem DirStat')
+      end
     end
 
     #  Adds directory for monitoring.
@@ -185,10 +203,10 @@ module FileMonitoring
       child_indent = indent + indent_increment
       res = super
       @files.each_value do |file|
-        res += "\n" + file.to_s(child_ident)
+        res += "\n" + file.to_s(child_indent)
       end if @files
       @dirs.each_value do |dir|
-        res += "\n" + dir.to_s(child_ident)
+        res += "\n" + dir.to_s(child_indent)
       end if @dirs
       res
     end

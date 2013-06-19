@@ -1,16 +1,16 @@
 echo ---------------------------------------
-echo uninstall all gems\version\executables:
+echo uninstall all gemspecs\gems\version\executables:
 echo ---------------------------------------
 call ruby -e "`gem list`.split(/$/).each { |line| puts `gem uninstall -Iax #{line.split(' ')[0]}` unless line.empty? }"
-
-echo ---------------
-echo install bundler
-echo ----------------
+call del *.gem
+rem echo ---------------
+rem echo install bundler
+rem echo ----------------
 rem call gem install bundle
 
-echo --------------------------------------------
-echo install infrastructure gems (bundle install)
-echo -------------------------------------------
+rem echo --------------------------------------------
+rem echo install infrastructure gems (bundle install)
+rem echo -------------------------------------------
 rem call bundle install
 
 
@@ -33,19 +33,19 @@ call gem build validations.gemspec
 echo -------------------------------------
 echo Start installing content server gems:
 echo -------------------------------------
-call gem install content_server-1.0.1.gem
-call gem install log-1.0.1.gem
+call gem install log-1.0.2.gem
 call gem install content_data-1.0.1.gem
 call gem install email-1.0.1.gem
 call gem install file_copy-1.0.1.gem
-call gem install file_indexing-1.0.1.gem
-call gem install file_monitoring-1.0.1.gem
+call gem install file_indexing-1.0.2.gem
+call gem install file_monitoring-1.0.3.gem
 call gem install file_utils-1.0.1.gem
 call gem install networking-1.0.1.gem
-call gem install params-1.0.1.gem
-call gem install process_monitoring-1.0.1.gem
+call gem install params-1.0.2.gem
+call gem install process_monitoring-1.0.2.gem
 call gem install run_in_background-1.0.1.gem
 call gem install validations-1.0.1.gem
+call gem install content_server-1.0.3.gem
 
 
 
