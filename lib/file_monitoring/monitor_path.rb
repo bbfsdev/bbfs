@@ -10,6 +10,8 @@ module FileMonitoring
   # * <tt>CHANGED</tt> - State was changed between two checks
   # * <tt>UNCHANGED</tt> - Opposite to CHANGED
   # * <tt>STABLE</tt> - Entity is in the UNCHANGED state for a defined (by user) number of iterations
+
+
   class FileStatEnum
     NON_EXISTING = "NON_EXISTING"
     NEW = "NEW"
@@ -31,7 +33,7 @@ module FileMonitoring
     #
     # * <tt>path</tt> - File location
     # * <tt>stable_state</tt> - Number of iterations to move unchanged file to stable state
-    def initialize(path, stable_state = DEFAULT_STABLE_STATE)
+    def initialize(path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
       ObjectSpace.define_finalizer(self,
                                    self.class.method(:finalize).to_proc)
       if Params['enable_monitoring']
@@ -42,8 +44,7 @@ module FileMonitoring
       @creation_time = nil
       @modification_time = nil
       @cycles = 0  # number of iterations from the last file modification
-      @state = FileStatEnum::NON_EXISTING
-
+      @state = state
       @stable_state = stable_state  # number of iteration to move unchanged file to stable state
     end
 
@@ -144,7 +145,7 @@ module FileMonitoring
     #
     # * <tt>path</tt> - File location
     # * <tt>stable_state</tt> - Number of iterations to move unchanged directory to stable state
-    def initialize(path, stable_state = DEFAULT_STABLE_STATE)
+    def initialize(path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
       ObjectSpace.define_finalizer(self,
                                    self.class.method(:finalize).to_proc)
       if Params['enable_monitoring']
@@ -154,6 +155,7 @@ module FileMonitoring
       @dirs = nil
       @files = nil
       @non_utf8_paths = {}
+      @content_data_cache = content_data_cache
       ObjectSpace.define_finalizer(self,
                                    self.class.method(:finalize).to_proc)
     end
@@ -289,7 +291,7 @@ module FileMonitoring
                                   # change state only for existing directories
                                   # newly added directories have to remain with NEW state
             was_changed = true
-            ds = DirStat.new(file, self.stable_state)
+            ds = DirStat.new(file, self.stable_state, @content_data_cache, FileStatEnum::NON_EXISTING)
             ds.set_event_queue(@event_queue) unless @event_queue.nil?
             ds.monitor
             add_dir(ds)
@@ -299,7 +301,14 @@ module FileMonitoring
                                   # change state only for existing directories
                                   # newly added directories have to remain with NEW state
             was_changed = true
-            fs = FileStat.new(file, self.stable_state)
+            # check if file exist in content data cache - set state to STABLE
+            file_state = FileStatEnum::NON_EXISTING
+            Log.info("File: #{file}")
+            if !@content_data_cache.nil? && @content_data_cache.include?(file)
+              file_state = FileStatEnum::STABLE
+            end
+            fs = FileStat.new(file, self.stable_state, @content_data_cache, file_state)
+
             fs.set_event_queue(@event_queue) unless @event_queue.nil?
             fs.monitor
             add_file(fs)

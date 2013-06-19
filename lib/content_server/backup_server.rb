@@ -55,8 +55,16 @@ module ContentServer
       Log.info("  Path:'#{path['path']}'")
     }
 
+    # Read here for initial content data that exist from previous system run
+    initial_content_data = ContentData::ContentData.new
+    content_data_path = Params['local_content_data_path']
+    initial_content_data.from_file(content_data_path) if File.exists?(content_data_path)
+    # Update local dynamic content with existing content
+    local_dynamic_content_data = ContentData::DynamicContentData.new
+    local_dynamic_content_data.update(initial_content_data)
+
     monitoring_events = Queue.new
-    fm = FileMonitoring::FileMonitoring.new
+    fm = FileMonitoring::FileMonitoring.new(local_dynamic_content_data)
     fm.set_event_queue(monitoring_events)
     # Start monitoring and writing changes to queue
     all_threads << Thread.new do
@@ -76,7 +84,6 @@ module ContentServer
     # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # Initialize/Start backup server content data sender
     Log.debug1('Start backup server content data sender')
-    local_dynamic_content_data = ContentData::DynamicContentData.new
     #content_data_sender = ContentDataSender.new(
     #    Params['remote_server'],
     #    Params['remote_listening_port'])

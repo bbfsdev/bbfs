@@ -1,4 +1,5 @@
 require 'thread'
+require 'params'
 
 module ContentData
 
@@ -35,6 +36,14 @@ module ContentData
       }
       return ref.content_exists(checksum) if ref != nil
       false
+    end
+
+    def each_instance(&block)
+      ref = nil
+      @last_content_data_available_mutex.synchronize {
+        ref = @last_content_data
+      }
+      ref.each_instance(&block)
     end
 
     def last_content_data

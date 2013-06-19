@@ -9,10 +9,10 @@ module ContentServer
   # content data updates into output queue.
   class QueueIndexer
 
-    def initialize(input_queue, output_queue, content_data_path)
+    def initialize(input_queue, output_queue, local_dynamic_content_data)
       @input_queue = input_queue
       @output_queue = output_queue
-      @content_data_path = content_data_path
+      @local_dynamic_content_data = local_dynamic_content_data
     end
 
     # index files and add to copy queue
@@ -28,25 +28,16 @@ module ContentServer
           Log.debug1 "index event: state:#{state}, dir?#{is_dir}, path:#{path}."
 
           if state == FileMonitoring::FileStatEnum::STABLE && !is_dir
-            Log.info "Indexing file:'#{path}'."
             # Calculating checksum
-            begin
-              digest = Digest::SHA1.new
-              File.open(path, 'rb') { |f|
-                while buffer = f.read(65536) do
-                  digest << buffer
-                end
-              }
-            rescue
-              Log.warning("Monitored path'#{path}' does not exist. Probably file changed")
-              next
-            end
+            instance = local_dynamic_content_data.instance_by_path(path)
+            # if !instance.nil? && shallow_check()
+            Log.info "Indexing file:'#{path}'."
+            checksum = calc_SHA1(path)
             if Params['enable_monitoring']
               Params['process_vars'].inc('indexed_files')
             end
-            checksum = digest.hexdigest.downcase
             file_stats = File.lstat(path)
-            Log.debug1("Index info:checksum:#{checksum } size:#{file_stats.size} time:#{file_stats.mtime.to_i}")
+            Log.debug1("Index info:checksum:#{checksum} size:#{file_stats.size} time:#{file_stats.mtime.to_i}")
             Log.debug1('Adding index to content data. put in queue for dynamic update.')
             server_content_data.add_instance(checksum, file_stats.size, Params['local_server_name'], path, file_stats.mtime.to_i)
             @output_queue.push(server_content_data)
@@ -73,6 +64,21 @@ module ContentServer
       end  # Thread.new do
       thread
     end  # def run
+
+    # Opens file and calculates SHA1 of it's content, returns SHA1
+    def calc_SHA1(path)
+      begin
+        digest = Digest::SHA1.new
+        File.open(path, 'rb') { |f|
+          while buffer = f.read(65536) do
+            digest << buffer
+          end
+        }
+      rescue
+       Log.warning("Monitored path'#{path}' does not exist. Probably file changed")
+      end
+      return digest.hexdigest.downcase
+    end
 
     # Check file existence, check it's size and modification date.
     # If something wrong reindex the file and update content data.
