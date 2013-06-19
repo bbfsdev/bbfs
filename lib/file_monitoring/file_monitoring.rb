@@ -13,7 +13,7 @@ module FileMonitoring
       @content_data_cache = Set.new
       dynamic_content_data.each_instance(){
           |checksum, size, content_modification_time,
-           instance_modification_time, server, device, file_path|
+           instance_modification_time, server, file_path|
         # save files to cache
         Log.info("File in cache: #{file_path}")
         @content_data_cache.add(file_path)

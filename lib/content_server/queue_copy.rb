@@ -171,7 +171,9 @@ module ContentServer
     end
 
     def done_copy(local_file_checksum, local_path)
-      Params['process_vars'].inc('num_files_received')
+      if Params['enable_monitoring']
+        Params['process_vars'].inc('num_files_received')
+      end
       Log.debug1("Done copy file: #{local_path}, #{local_file_checksum}")
     end
 

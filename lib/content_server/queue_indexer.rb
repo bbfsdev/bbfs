@@ -9,9 +9,8 @@ module ContentServer
   # content data updates into output queue.
   class QueueIndexer
 
-    def initialize(input_queue, output_queue, local_dynamic_content_data)
+    def initialize(input_queue, local_dynamic_content_data)
       @input_queue = input_queue
-      @output_queue = output_queue
       @local_dynamic_content_data = local_dynamic_content_data
     end
 
@@ -19,44 +18,39 @@ module ContentServer
     # delete directory with it's sub files
     # delete file
     def run
-      server_content_data = ContentData::ContentData.new
       # Start indexing on demand and write changes to queue
       thread = Thread.new do
         while true do
           Log.debug1 'Waiting on index input queue.'
-          (state, is_dir, path) = @input_queue.pop
-          Log.debug1 "index event: state:#{state}, dir?#{is_dir}, path:#{path}."
-
+          (state, is_dir, path, mtime, size) = @input_queue.pop
+          Log.debug1 "index event: state:#{state}, dir?#{is_dir}, path:#{path}, mtime:#{mtime}, size:#{size}."
           if state == FileMonitoring::FileStatEnum::STABLE && !is_dir
             # Calculating checksum
-            instance = local_dynamic_content_data.instance_by_path(path)
-            # if !instance.nil? && shallow_check()
-            Log.info "Indexing file:'#{path}'."
-            checksum = calc_SHA1(path)
-            if Params['enable_monitoring']
-              Params['process_vars'].inc('indexed_files')
+            instance_stats = @local_dynamic_content_data.stats_by_location([Params['local_server_name'], path])
+            Log.debug1("instance !#{instance_stats}! mtime: #{mtime.to_i}, size: #{size}")
+            if instance_stats.nil? || mtime.to_i != instance_stats[1] || size != instance_stats[0]
+              Log.info "Indexing file:'#{path}'."
+              checksum = calc_SHA1(path)
+              if Params['enable_monitoring']
+                Params['process_vars'].inc('indexed_files')
+              end
+              Log.debug1("Index info:checksum:#{checksum} size:#{size} time:#{mtime.to_i}")
+              Log.debug1('Adding index to content data. put in queue for dynamic update.')
+              @local_dynamic_content_data.add_instance(checksum, size, Params['local_server_name'], path, mtime.to_i)
+            else
+              Log.info("Skip file #{path} indexing (shallow check passed)")
             end
-            file_stats = File.lstat(path)
-            Log.debug1("Index info:checksum:#{checksum} size:#{file_stats.size} time:#{file_stats.mtime.to_i}")
-            Log.debug1('Adding index to content data. put in queue for dynamic update.')
-            server_content_data.add_instance(checksum, file_stats.size, Params['local_server_name'], path, file_stats.mtime.to_i)
-            @output_queue.push(server_content_data)
           elsif ((state == FileMonitoring::FileStatEnum::NON_EXISTING ||
               state == FileMonitoring::FileStatEnum::CHANGED) && !is_dir)
-            Log.debug2("NonExisting/Changed: #{path}")
+            Log.debug2("NonExisting/Changed (file): #{path}")
             # Remove directory but only when non-existing.
             Log.debug1("File to remove: #{path}")
-            server_content_data.remove_instance([Params['local_server_name'],path])
-            Log.debug1('Adding server content data to output queue.')
-            @output_queue.push(server_content_data)
+            @local_dynamic_content_data.remove_instance([Params['local_server_name'],path])
           elsif state == FileMonitoring::FileStatEnum::NON_EXISTING && is_dir
-            Log.debug2("NonExisting/Changed: #{path}")
+            Log.debug2("NonExisting/Changed (dir): #{path}")
             # Remove directory but only when non-existing.
             Log.debug1("Directory to remove: #{path}")
-            server_content_data = ContentData.remove_directory(
-                server_content_data, path, Params['local_server_name'])
-            Log.debug1('Adding server content data to output queue.')
-            @output_queue.push(server_content_data)
+            @local_dynamic_content_data.remove_directory(path, Params['local_server_name'])
           else
             Log.debug1("This case should not be handled: #{state}, #{is_dir}, #{path}.")
           end
@@ -80,14 +74,15 @@ module ContentServer
       return digest.hexdigest.downcase
     end
 
+    # Remove when not needed.
     # Check file existence, check it's size and modification date.
     # If something wrong reindex the file and update content data.
-    def shallow_check(file_name, file_size, file_mod_time)
-      shallow_instance = FileIndexing::IndexAgent.create_shallow_instance(file_name)
-      return false unless shallow_instance
-      return (shallow_instance[0] == file_size &&
-          shallow_instance[2] == file_mod_time)
-    end
+    #def shallow_check(file_name, file_size, file_mod_time)
+    #  shallow_instance = FileIndexing::IndexAgent.create_shallow_instance(file_name)
+    #  return false unless shallow_instance
+    #  return (shallow_instance[0] == file_size &&
+    #      shallow_instance[2] == file_mod_time)
+    #end
 
   end  # class QueueIndexer
 end

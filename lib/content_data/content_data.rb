@@ -130,12 +130,14 @@ module ContentData
         @contents_info[checksum] = [size,
                                     {location => modification_time},
                                     modification_time]
-      elsif size != content_info[0]
-        Log.warning 'File size different from content size while same checksum'
-        Log.warning("instance location:server:'#{location[0]}'  path:'#{location[1]}'")
-        Log.warning("instance mod time:'#{modification_time}'")
       else
+        if size != content_info[0]
+          Log.warning 'File size different from content size while same checksum'
+          Log.warning("instance location:server:'#{location[0]}'  path:'#{location[1]}'")
+          Log.warning("instance mod time:'#{modification_time}'")
+        end
         #override file if needed
+        content_info[0] = size
         instances = content_info[1]
         instances[location] = modification_time
       end
@@ -164,6 +166,15 @@ module ContentData
       end
     end
 
+    def stats_by_location(location)
+      @contents_info.values.any? { |content_db|
+        if content_db[1].has_key?(location)
+          return [content_db[0], content_db[1][location]]
+        end
+      }
+      return nil
+    end
+
 
     # removes an instance from known content (faster then unknown content)
     # remove also the content, if content becomes empty
@@ -183,6 +194,17 @@ module ContentData
         end
       end
     end
+
+    def remove_directory(dir_to_remove, server)
+      @contents_info.keys.each { |checksum|
+        instances =  @contents_info[checksum][1]
+        instances.delete_if { |location, _|
+          location[0] == server and location[1].scan(dir_to_remove).size > 0
+        }
+        @contents_info.delete(checksum) if instances.empty?
+      }
+    end
+
 
     def ==(other)
       return false if other.nil?

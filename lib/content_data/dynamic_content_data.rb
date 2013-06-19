@@ -22,9 +22,8 @@ module ContentData
     end
 
     def update(content_data)
-      ref = ContentData.new(content_data)
       @last_content_data_available_mutex.synchronize {
-        @last_content_data = ref
+        @last_content_data = content_data
         Log.debug2("updating last content data:#{@last_content_data}\n")
       }
     end
@@ -46,12 +45,32 @@ module ContentData
       ref.each_instance(&block)
     end
 
+    def add_instance(checksum, size, server_name, path, modification_time)
+      @last_content_data_available_mutex.synchronize {
+        @last_content_data.add_instance(checksum, size, server_name, path, modification_time)
+      }
+    end
+
+    def remove_instance(location, checksum=nil)
+      @last_content_data_available_mutex.synchronize {
+        @last_content_data.remove_instance(location, checksum)
+      }
+    end
+
+    def stats_by_location(location)
+      ref = nil
+      @last_content_data_available_mutex.synchronize {
+        ref = @last_content_data
+      }
+      return ref.stats_by_location(location)
+    end
+
     def last_content_data
       ref = nil
       @last_content_data_available_mutex.synchronize {
         ref = @last_content_data
       }
-      return ContentData.new(ref)
+      return ref
     end
   end
 

@@ -66,25 +66,9 @@ module ContentServer
     # # # # # # # # # # # # # #
     # Initialize/Start local indexer
     Log.debug1('Start indexer')
-    local_server_content_data_queue = Queue.new
-    queue_indexer = QueueIndexer.new(monitoring_events,
-                                     local_server_content_data_queue,
-                                     Params['local_content_data_path'])
+    queue_indexer = QueueIndexer.new(monitoring_events, local_dynamic_content_data)
     # Start indexing on demand and write changes to queue
     all_threads << queue_indexer.run
-
-    # # # # # # # # # # # # # # # # # # # # # #
-    # Initialize/Start content data comparator
-    Log.debug1('Start content data comparator')
-    copy_files_events = Queue.new  # TODO(kolman): Remove this initialization and merge to FileCopyServer.
-    all_threads << Thread.new do  # TODO(kolman): Seems like redundant, check how to update dynamic directly.
-      while true do
-        # Note: This thread should be the only consumer of local_server_content_data_queue
-        Log.debug1 'Waiting on local server content data.'
-        local_server_content_data = local_server_content_data_queue.pop
-        local_dynamic_content_data.update(local_server_content_data)
-      end
-    end
 
     # # # # # # # # # # # # # # # # # # # # # # # #
     # Start dump local content data to file thread

@@ -208,9 +208,9 @@ module ContentServer
       Log.info("enter handle_new_stream")
       # final destination path
       tmp_path = FileReceiver.destination_filename(
-          File.join(Params['backup_destination_folder']['path'], 'tmp'),
+          File.join(Params['backup_destination_folder'][0]['path'], 'tmp'),
           file_checksum)
-      path = FileReceiver.destination_filename(Params['backup_destination_folder']['path'],
+      path = FileReceiver.destination_filename(Params['backup_destination_folder'][0]['path'],
                                                file_checksum)
       if File.exists?(path)
         Log.warning("File already exists (#{path}) not writing.")
@@ -249,7 +249,7 @@ module ContentServer
       # Should always be true, unless file creation failed.
       if @streams.key?(file_checksum)
         # Make the directory if does not exists.
-        path = FileReceiver.destination_filename(Params['backup_destination_folder']['path'],
+        path = FileReceiver.destination_filename(Params['backup_destination_folder'][0]['path'],
                                                  file_checksum)
         Log.debug1("Moving tmp file #{@streams[file_checksum].path} to #{path}")
         Log.debug1("Creating directory: #{path}")

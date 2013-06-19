@@ -122,7 +122,8 @@ module FileMonitoring
         end
         if (!@event_queue.nil?)
           Log.debug1 "Writing to event queue [#{self.state}, #{self.path}]"
-          @event_queue.push([self.state, self.instance_of?(DirStat), self.path])
+          @event_queue.push([self.state, self.instance_of?(DirStat), self.path,
+                             self.modification_time, self.size])
         end
       end
     end
