@@ -304,7 +304,6 @@ module FileMonitoring
             was_changed = true
             # check if file exist in content data cache - set state to STABLE
             file_state = FileStatEnum::NON_EXISTING
-            Log.info("File: #{file}")
             if !@content_data_cache.nil? && @content_data_cache.include?(file)
               file_state = FileStatEnum::STABLE
             end

@@ -31,7 +31,7 @@ module ContentServer
     # create general tmp dir
     FileUtils.mkdir_p(Params['tmp_path']) unless File.directory?(Params['tmp_path'])
     # init tmp content data file
-    tmp_content_data_file = Params['tmp_path'] + '/content.data'
+    tmp_content_data_file = File.join(Params['tmp_path'], 'content.data')
 
     if Params['enable_monitoring']
       Log.info("Initializing monitoring of process params on port:#{Params['process_monitoring_web_port']}")
