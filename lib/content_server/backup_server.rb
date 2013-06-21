@@ -46,6 +46,7 @@ module ContentServer
 
     # # # # # # # # # # # #
     # Initialize/start monitoring and destination folder
+    Params['backup_destination_folder'][0]['path'] = File.expand_path(Params['backup_destination_folder'][0]['path'])
     Log.info("backup_destination_folder is:#{Params['backup_destination_folder'][0]['path']}")
     #adding destination folder to monitoring paths
     Params['monitoring_paths'] << Params['backup_destination_folder'][0]
