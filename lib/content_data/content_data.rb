@@ -167,7 +167,7 @@ module ContentData
     end
 
     def stats_by_location(location)
-      @contents_info.values.any? { |content_db|
+      @contents_info.each_value { |content_db|
         if content_db[1].has_key?(location)
           return [content_db[0], content_db[1][location]]
         end
