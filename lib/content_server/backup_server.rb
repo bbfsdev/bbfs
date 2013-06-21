@@ -140,8 +140,6 @@ module ContentServer
             Params['process_vars'].set('time', Time.now)
             Log.info("process_vars:monitoring queue size:#{monitoring_events.size}")
             Params['process_vars'].set('monitoring queue', monitoring_events.size)
-            Log.info("process_vars:content data queue size:#{monitoring_events.size}")
-            Params['process_vars'].set('content data queue', local_server_content_data_queue.size)
             #enable following line to see full list of object:count
             #obj_array = ''
             total_obj_count = 0
