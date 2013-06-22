@@ -2,6 +2,7 @@ require 'tempfile'
 require 'thread'
 
 require 'file_indexing/index_agent'
+require 'content_server/globals'
 require 'log'
 require 'params'
 
@@ -57,28 +58,28 @@ module ContentServer
     def copy_another_chuck(checksum)
       @stream_queue << [:COPY_CHUNK, checksum]
       if Params['enable_monitoring']
-        Params['process_vars'].set('File Streamer queue', @stream_queue.size)
+        ::ContentServer::Globals.process_vars.set('File Streamer queue', @stream_queue.size)
       end
     end
 
     def start_streaming(checksum, path)
       @stream_queue << [:NEW_STREAM, [checksum, path]]
       if Params['enable_monitoring']
-        Params['process_vars'].set('File Streamer queue', @stream_queue.size)
+        ::ContentServer::Globals.process_vars.set('File Streamer queue', @stream_queue.size)
       end
     end
 
     def abort_streaming(checksum)
       @stream_queue << [:ABORT_STREAM, checksum]
       if Params['enable_monitoring']
-        Params['process_vars'].set('File Streamer queue', @stream_queue.size)
+        ::ContentServer::Globals.process_vars.set('File Streamer queue', @stream_queue.size)
       end
     end
 
     def reset_streaming(checksum, new_offset)
       @stream_queue << [:RESET_STREAM, [checksum, new_offset]]
       if Params['enable_monitoring']
-        Params['process_vars'].set('File Streamer queue', @stream_queue.size)
+        ::ContentServer::Globals.process_vars.set('File Streamer queue', @stream_queue.size)
       end
     end
 
@@ -87,7 +88,7 @@ module ContentServer
         loop {
           stream_pop = @stream_queue.pop
           if Params['enable_monitoring']
-            Params['process_vars'].set('File Streamer queue', @stream_queue.size)
+            ::ContentServer::Globals.process_vars.set('File Streamer queue', @stream_queue.size)
           end
           checksum = handle(stream_pop)
         }
@@ -101,7 +102,7 @@ module ContentServer
         reset_stream(checksum, path, 0)
         @stream_queue << [:COPY_CHUNK, checksum] if @streams.key?(checksum)
         if Params['enable_monitoring']
-          Params['process_vars'].set('File Streamer queue', @stream_queue.size)
+          ::ContentServer::Globals.process_vars.set('File Streamer queue', @stream_queue.size)
         end
       elsif type == :ABORT_STREAM
         checksum = content
@@ -111,7 +112,7 @@ module ContentServer
         reset_stream(checksum, nil, new_offset)
         @stream_queue << [:COPY_CHUNK, checksum] if @streams.key?(checksum)
         if Params['enable_monitoring']
-          Params['process_vars'].set('File Streamer queue', @stream_queue.size)
+          ::ContentServer::Globals.process_vars.set('File Streamer queue', @stream_queue.size)
         end
       elsif type == :COPY_CHUNK
         checksum = content

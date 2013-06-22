@@ -9,10 +9,10 @@ require 'content_server/queue_copy'
 require 'content_server/remote_content'
 require 'file_indexing'
 require 'file_monitoring'
+require 'content_server/globals'
 require 'log'
 require 'networking/tcp'
 require 'params'
-require 'process_monitoring/thread_safe_hash'
 require 'process_monitoring/monitoring_info'
 
 # Content server. Monitors files, index local files, listen to backup server content,
@@ -35,8 +35,7 @@ module ContentServer
 
     if Params['enable_monitoring']
       Log.info("Initializing monitoring of process params on port:#{Params['process_monitoring_web_port']}")
-      Params['process_vars'] = ThreadSafeHash::ThreadSafeHash.new
-      Params['process_vars'].set('server_name', 'content_server')
+      ::ContentServer::Globals.process_vars.set('server_name', 'content_server')
     end
 
     # # # # # # # # # # # #
@@ -107,11 +106,11 @@ module ContentServer
         mutex = Mutex.new
         while true do
           sleep(Params['process_vars_delay'])
-          Params['process_vars'].set('time', Time.now)
+          ::ContentServer::Globals.process_vars.set('time', Time.now)
           Log.debug3("process_vars:monitoring queue size:#{monitoring_events.size}")
-          Params['process_vars'].set('monitoring queue', monitoring_events.size)
+          ::ContentServer::Globals.process_vars.set('monitoring queue', monitoring_events.size)
           Log.debug3("process_vars:copy files events queue size:#{copy_files_events.size}")
-          Params['process_vars'].set('copy files events queue', copy_files_events.size)
+          ::ContentServer::Globals.process_vars.set('copy files events queue', copy_files_events.size)
           #enable following line to see full list of object:count
           #obj_array = ''
           total_obj_count = 0
@@ -132,17 +131,17 @@ module ContentServer
             content_count = ObjectSpace.each_object(::ContentData::ContentData).count
           end
           #enable following line to see full list of object:count
-          #Params['process_vars'].set('Live objs full', obj_array)
+          #process_vars.set('Live objs full', obj_array)
           Log.debug3("process_vars:Live objs cnt:#{total_obj_count}")
           Log.debug3("process_vars:Live String obj cnt:#{string_count}")
           Log.debug3("process_vars:Live File obj cnt:#{file_count}")
           Log.debug3("process_vars:Live Dir obj cnt:#{dir_count}")
           Log.debug3("process_vars:Live Content data obj cnt:#{content_count}")
-          Params['process_vars'].set('Live objs cnt', total_obj_count)
-          Params['process_vars'].set('Live String obj cnt', string_count)
-          Params['process_vars'].set('Live File obj cnt', file_count)
-          Params['process_vars'].set('Live Dir obj cnt', dir_count)
-          Params['process_vars'].set('Live Content data obj cnt', content_count)
+          ::ContentServer::Globals.process_vars.set('Live objs cnt', total_obj_count)
+          ::ContentServer::Globals.process_vars.set('Live String obj cnt', string_count)
+          ::ContentServer::Globals.process_vars.set('Live File obj cnt', file_count)
+          ::ContentServer::Globals.process_vars.set('Live Dir obj cnt', dir_count)
+          ::ContentServer::Globals.process_vars.set('Live Content data obj cnt', content_count)
         end
       end
     end

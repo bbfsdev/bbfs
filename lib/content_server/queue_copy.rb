@@ -2,6 +2,7 @@ require 'thread'
 
 require 'content_server/file_streamer'
 require 'file_indexing/index_agent'
+require 'content_server/globals'
 require 'log'
 require 'networking/tcp'
 require 'params'
@@ -130,7 +131,7 @@ module ContentServer
         loop do
           pop_queue = @local_queue.pop
           if Params['enable_monitoring']
-            Params['process_vars'].set('File Copy Client queue', @local_queue.size)
+            ::ContentServer::Globals.process_vars.set('File Copy Client queue', @local_queue.size)
           end
           handle(@local_queue.pop)
         end
@@ -159,7 +160,7 @@ module ContentServer
 
     def done_copy(local_file_checksum, local_path)
       if Params['enable_monitoring']
-        Params['process_vars'].inc('num_files_received')
+        ::ContentServer::Globals.process_vars.inc('num_files_received')
       end
       Log.debug1("Done copy file: #{local_path}, #{local_file_checksum}")
     end
@@ -168,7 +169,7 @@ module ContentServer
       Log.debug3('QueueFileReceiver handle message')
       @local_queue.push(message)
       if Params['enable_monitoring']
-        Params['process_vars'].set('File Copy Client queue', @local_queue.size)
+        ::ContentServer::Globals.process_vars.set('File Copy Client queue', @local_queue.size)
       end
     end
 
