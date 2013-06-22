@@ -3,7 +3,10 @@
 # This utility executable is used to easily execute BBFS operations on files.
 
 require 'file_utils'
+require 'log'
 require 'params'
 
 Params.init ARGV
+Log.init
+
 FileUtils::FileUtils.run
