@@ -10,7 +10,6 @@ require 'params'
 EventMachine.schedule do
   trap("INT") do
     puts "Caught SIGINT"
-    puts "EventMachine:#{EventMachine}"
    # EventMachine.stop # this is useless
     exit                  # exit # this stops the EventMachine
   end
