@@ -28,6 +28,14 @@ module ContentServer
                  [{'path'=>File.expand_path(''), 'scan_period'=>300, 'stable_state'=>1}],
                  'Backup server destination folder, default is the relative local folder.')
 
+  def self.tmp_content_data_file
+    @@tmp_content_data_file
+  end
+
+  def self.local_dynamic_content_data
+    @@local_dynamic_content_data
+  end
+
   def run_backup_server
     Log.info('Start backup server')
     Thread.abort_on_exception = true
@@ -36,7 +44,7 @@ module ContentServer
     # create general tmp dir
     FileUtils.mkdir_p(Params['tmp_path']) unless File.directory?(Params['tmp_path'])
     # init tmp content data file
-    tmp_content_data_file = File.join(Params['tmp_path'], 'backup.data')
+    @@tmp_content_data_file = File.join(Params['tmp_path'], 'backup.data')
 
     if Params['enable_monitoring']
       Log.info("Initializing monitoring of process params on port:#{Params['process_monitoring_web_port']}")
@@ -59,11 +67,11 @@ module ContentServer
     content_data_path = Params['local_content_data_path']
     initial_content_data.from_file(content_data_path) if File.exists?(content_data_path)
     # Update local dynamic content with existing content
-    local_dynamic_content_data = ContentData::DynamicContentData.new
-    local_dynamic_content_data.update(initial_content_data)
+    @@local_dynamic_content_data = ContentData::DynamicContentData.new
+    @@local_dynamic_content_data.update(initial_content_data)
 
     monitoring_events = Queue.new
-    fm = FileMonitoring::FileMonitoring.new(local_dynamic_content_data)
+    fm = FileMonitoring::FileMonitoring.new(@@local_dynamic_content_data)
     fm.set_event_queue(monitoring_events)
     # Start monitoring and writing changes to queue
     all_threads << Thread.new do
@@ -73,7 +81,7 @@ module ContentServer
     # # # # # # # # # # # # # #
     # Initialize/Start local indexer
     Log.debug1('Start indexer')
-    queue_indexer = QueueIndexer.new(monitoring_events, local_dynamic_content_data)
+    queue_indexer = QueueIndexer.new(monitoring_events, @@local_dynamic_content_data)
     # Start indexing on demand and write changes to queue
     all_threads << queue_indexer.run
 
@@ -85,9 +93,9 @@ module ContentServer
       while true do
         if last_data_flush_time.nil? || last_data_flush_time + Params['data_flush_delay'] < Time.now.to_i
           Log.info "Writing local content data to #{Params['local_content_data_path']}."
-          local_dynamic_content_data.last_content_data.to_file(tmp_content_data_file)
+          @@local_dynamic_content_data.last_content_data.to_file(@@tmp_content_data_file)
           sleep(0.1)  # Added to prevent mv access issue
-          ::FileUtils.mv(tmp_content_data_file, Params['local_content_data_path'])
+          ::FileUtils.mv(@@tmp_content_data_file, Params['local_content_data_path'])
           last_data_flush_time = Time.now.to_i
         end
         sleep(1)
@@ -102,7 +110,7 @@ module ContentServer
 
     file_copy_client = FileCopyClient.new(Params['content_server_hostname'],
                                           Params['content_server_files_port'],
-                                          local_dynamic_content_data)
+                                          @@local_dynamic_content_data)
     all_threads.concat(file_copy_client.threads)
 
     # Each
@@ -110,7 +118,7 @@ module ContentServer
     all_threads << Thread.new do
       loop do
         sleep(Params['backup_check_delay'])
-        local_cd = local_dynamic_content_data.last_content_data()
+        local_cd = @@local_dynamic_content_data.last_content_data()
         remote_cd = content_server_dynamic_content_data.last_content_data()
         diff = ContentData.remove(local_cd, remote_cd)
 
