@@ -2,6 +2,7 @@ require 'thread'
 
 require 'content_server/file_streamer'
 require 'file_indexing/index_agent'
+require 'content_server/globals'
 require 'log'
 require 'networking/tcp'
 require 'params'
@@ -125,7 +126,6 @@ module ContentServer
   class FileCopyClient
     def initialize(host, port, dynamic_content_data)
       @local_queue = Queue.new
-      start_process_var_monitoring
       @dynamic_content_data = dynamic_content_data
       @tcp_client = Networking::TCPClient.new(host, port, method(:handle_message))
       @file_receiver = FileReceiver.new(method(:done_copy),
@@ -133,27 +133,15 @@ module ContentServer
                                         method(:reset_copy))
       @local_thread = Thread.new do
         loop do
+          pop_queue = @local_queue.pop
+          if Params['enable_monitoring']
+            ::ContentServer::Globals.process_vars.set('File Copy Client queue', @local_queue.size)
+          end
           handle(@local_queue.pop)
         end
       end
       @local_thread.abort_on_exception = true
       Log.debug3("initialize FileCopyClient  host:#{host}  port:#{port}")
-    end
-
-    def start_process_var_monitoring
-      if Params['enable_monitoring']
-        @process_var_thread = Thread.new do
-          last_data_flush_time = nil
-          while true do
-            if last_data_flush_time.nil? || last_data_flush_time + Params['process_vars_delay'] < Time.now
-              Log.info("process_vars:FileCopyClient queue size:#{@local_queue.size}")
-              Params['process_vars'].set('File Copy Client queue', @local_queue.size)
-              last_data_flush_time = Time.now
-            end
-            sleep(0.3)
-          end
-        end
-      end
     end
 
     def threads
@@ -176,7 +164,7 @@ module ContentServer
 
     def done_copy(local_file_checksum, local_path)
       if Params['enable_monitoring']
-        Params['process_vars'].inc('num_files_received')
+        ::ContentServer::Globals.process_vars.inc('num_files_received')
       end
       Log.debug1("Done copy file: #{local_path}, #{local_file_checksum}")
     end
@@ -184,6 +172,9 @@ module ContentServer
     def handle_message(message)
       Log.debug3('QueueFileReceiver handle message')
       @local_queue.push(message)
+      if Params['enable_monitoring']
+        ::ContentServer::Globals.process_vars.set('File Copy Client queue', @local_queue.size)
+      end
     end
 
     # This is a function which receives the messages (file or ack) and return answer in case
