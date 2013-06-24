@@ -55,35 +55,39 @@ module ContentServer
           if message_type == :COPY_MESSAGE
             Log.debug1 "Copy files event: #{message_content}"
             # Prepare source,dest map for copy.
-              message_content.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
-                if !@copy_prepare.key?(checksum) || !@copy_prepare[checksum][1]
-                  @copy_prepare[checksum] = [path, false]
-                  Log.debug1("Sending ack for: #{checksum}")
-                  @backup_tcp.send_obj([:ACK_MESSAGE, [checksum, Time.now.to_i]])
-                end
-              }
-            elsif message_type == :ACK_MESSAGE
-              # Received ack from backup, copy file if all is good.
-              # The timestamp is of local content server! not backup server!
+            message_content.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
+              if !@copy_prepare.key?(checksum) || !@copy_prepare[checksum][1]
+                @copy_prepare[checksum] = [path, false]
+                Log.debug1("Sending ack for: #{checksum}")
+                @backup_tcp.send_obj([:ACK_MESSAGE, [checksum, Time.now.to_i]])
+              end
+            }
+          elsif message_type == :ACK_MESSAGE
+            # Received ack from backup, copy file if all is good.
+            # The timestamp is of local content server! not backup server!
             timestamp, ack, checksum = message_content
 
             Log.debug1("Ack (#{ack}) received for content: #{checksum}, timestamp: #{timestamp} " \
                        "now: #{Time.now.to_i}")
 
             # Copy file if ack (does not exists on backup and not too much time passed)
-            if ack && (Time.now.to_i - timestamp < Params['ack_timeout'])
-              if !@copy_prepare.key?(checksum) || @copy_prepare[checksum][1]
-                Log.warning("File was aborted, copied, or started copy just now: #{checksum}")
+            if ack
+              if (Time.now.to_i - timestamp < Params['ack_timeout'])
+                if !@copy_prepare.key?(checksum) || @copy_prepare[checksum][1]
+                  Log.warning("File was aborted, copied, or started copy just now: #{checksum}")
+                else
+                  path = @copy_prepare[checksum][0]
+                  Log.info "Streaming to backup server. content: #{checksum} path:#{path}."
+                  @file_streamer.start_streaming(checksum, path)
+                  # Ack received, setting prepare to true
+                  @copy_prepare[checksum][1] = true
+                end
               else
-                path = @copy_prepare[checksum][0]
-                Log.info "Streaming to backup server. content: #{checksum} path:#{path}."
-                @file_streamer.start_streaming(checksum, path)
-                # Ack received, setting prepare to true
-                @copy_prepare[checksum][1] = true
+                Log.debug1("Ack timed out span: #{Time.now.to_i - timestamp} > " \
+                           "timeout: #{Params['ack_timeout']}")
               end
             else
-              Log.debug1("Ack timed out span: #{Time.now.to_i - timestamp} > " \
-                           "timeout: #{Params['ack_timeout']}")
+              Log.debug1('Ack is false');
             end
           elsif message_type == :COPY_CHUNK_FROM_REMOTE
             checksum = message_content
