@@ -122,7 +122,6 @@ module Params
             end
           end
         when 'Complex' then
-        when 'Global' then
           unless @value.nil?
             unless (value.class.eql? Hash) or (value.class.eql? Array)
               raise("Parameter:'#{@name}' type:'Complex' but value type to override " \
@@ -146,52 +145,52 @@ module Params
     end
   end
 
-  # The globals data structure.
-  @globals_db = Hash.new
+  # The parameters data structure.
+  @params_data_base = Hash.new
 
   def Params.raise_error_if_param_does_not_exist(name)
-    if not @globals_db[name]
+    if not @params_data_base[name]
       raise("before using parameter:'#{name}', it should first be defined through Param module methods:" \
-               "Params.string, Params.path, Params.integer, Params.float, Params.complex, Params.global or Params.boolean.")
+               "Params.string, Params.path, Params.integer, Params.float, Params.complex, or Params.boolean.")
     end
   end
 
   def Params.raise_error_if_param_exists(name)
-    if @globals_db[name]
+    if @params_data_base[name]
       raise("Parameter:'#{name}', can only be defined once.")
     end
   end
 
-  # Read global param value by other modules.
+  # Read param value by other modules.
   # Note that this operator should only be used, after parameter has been defined through
   # one of Param module methods: Params.string, Params.integer,
   # Params.float or Params.boolean."
   def Params.[](name)
     raise_error_if_param_does_not_exist(name)
-    @globals_db[name].value
+    @params_data_base[name].value
   end
 
   def Params.each(&block)
-    @globals_db.each(&block)
+    @params_data_base.each(&block)
   end
 
-  # Write global param value by other modules.
+  # Write param value by other modules.
   # Note that this operator should only be used, after parameter has been defined through
   # one of Param module methods: Params.string, Params.integer,
   # Params.float or Params.boolean."
   def Params.[]=(name, value)
     raise_error_if_param_does_not_exist(name)
-    set_value = @globals_db[name].value_type_check(value)
-    @globals_db[name].value = set_value
+    set_value = @params_data_base[name].value_type_check(value)
+    @params_data_base[name].value = set_value
   end
 
   #override parameter should only be called by Params module methods.
   def Params.override_param(name, value)
-    existing_param = @globals_db[name]
+    existing_param = @params_data_base[name]
     if existing_param.nil?
       raise("Parameter:'#{name}' has not been defined and can not be overridden. " \
               "It should first be defined through Param module methods:" \
-              "Params.string, Params.path, Params.integer, Params.float, Params.complex, Params.global or Params.boolean.")
+              "Params.string, Params.path, Params.integer, Params.float, Params.complex, or Params.boolean.")
     end
     if value.nil?
       existing_param.value = nil
@@ -211,46 +210,41 @@ module Params
     end
   end
 
-  # Define new global parameter of type Integer.
+  # Define new parameter of type Integer.
   def Params.integer(name, value, description)
     raise_error_if_param_exists(name)
-    @globals_db[name] = Param.new(name, value, 'Integer', description)
+    @params_data_base[name] = Param.new(name, value, 'Integer', description)
   end
 
-  # Define new global parameter of type Float.
+  # Define new parameter of type Float.
   def Params.float(name, value, description)
     raise_error_if_param_exists(name)
-    @globals_db[name] = Param.new(name, value, 'Float', description)
+    @params_data_base[name] = Param.new(name, value, 'Float', description)
   end
 
-  # Define new global parameter of type String.
+  # Define new parameter of type String.
   def Params.string(name, value, description)
     raise_error_if_param_exists(name)
-    @globals_db[name] = Param.new(name, value, 'String', description)
+    @params_data_base[name] = Param.new(name, value, 'String', description)
   end
 
-  # Define new global parameter of type path (the only difference with string is that the path expends '~' to
+  # Define new parameter of type path (the only difference with string is that the path expends '~' to
   # full user directory).
   def Params.path(name, value, description)
     raise_error_if_param_exists(name)
     value = File.expand_path(value) unless value.nil?
-    @globals_db[name] = Param.new(name, value, 'Path', description)
+    @params_data_base[name] = Param.new(name, value, 'Path', description)
   end
 
   def Params.complex(name, value, description)
     raise_error_if_param_exists(name)
-    @globals_db[name] = Param.new(name, value, 'Complex', description)
+    @params_data_base[name] = Param.new(name, value, 'Complex', description)
   end
 
-  def Params.global(name, value, description)
-    raise_error_if_param_exists(name)
-    @globals_db[name] = Param.new(name, value, 'Global', description)
-  end
-
-  # Define new global parameter of type Boolean.
+  # Define new parameter of type Boolean.
   def Params.boolean(name, value, description)
     raise_error_if_param_exists(name)
-    @globals_db[name] = Param.new(name, value, 'Boolean', description)
+    @params_data_base[name] = Param.new(name, value, 'Boolean', description)
   end
 
   # Initializes the project parameters.
@@ -297,7 +291,7 @@ module Params
     @init_debug_messages << 'Initialized executable parameters:'
     @init_debug_messages << '---------------------------------'
     counter=0
-    @globals_db.values.each do |param|
+    @params_data_base.values.each do |param|
       counter += 1
       @init_debug_messages << "Param ##{counter}: #{param.name}=#{param.value}"
     end
@@ -324,7 +318,7 @@ module Params
     # Define List of options see example on
     # http://ruby.about.com/od/advancedruby/a/optionparser2.htm
     opts = OptionParser.new do |opts|
-      @globals_db.values.each do |param|
+      @params_data_base.values.each do |param|
         tmp_name_long = "--#{param.name} #{param.name.upcase}"  # Define a command with single mandatory parameter
         tmp_value = param.desc + " Default value:" + param.value.to_s  #  Description and Default value
 
@@ -395,7 +389,7 @@ paths:
   end # end of Parse function
 
   def Params.to_simple_hash
-    @globals_db.map { |param|
+    @params_data_base.map { |param|
       param.value
     }
   end
