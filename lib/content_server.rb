@@ -7,7 +7,6 @@ module ContentServer
 
   # Monitoring
   Params.boolean('enable_monitoring', false, 'Whether to enable process monitoring or not.')
-  Params.global('process_vars', nil, 'container of process variables reflected to http')
   Params.integer('process_vars_delay', 3, 'pulling time of variables')
 
   # Handling thread exceptions.

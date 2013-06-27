@@ -5,17 +5,7 @@
 #Remote port to synchronization between testing servers
 testing_server_port: 4445
 
-# Logging options
-log_write_to_console: true # Will print all log messages to standard output. Default is false.
-log_write_to_file: true # Will print all log messages to file
-log_write_to_email: false # Will print errors to mail on system crush only . Default is false.
-log_debug_level: 3 # Verbosity of logging. Default is 0, max is 3.
-log_file_name: '~/.bbfs/log/content_testing_server.log' # General log
-# Log to email on system crush options
-from_email: 'jhon.doe@gmail.com'  # user should change to real value
-from_email_password: 'hihahu'  # user should change to real value
-to_email: 'jhon.doe@gmail.com'  # user should change to real value
-############# Content Server Config #################
+############# Content Server Parameters #################
 # Content server parameters
 local_files_port: 4444 # TCP/IP port to start server to send files to backup.
 local_content_data_port: 3333 # TCP/IP port to start server to send content data upon request from client.
@@ -28,8 +18,32 @@ monitoring_paths:
     scan_period: 1 # Number of seconds before initiating another directory scan.
     stable_state: 5 # Number of scan times for a file to be unchanged before his state becomes stable.
 # … optional more paths here
+
+#Cycles where server write the content data to a local file
+data_flush_delay: 60
+
+############process variables monitoring parameters
+enable_monitoring: true
+#Browing on server:port will show the varialbes
+process_monitoring_web_port: 5556
+#Cycles(seconds) to update variables
+process_vars_delay: 15
+
+############# Logging options
+log_write_to_console: true # Will print all log messages to standard output. Default is false.
+log_write_to_file: true # Will print all log messages to file
+log_write_to_email: false # Will print errors to mail on system crush only . Default is false.
+log_debug_level: 3 # Verbosity of logging. Default is 0, max is 3.
+log_file_name: '~/.bbfs/log/content_testing_server.log' # General log
+# Log to email on system crush options
+from_email: 'jhon.doe@gmail.com'  # user should change to real value
+from_email_password: 'hihahu'  # user should change to real value
+to_email: 'jhon.doe@gmail.com'  # user should change to real value
+
 # print all parameters to console at the beginning of execution log.
 print_params_to_stdout: true
+
+
 ############# File Generator Config ##################
 # Represents the root path where directories and files will be
 # generated.
@@ -49,7 +63,7 @@ file_name_prefix: 'auto_gen_file'
 # Represents the total created directories. Use any
 # negative value or zero for Infinity. Not relevant if
 # random calculation is triggered.
-total_created_directories: -1
+total_created_directories: 90
 
 # Indicates that total files in a directory will be
 # calculated randomly. If false then value will be
@@ -61,20 +75,20 @@ is_tot_files_in_dir_random: false
 # - Represents the Lower limit for total files in
 #   directory for random calculation. Active only if
 #   parameter:'is_tot_files_in_dir_random' is true.
-lower_limit_4_files_in_dir: 3
+lower_limit_4_files_in_dir: -1
 
 # Represents the Upper limit for total files in
 # directory for random calculation. Active only if
 # parameter:'is_tot_files_in_dir_random' is true.
-upper_limit_4_files_in_dir: 100
+upper_limit_4_files_in_dir: -1
 
 # Maximum number of files to generate, 0 for no limit.
-max_total_files: 10
+max_total_files: -1
 
 # Represents the total files in directory. Use any
 # negative value or zero for Infinity. Active only if
 # parameter:'is_tot_files_in_dir_random' is false.
-total_files_in_dir: -1
+total_files_in_dir: 70
 
 # Indicates that file size will be calculated randomly.
 # If false then value will be taken from

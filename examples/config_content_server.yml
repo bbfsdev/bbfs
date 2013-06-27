@@ -4,7 +4,28 @@ local_files_port: 4444 # TCP/IP port to start server to send files to backup.
 local_content_data_port: 3333 # TCP/IP port to start server to send content data upon request from client.
 #content data file, i.e., state of content server.
 local_content_data_path: '~/.bbfs/var/content.data' # File to store content data
-#Logging options
+
+# Paths to monitor\backup files from. All path files and recursive sub paths are used.
+monitoring_paths:
+  - path: '/home/jhon_doe/dir_to_backup'
+    scan_period: 1 # Number of seconds before initiating another directory scan.
+    stable_state: 5 # Number of scan times for a file to be unchanged before his state becomes stable.
+  - path: 'path_2_to_monitor'
+    scan_period: 1 # Number of seconds before initiating another directory scan.
+    stable_state: 5 # Number of scan times for a file to be unchanged before his state becomes stable.
+# … optional more paths here
+
+#Cycles where server write the content data to a local file
+data_flush_delay: 60
+
+######process variables monitoring parameters
+enable_monitoring: true
+#Browing on server:port will show the varialbes
+process_monitoring_web_port: 5556
+#Cycles(seconds) to update variables
+process_vars_delay: 15
+
+#########Logging options
 log_write_to_file: true # Will print all log messages to file
 log_file_name: '~/.bbfs/log/content_server.log4r'
 log_write_to_console: true # Will print all log messages to standard output. Default is false.
@@ -17,24 +38,7 @@ from_email: 'jhon.doe@gmail.com'  # user should change to real value
 from_email_password: 'hihahu'  # user should change to real value
 to_email: 'jhon.doe@gmail.com'  # user should change to real value
 default_monitoring_log_path: '~/.bbfs/log/content_file_monitoring.log' # Log of file changes
-# Paths to monitor\backup files from. All path files and recursive sub paths are used.
-monitoring_paths:
-  - path: '/home/jhon_doe/dir_to_backup'
-    scan_period: 1 # Number of seconds before initiating another directory scan.
-    stable_state: 5 # Number of scan times for a file to be unchanged before his state becomes stable.
-  - path: 'path_2_to_monitor'
-    scan_period: 1 # Number of seconds before initiating another directory scan.
-    stable_state: 5 # Number of scan times for a file to be unchanged before his state becomes stable.
-# … optional more paths here
+
 # print all parameters to console at the beginning of execution log.
 print_params_to_stdout: true
-#Cycles where server write the content data to a local file
-data_flush_delay: 4
-
-######process variables monitoring parameters
-enable_monitoring: true
-#Browing on server:port will show the varialbes
-process_monitoring_web_port: 5556
-#Cycles(seconds) to update variables
-process_vars_delay: 5
 ############# END OF FILE #################

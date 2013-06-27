@@ -45,7 +45,7 @@ module Params
         expect { Params::read_yml_params StringIO.new 'not_defined: 10' }.to raise_error \
               "Parameter:'not_defined' has not been defined and can not be overridden. " \
               "It should first be defined through Param module methods:" \
-              "Params.string, Params.path, Params.integer, Params.float, Params.complex, Params.global or Params.boolean."
+              "Params.string, Params.path, Params.integer, Params.float, Params.complex, or Params.boolean."
       end
 
       it 'Will test yml parameter loading' do

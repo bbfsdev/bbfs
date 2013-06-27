@@ -1,3 +1,4 @@
+require 'content_server/globals'
 require 'log'
 require 'params'
 
@@ -32,7 +33,7 @@ module ContentData
       ObjectSpace.define_finalizer(self,
                                    self.class.method(:finalize).to_proc)
       if Params['enable_monitoring']
-        Params['process_vars'].inc('obj add ContentData')
+        ::ContentServer::Globals.process_vars.inc('obj add ContentData')
       end
       if other.nil?
         @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
@@ -43,7 +44,7 @@ module ContentData
 
     def self.finalize(id)
       if Params['enable_monitoring']
-        Params['process_vars'].inc('obj rem ContentData')
+        ::ContentServer::Globals.process_vars.inc('obj rem ContentData')
       end
     end
 
@@ -167,7 +168,7 @@ module ContentData
     end
 
     def stats_by_location(location)
-      @contents_info.values.any? { |content_db|
+      @contents_info.each_value { |content_db|
         if content_db[1].has_key?(location)
           return [content_db[0], content_db[1][location]]
         end
