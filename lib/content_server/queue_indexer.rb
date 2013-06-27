@@ -1,5 +1,6 @@
 require 'file_indexing/index_agent'
 require 'file_indexing/indexer_patterns'
+require 'content_server/globals'
 require 'log'
 require 'params'
 
@@ -32,7 +33,7 @@ module ContentServer
               Log.info "Indexing file:'#{path}'."
               checksum = calc_SHA1(path)
               if Params['enable_monitoring']
-                Params['process_vars'].inc('indexed_files')
+                ::ContentServer::Globals.process_vars.inc('indexed_files')
               end
               Log.debug1("Index info:checksum:#{checksum} size:#{size} time:#{mtime.to_i}")
               Log.debug1('Adding index to content data. put in queue for dynamic update.')
@@ -43,7 +44,7 @@ module ContentServer
           elsif ((state == FileMonitoring::FileStatEnum::NON_EXISTING ||
               state == FileMonitoring::FileStatEnum::CHANGED) && !is_dir)
             Log.debug2("NonExisting/Changed (file): #{path}")
-            # Remove directory but only when non-existing.
+            # Remove file but only when non-existing.
             Log.debug1("File to remove: #{path}")
             @local_dynamic_content_data.remove_instance([Params['local_server_name'],path])
           elsif state == FileMonitoring::FileStatEnum::NON_EXISTING && is_dir

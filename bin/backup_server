@@ -25,12 +25,23 @@ rescue SystemExit, SignalException => exc
   # TODO (genadyp) do we need to trap signals by types?
   puts("Interrupt or Exit happened in #{Params['service_name']} server: #{exc.class}, " +
                 "stopping process.\nBacktrace:\n#{exc.backtrace.join("\n")}")
+  puts("Force writing local content data to #{Params['local_content_data_path']}.")
+  ContentServer::local_dynamic_content_data.last_content_data.to_file(ContentServer::tmp_content_data_file)
+  sleep(0.1)  # Added to prevent mv access issue
+  ::FileUtils.mv(ContentServer::tmp_content_data_file, Params['local_content_data_path'])
+
+
   Log.error("Interrupt or Exit happened in #{Params['service_name']} server: #{exc.class}, " +
             "stopping process.\nBacktrace:\n#{exc.backtrace.join("\n")}")
   Log.flush
   exit
 rescue Exception => exc
   puts("Exception happened in #{Params['service_name']} server: #{exc.class}:#{exc.message}\nBacktrace:\n#{exc.backtrace.join("\n")}")
+  puts("Force writing local content data to #{Params['local_content_data_path']}.")
+  ContentServer::local_dynamic_content_data.last_content_data.to_file(ContentServer::tmp_content_data_file)
+  sleep(0.1)  # Added to prevent mv access issue
+  ::FileUtils.mv(ContentServer::tmp_content_data_file, Params['local_content_data_path'])
+
   Log.error("Exception happened in #{Params['service_name']} server: #{exc.class}:#{exc.message}\nBacktrace:\n#{exc.backtrace.join("\n")}")
   if retries > 0
     Log.debug1("Restarting (retries:#{retries}).")

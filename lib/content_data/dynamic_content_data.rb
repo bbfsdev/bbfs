@@ -1,4 +1,6 @@
 require 'thread'
+
+require 'content_server/globals'
 require 'params'
 
 module ContentData
@@ -9,7 +11,7 @@ module ContentData
       ObjectSpace.define_finalizer(self,
                                    self.class.method(:finalize).to_proc)
       if Params['enable_monitoring']
-        Params['process_vars'].inc('obj add DynamicContentData')
+        ::ContentServer::Globals.process_vars.inc('obj add DynamicContentData')
       end
       @last_content_data = nil
       @last_content_data_available_mutex = Mutex.new
@@ -17,7 +19,7 @@ module ContentData
 
     def self.finalize(id)
       if Params['enable_monitoring']
-        Params['process_vars'].inc('obj rem DynamicContentData')
+        ::ContentServer::Globals.process_vars.inc('obj rem DynamicContentData')
       end
     end
 

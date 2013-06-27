@@ -1,3 +1,4 @@
+require 'content_server/globals'
 require 'log'
 require 'params'
 
@@ -37,7 +38,7 @@ module FileMonitoring
       ObjectSpace.define_finalizer(self,
                                    self.class.method(:finalize).to_proc)
       if Params['enable_monitoring']
-        Params['process_vars'].inc('obj add FileStat')
+        ::ContentServer::Globals.process_vars.inc('obj add FileStat')
       end
       @path ||= path
       @size = nil
@@ -50,7 +51,7 @@ module FileMonitoring
 
     def self.finalize(id)
       if Params['enable_monitoring']
-        Params['process_vars'].inc('obj rem FileStat')
+        ::ContentServer::Globals.process_vars.inc('obj rem FileStat')
       end
     end
 
@@ -150,7 +151,7 @@ module FileMonitoring
       ObjectSpace.define_finalizer(self,
                                    self.class.method(:finalize).to_proc)
       if Params['enable_monitoring']
-        Params['process_vars'].inc('obj add DirStat')
+        ::ContentServer::Globals.process_vars.inc('obj add DirStat')
       end
       super
       @dirs = nil
@@ -163,7 +164,7 @@ module FileMonitoring
 
     def self.finalize(id)
       if Params['enable_monitoring']
-        Params['process_vars'].inc('obj rem DirStat')
+        ::ContentServer::Globals.process_vars.inc('obj rem DirStat')
       end
     end
 
@@ -304,7 +305,6 @@ module FileMonitoring
             was_changed = true
             # check if file exist in content data cache - set state to STABLE
             file_state = FileStatEnum::NON_EXISTING
-            Log.info("File: #{file}")
             if !@content_data_cache.nil? && @content_data_cache.include?(file)
               file_state = FileStatEnum::STABLE
             end
