@@ -30,5 +30,30 @@ module ContentServer
     Log.error(message)
   end
 
-  module_function :init_globals, :handle_program_termination
+  def monitor_general_process_vars
+    mutex = Mutex.new
+    while true do
+      sleep(Params['process_vars_delay'])
+      $process_vars.set('time', Time.now)
+      #enable following line to see full list of object:count
+      #obj_array = ''
+      total_obj_count = 0
+      string_count = 0
+      mutex.synchronize do
+        ObjectSpace.each_object(Class) {|obj|
+          obj_count_per_class = ObjectSpace.each_object(obj).count
+          #enable following line to see full list of object:count
+          #obj_array = "#{obj_array} * #{obj.name}:#{obj_count_per_class}"
+          total_obj_count = total_obj_count + obj_count_per_class
+        }
+        string_count = ObjectSpace.each_object(String).count
+      end
+      #enable following line to see full list of object:count
+      #$process_vars.set('Live objs full', obj_array)
+      $process_vars.set('Live objs total', total_obj_count)
+      $process_vars.set('Live String size', string_count)
+    end
+  end
+
+  module_function :init_globals, :handle_program_termination, :monitor_general_process_vars
 end

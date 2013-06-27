@@ -132,41 +132,7 @@ module ContentServer
     if Params['enable_monitoring']
       monitoring_info = MonitoringInfo::MonitoringInfo.new()
       all_threads << Thread.new do
-        mutex = Mutex.new
-        while true do
-          sleep(Params['process_vars_delay'])
-          $process_vars.set('time', Time.now)
-          Log.debug3("process_vars:monitoring queue size:#{monitoring_events.size}")
-          $process_vars.set('monitoring queue', monitoring_events.size)
-          #enable following line to see full list of object:count
-          #obj_array = ''
-          total_obj_count = 0
-          string_count = 0
-          file_count = 0
-          dir_count = 0
-          content_count = 0
-          mutex.synchronize do
-            ObjectSpace.each_object(Class) {|obj|
-              obj_count_per_class = ObjectSpace.each_object(obj).count
-              #enable following line to see full list of object:count
-              #obj_array = "#{obj_array} * #{obj.name}:#{obj_count_per_class}"
-              total_obj_count = total_obj_count + obj_count_per_class
-            }
-            string_count = ObjectSpace.each_object(String).count
-            file_count = ObjectSpace.each_object(::FileMonitoring::FileStat).count
-            dir_count = ObjectSpace.each_object(::FileMonitoring::DirStat).count
-            content_count = ObjectSpace.each_object(::ContentData::ContentData).count
-          end
-          #enable following line to see full list of object:count
-          #$process_vars.set('Live objs full', obj_array)
-          Log.debug3("process_vars:Live objs cnt:#{total_obj_count}")
-          $process_vars.set('Live objs cnt', total_obj_count)
-          Log.debug3("process_vars:Live String obj cnt:#{string_count}")
-          Log.debug3("process_vars:Live File obj cnt:#{file_count}")
-          Log.debug3("process_vars:Live Dir obj cnt:#{dir_count}")
-          Log.debug3("process_vars:Live Content data obj cnt:#{content_count}")
-          $process_vars.set('Live String obj cnt', string_count)
-        end
+        ContentServer.monitor_general_process_vars
       end
     end
 

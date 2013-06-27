@@ -24,6 +24,7 @@ module ContentServer
         while true do
           Log.debug1 'Waiting on index input queue.'
           (state, is_dir, path, mtime, size) = @input_queue.pop
+          $process_vars.set('monitor to index queue size', @input_queue.size)
           Log.debug1 "index event: state:#{state}, dir?#{is_dir}, path:#{path}, mtime:#{mtime}, size:#{size}."
           if state == FileMonitoring::FileStatEnum::STABLE && !is_dir
             # Calculating checksum

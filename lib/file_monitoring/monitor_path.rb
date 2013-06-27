@@ -37,7 +37,7 @@ module FileMonitoring
     def initialize(path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
       ObjectSpace.define_finalizer(self,
                                    self.class.method(:finalize).to_proc)
-      $process_vars.inc('obj add FileStat')
+      $process_vars.inc('FileStat size')
       @path ||= path
       @size = nil
       @creation_time = nil
@@ -48,7 +48,7 @@ module FileMonitoring
     end
 
     def self.finalize(id)
-      $process_vars.inc('obj rem FileStat')
+      $process_vars.dec('FileStat size')
     end
 
     def set_output_queue(event_queue)
@@ -121,6 +121,7 @@ module FileMonitoring
           Log.debug1 "Writing to event queue [#{self.state}, #{self.path}]"
           @event_queue.push([self.state, self.instance_of?(DirStat), self.path,
                              self.modification_time, self.size])
+          $process_vars.set('monitor to index queue size', @event_queue.size)
         end
       end
     end
@@ -146,7 +147,7 @@ module FileMonitoring
     def initialize(path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
       ObjectSpace.define_finalizer(self,
                                    self.class.method(:finalize).to_proc)
-      $process_vars.inc('obj add DirStat')
+      $process_vars.inc('DirStat size')
       super
       @dirs = nil
       @files = nil
@@ -157,7 +158,7 @@ module FileMonitoring
     end
 
     def self.finalize(id)
-      $process_vars.inc('obj rem DirStat')
+      $process_vars.dec('DirStat size')
     end
 
     #  Adds directory for monitoring.

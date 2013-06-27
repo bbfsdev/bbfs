@@ -32,7 +32,7 @@ module ContentData
     def initialize(other = nil)
       ObjectSpace.define_finalizer(self,
                                    self.class.method(:finalize).to_proc)
-      $process_vars.inc('obj add ContentData')
+      $process_vars.inc('ContentData size')
       if other.nil?
         @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
       else
@@ -41,7 +41,7 @@ module ContentData
     end
 
     def self.finalize(id)
-      $process_vars.inc('obj rem ContentData')
+      $process_vars.dec('ContentData size')
     end
 
     # getting a cloned data base
