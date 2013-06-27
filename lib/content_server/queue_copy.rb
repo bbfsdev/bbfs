@@ -130,9 +130,7 @@ module ContentServer
       @local_thread = Thread.new do
         loop do
           pop_queue = @local_queue.pop
-          if Params['enable_monitoring']
-            ::ContentServer::Globals.process_vars.set('File Copy Client queue', @local_queue.size)
-          end
+          $process_vars.set('File Copy Client queue', @local_queue.size)
           handle(@local_queue.pop)
         end
       end
@@ -159,18 +157,14 @@ module ContentServer
     end
 
     def done_copy(local_file_checksum, local_path)
-      if Params['enable_monitoring']
-        ::ContentServer::Globals.process_vars.inc('num_files_received')
-      end
+      $process_vars.inc('num_files_received')
       Log.debug1("Done copy file: #{local_path}, #{local_file_checksum}")
     end
 
     def handle_message(message)
       Log.debug3('QueueFileReceiver handle message')
       @local_queue.push(message)
-      if Params['enable_monitoring']
-        ::ContentServer::Globals.process_vars.set('File Copy Client queue', @local_queue.size)
-      end
+      $process_vars.set('File Copy Client queue', @local_queue.size)
     end
 
     # This is a function which receives the messages (file or ack) and return answer in case

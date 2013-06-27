@@ -30,7 +30,7 @@ module MonitoringInfo
     def initialize()
       @web_interface = Sinatra.new {
         set :bind, '0.0.0.0'
-        get('/') { MonitoringInfo.get_json(::ContentServer::Globals.process_vars.clone) }
+        get('/') { MonitoringInfo.get_json($process_vars.clone) }
       }
       @web_interface.set(:port, Params['process_monitoring_web_port'])
       @thread = Thread.new do

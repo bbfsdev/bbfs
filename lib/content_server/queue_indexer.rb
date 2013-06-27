@@ -32,9 +32,7 @@ module ContentServer
             if instance_stats.nil? || mtime.to_i != instance_stats[1] || size != instance_stats[0]
               Log.info "Indexing file:'#{path}'."
               checksum = calc_SHA1(path)
-              if Params['enable_monitoring']
-                ::ContentServer::Globals.process_vars.inc('indexed_files')
-              end
+              $process_vars.inc('indexed_files')
               Log.debug1("Index info:checksum:#{checksum} size:#{size} time:#{mtime.to_i}")
               Log.debug1('Adding index to content data. put in queue for dynamic update.')
               @local_dynamic_content_data.add_instance(checksum, size, Params['local_server_name'], path, mtime.to_i)

@@ -35,5 +35,28 @@ module ThreadSafeHash
       end
     end
   end
+
+  class ThreadSafeHashMonitored < ThreadSafeHash
+    def initialize(monitored)
+      super()
+      @monitored = monitored
+    end
+
+    def inc(key)
+      super if @monitored
+    end
+
+    def get(key)
+      super if @monitored
+    end
+
+    def set(key, value)
+      super if @monitored
+    end
+
+    def clone
+      super if @monitored
+    end
+  end
 end
 

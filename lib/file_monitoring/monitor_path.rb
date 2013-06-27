@@ -37,9 +37,7 @@ module FileMonitoring
     def initialize(path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
       ObjectSpace.define_finalizer(self,
                                    self.class.method(:finalize).to_proc)
-      if Params['enable_monitoring']
-        ::ContentServer::Globals.process_vars.inc('obj add FileStat')
-      end
+      $process_vars.inc('obj add FileStat')
       @path ||= path
       @size = nil
       @creation_time = nil
@@ -50,9 +48,7 @@ module FileMonitoring
     end
 
     def self.finalize(id)
-      if Params['enable_monitoring']
-        ::ContentServer::Globals.process_vars.inc('obj rem FileStat')
-      end
+      $process_vars.inc('obj rem FileStat')
     end
 
     def set_output_queue(event_queue)
@@ -150,9 +146,7 @@ module FileMonitoring
     def initialize(path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
       ObjectSpace.define_finalizer(self,
                                    self.class.method(:finalize).to_proc)
-      if Params['enable_monitoring']
-        ::ContentServer::Globals.process_vars.inc('obj add DirStat')
-      end
+      $process_vars.inc('obj add DirStat')
       super
       @dirs = nil
       @files = nil
@@ -163,9 +157,7 @@ module FileMonitoring
     end
 
     def self.finalize(id)
-      if Params['enable_monitoring']
-        ::ContentServer::Globals.process_vars.inc('obj rem DirStat')
-      end
+      $process_vars.inc('obj rem DirStat')
     end
 
     #  Adds directory for monitoring.

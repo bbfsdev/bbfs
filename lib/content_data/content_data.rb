@@ -32,9 +32,7 @@ module ContentData
     def initialize(other = nil)
       ObjectSpace.define_finalizer(self,
                                    self.class.method(:finalize).to_proc)
-      if Params['enable_monitoring']
-        ::ContentServer::Globals.process_vars.inc('obj add ContentData')
-      end
+      $process_vars.inc('obj add ContentData')
       if other.nil?
         @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
       else
@@ -43,9 +41,7 @@ module ContentData
     end
 
     def self.finalize(id)
-      if Params['enable_monitoring']
-        ::ContentServer::Globals.process_vars.inc('obj rem ContentData')
-      end
+      $process_vars.inc('obj rem ContentData')
     end
 
     # getting a cloned data base

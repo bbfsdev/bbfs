@@ -57,39 +57,29 @@ module ContentServer
 
     def copy_another_chuck(checksum)
       @stream_queue << [:COPY_CHUNK, checksum]
-      if Params['enable_monitoring']
-        ::ContentServer::Globals.process_vars.set('File Streamer queue', @stream_queue.size)
-      end
+      $process_vars.set('File Streamer queue', @stream_queue.size)
     end
 
     def start_streaming(checksum, path)
       @stream_queue << [:NEW_STREAM, [checksum, path]]
-      if Params['enable_monitoring']
-        ::ContentServer::Globals.process_vars.set('File Streamer queue', @stream_queue.size)
-      end
+      $process_vars.set('File Streamer queue', @stream_queue.size)
     end
 
     def abort_streaming(checksum)
       @stream_queue << [:ABORT_STREAM, checksum]
-      if Params['enable_monitoring']
-        ::ContentServer::Globals.process_vars.set('File Streamer queue', @stream_queue.size)
-      end
+      $process_vars.set('File Streamer queue', @stream_queue.size)
     end
 
     def reset_streaming(checksum, new_offset)
       @stream_queue << [:RESET_STREAM, [checksum, new_offset]]
-      if Params['enable_monitoring']
-        ::ContentServer::Globals.process_vars.set('File Streamer queue', @stream_queue.size)
-      end
+      $process_vars.set('File Streamer queue', @stream_queue.size)
     end
 
     def run
       return Thread.new do
         loop {
           stream_pop = @stream_queue.pop
-          if Params['enable_monitoring']
-            ::ContentServer::Globals.process_vars.set('File Streamer queue', @stream_queue.size)
-          end
+          $process_vars.set('File Streamer queue', @stream_queue.size)
           checksum = handle(stream_pop)
         }
       end
@@ -101,9 +91,7 @@ module ContentServer
         checksum, path = content
         reset_stream(checksum, path, 0)
         @stream_queue << [:COPY_CHUNK, checksum] if @streams.key?(checksum)
-        if Params['enable_monitoring']
-          ::ContentServer::Globals.process_vars.set('File Streamer queue', @stream_queue.size)
-        end
+        $process_vars.set('File Streamer queue', @stream_queue.size)
       elsif type == :ABORT_STREAM
         checksum = content
         Stream.close_delete_stream(checksum, @streams)
@@ -111,9 +99,7 @@ module ContentServer
         checksum, new_offset = content
         reset_stream(checksum, nil, new_offset)
         @stream_queue << [:COPY_CHUNK, checksum] if @streams.key?(checksum)
-        if Params['enable_monitoring']
-          ::ContentServer::Globals.process_vars.set('File Streamer queue', @stream_queue.size)
-        end
+        $process_vars.set('File Streamer queue', @stream_queue.size)
       elsif type == :COPY_CHUNK
         checksum = content
         if @streams.key?(checksum)
@@ -270,6 +256,7 @@ module ContentServer
         if local_file_checksum == file_checksum
           Log.debug1(message)
           begin
+            #make sure file is closed (on some cases in Win7 the file could not be moved)
             File.rename(tmp_file_path, path)
             Log.debug1("End move tmp file to permanent location #{path}.")
             @file_done_clb.call(local_file_checksum, path) unless @file_done_clb.nil?

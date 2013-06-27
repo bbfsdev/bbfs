@@ -24,14 +24,6 @@ module ContentServer
   Params.string('local_server_name', `hostname`.strip, 'local server name')
   Params.path('tmp_path', '~/.bbfs/tmp', 'tmp path for temporary files')
 
-  def self.tmp_content_data_file
-    @@tmp_content_data_file
-  end
-
-  def self.local_dynamic_content_data
-    @@local_dynamic_content_data
-  end
-
   def run_content_server
     Log.info('Content server start')
     all_threads = []
@@ -39,11 +31,11 @@ module ContentServer
     # create general tmp dir
     FileUtils.mkdir_p(Params['tmp_path']) unless File.directory?(Params['tmp_path'])
     # init tmp content data file
-    @@tmp_content_data_file = File.join(Params['tmp_path'], 'content.data')
+    $tmp_content_data_file = File.join(Params['tmp_path'], 'content.data')
 
     if Params['enable_monitoring']
       Log.info("Initializing monitoring of process params on port:#{Params['process_monitoring_web_port']}")
-      ::ContentServer::Globals.process_vars.set('server_name', 'content_server')
+      $process_vars.set('server_name', 'content_server')
     end
 
     # # # # # # # # # # # #
@@ -59,11 +51,11 @@ module ContentServer
     content_data_path = Params['local_content_data_path']
     initial_content_data.from_file(content_data_path) if File.exists?(content_data_path)
     # Update local dynamic content with existing content
-    @@local_dynamic_content_data = ContentData::DynamicContentData.new
-    @@local_dynamic_content_data.update(initial_content_data)
+    $local_dynamic_content_data = ContentData::DynamicContentData.new
+    $local_dynamic_content_data.update(initial_content_data)
 
     #Start files monitor taking into consideration  existing content  data
-    fm = FileMonitoring::FileMonitoring.new(@@local_dynamic_content_data)
+    fm = FileMonitoring::FileMonitoring.new($local_dynamic_content_data)
     fm.set_event_queue(monitoring_events)
     # Start monitoring and writing changes to queue
     all_threads << Thread.new do
@@ -73,7 +65,7 @@ module ContentServer
     # # # # # # # # # # # # # #
     # Initialize/Start local indexer
     Log.debug1('Start indexer')
-    queue_indexer = QueueIndexer.new(monitoring_events, @@local_dynamic_content_data)
+    queue_indexer = QueueIndexer.new(monitoring_events, $local_dynamic_content_data)
     # Start indexing on demand and write changes to queue
     all_threads << queue_indexer.run
 
@@ -85,16 +77,15 @@ module ContentServer
       while true do
         if last_data_flush_time.nil? || last_data_flush_time + Params['data_flush_delay'] < Time.now.to_i
           Log.info "Writing local content data to #{Params['local_content_data_path']}."
-          @@local_dynamic_content_data.last_content_data.to_file(@@tmp_content_data_file)
-          sleep(0.1)  # Added to prevent mv access issue
-          ::FileUtils.mv(@@tmp_content_data_file, Params['local_content_data_path'])
+          $local_dynamic_content_data.last_content_data.to_file($tmp_content_data_file)
+          File.rename($tmp_content_data_file, Params['local_content_data_path'])
           last_data_flush_time = Time.now.to_i
         end
         sleep(1)
       end
     end
 
-    remote_content_client = RemoteContentServer.new(@@local_dynamic_content_data,
+    remote_content_client = RemoteContentServer.new($local_dynamic_content_data,
                                                     Params['local_content_data_port'])
     all_threads << remote_content_client.tcp_thread
 
@@ -114,11 +105,11 @@ module ContentServer
         mutex = Mutex.new
         while true do
           sleep(Params['process_vars_delay'])
-          ::ContentServer::Globals.process_vars.set('time', Time.now)
+          $process_vars.set('time', Time.now)
           Log.debug3("process_vars:monitoring queue size:#{monitoring_events.size}")
-          ::ContentServer::Globals.process_vars.set('monitoring queue', monitoring_events.size)
+          $process_vars.set('monitoring queue', monitoring_events.size)
           Log.debug3("process_vars:copy files events queue size:#{copy_files_events.size}")
-          ::ContentServer::Globals.process_vars.set('copy files events queue', copy_files_events.size)
+          $process_vars.set('copy files events queue', copy_files_events.size)
           #enable following line to see full list of object:count
           #obj_array = ''
           total_obj_count = 0
@@ -145,11 +136,11 @@ module ContentServer
           Log.debug3("process_vars:Live File obj cnt:#{file_count}")
           Log.debug3("process_vars:Live Dir obj cnt:#{dir_count}")
           Log.debug3("process_vars:Live Content data obj cnt:#{content_count}")
-          ::ContentServer::Globals.process_vars.set('Live objs cnt', total_obj_count)
-          ::ContentServer::Globals.process_vars.set('Live String obj cnt', string_count)
-          ::ContentServer::Globals.process_vars.set('Live File obj cnt', file_count)
-          ::ContentServer::Globals.process_vars.set('Live Dir obj cnt', dir_count)
-          ::ContentServer::Globals.process_vars.set('Live Content data obj cnt', content_count)
+          $process_vars.set('Live objs cnt', total_obj_count)
+          $process_vars.set('Live String obj cnt', string_count)
+          $process_vars.set('Live File obj cnt', file_count)
+          $process_vars.set('Live Dir obj cnt', dir_count)
+          $process_vars.set('Live Content data obj cnt', content_count)
         end
       end
     end

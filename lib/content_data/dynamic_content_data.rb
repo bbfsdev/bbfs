@@ -10,17 +10,13 @@ module ContentData
     def initialize()
       ObjectSpace.define_finalizer(self,
                                    self.class.method(:finalize).to_proc)
-      if Params['enable_monitoring']
-        ::ContentServer::Globals.process_vars.inc('obj add DynamicContentData')
-      end
+      $process_vars.inc('obj add DynamicContentData')
       @last_content_data = nil
       @last_content_data_available_mutex = Mutex.new
     end
 
     def self.finalize(id)
-      if Params['enable_monitoring']
-        ::ContentServer::Globals.process_vars.inc('obj rem DynamicContentData')
-      end
+      $process_vars.inc('obj rem DynamicContentData')
     end
 
     def update(content_data)
