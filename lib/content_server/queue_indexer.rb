@@ -1,6 +1,6 @@
 require 'file_indexing/index_agent'
 require 'file_indexing/indexer_patterns'
-require 'content_server/globals'
+require 'content_server/server'
 require 'log'
 require 'params'
 
@@ -24,6 +24,7 @@ module ContentServer
         while true do
           Log.debug1 'Waiting on index input queue.'
           (state, is_dir, path, mtime, size) = @input_queue.pop
+          $process_vars.set('monitor to index queue size', @input_queue.size)
           Log.debug1 "index event: state:#{state}, dir?#{is_dir}, path:#{path}, mtime:#{mtime}, size:#{size}."
           if state == FileMonitoring::FileStatEnum::STABLE && !is_dir
             # Calculating checksum
@@ -32,9 +33,7 @@ module ContentServer
             if instance_stats.nil? || mtime.to_i != instance_stats[1] || size != instance_stats[0]
               Log.info "Indexing file:'#{path}'."
               checksum = calc_SHA1(path)
-              if Params['enable_monitoring']
-                ::ContentServer::Globals.process_vars.inc('indexed_files')
-              end
+              $process_vars.inc('indexed_files')
               Log.debug1("Index info:checksum:#{checksum} size:#{size} time:#{mtime.to_i}")
               Log.debug1('Adding index to content data. put in queue for dynamic update.')
               @local_dynamic_content_data.add_instance(checksum, size, Params['local_server_name'], path, mtime.to_i)

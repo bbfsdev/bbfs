@@ -2,7 +2,7 @@ require 'thread'
 
 require 'content_server/file_streamer'
 require 'file_indexing/index_agent'
-require 'content_server/globals'
+require 'content_server/server'
 require 'log'
 require 'networking/tcp'
 require 'params'
@@ -37,12 +37,14 @@ module ContentServer
 
     def send_chunk(*arg)
       @copy_input_queue.push([:COPY_CHUNK, arg])
+      $process_vars.set('Copy File Queue Size', @copy_input_queue.size)
     end
 
     def receive_message(addr_info, message)
       # Add ack message to copy queue.
       Log.debug2("Content server Copy message received: #{message}")
       @copy_input_queue.push(message)
+      $process_vars.set('Copy File Queue Size', @copy_input_queue.size)
     end
 
     def run()
@@ -52,9 +54,9 @@ module ContentServer
         while true do
           Log.debug1 'Waiting on copy files events.'
           message_type, message_content = @copy_input_queue.pop
-
+          $process_vars.set('Copy File Queue Size', @copy_input_queue.size)
+          Log.debug1("Content copy message:#{[message_type, message_content]}")
           if message_type == :COPY_MESSAGE
-            Log.debug1 "Copy files event: #{message_content}"
             # Prepare source,dest map for copy.
             message_content.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
               if !@copy_prepare.key?(checksum) || !@copy_prepare[checksum][1]
@@ -133,11 +135,9 @@ module ContentServer
                                         method(:reset_copy))
       @local_thread = Thread.new do
         loop do
-          pop_queue = @local_queue.pop
-          if Params['enable_monitoring']
-            ::ContentServer::Globals.process_vars.set('File Copy Client queue', @local_queue.size)
-          end
-          handle(@local_queue.pop)
+          pop_data = @local_queue.pop
+          $process_vars.set('File Copy Client queue', @local_queue.size)
+          handle(pop_data)
         end
       end
       @local_thread.abort_on_exception = true
@@ -163,31 +163,26 @@ module ContentServer
     end
 
     def done_copy(local_file_checksum, local_path)
-      if Params['enable_monitoring']
-        ::ContentServer::Globals.process_vars.inc('num_files_received')
-      end
+      $process_vars.inc('num_files_received')
       Log.debug1("Done copy file: #{local_path}, #{local_file_checksum}")
     end
 
     def handle_message(message)
       Log.debug3('QueueFileReceiver handle message')
       @local_queue.push(message)
-      if Params['enable_monitoring']
-        ::ContentServer::Globals.process_vars.set('File Copy Client queue', @local_queue.size)
-      end
+      $process_vars.set('File Copy Client queue', @local_queue.size)
     end
 
     # This is a function which receives the messages (file or ack) and return answer in case
     # of ack. Note that it is being executed from the class thread only!
     def handle(message)
       message_type, message_content = message
+      Log.debug1("backup copy message: Type #{message_type}")
+      Log.debug1("backup copy message: message: #{message_content}")
       if message_type == :SEND_COPY_MESSAGE
-        Log.debug1("Requesting files to copy.")
-        Log.debug2("Files requested: #{message_content.to_s}")
         bytes_written = @tcp_client.send_obj([:COPY_MESSAGE, message_content])
         Log.debug2("Sending copy message succeeded? bytes_written: #{bytes_written}.")
       elsif message_type == :COPY_CHUNK
-        Log.debug1('Chunk received.')
         if @file_receiver.receive_chunk(*message_content)
           file_checksum, offset, file_size, content, content_checksum = message_content
           @tcp_client.send_obj([:COPY_CHUNK_FROM_REMOTE, file_checksum])
@@ -195,7 +190,7 @@ module ContentServer
       elsif message_type == :ACK_MESSAGE
         checksum, timestamp = message_content
         # Here we should check file existence
-        Log.info("Returning ack for content: #{checksum}, timestamp: #{timestamp}")
+        Log.debug1("Returning ack for content: #{checksum}, timestamp: #{timestamp}")
         Log.debug1("Ack: #{!@dynamic_content_data.exists?(checksum)}")
         @tcp_client.send_obj([:ACK_MESSAGE, [timestamp,
                                              !@dynamic_content_data.exists?(checksum),
