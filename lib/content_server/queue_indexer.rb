@@ -1,6 +1,6 @@
 require 'file_indexing/index_agent'
 require 'file_indexing/indexer_patterns'
-require 'content_server/globals'
+require 'content_server/server'
 require 'log'
 require 'params'
 

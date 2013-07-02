@@ -2,7 +2,7 @@ require 'thread'
 
 require 'content_server/file_streamer'
 require 'file_indexing/index_agent'
-require 'content_server/globals'
+require 'content_server/server'
 require 'log'
 require 'networking/tcp'
 require 'params'

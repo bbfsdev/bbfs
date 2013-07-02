@@ -4,7 +4,7 @@ require 'net/http'
 require 'thin'
 require 'sinatra'
 
-require 'content_server/globals'
+require 'content_server/server'
 require 'params'
 
 # Set up event machine to exit on ctrl+c.
