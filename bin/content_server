@@ -4,7 +4,7 @@
 # The files in those directories are indexed (calculating their SHA1).
 # Each unique content is backed up to the remote (backup) server.
 
-require 'content_server/globals'
+require 'content_server/server'
 require 'log'
 require 'params'
 require 'run_in_background'

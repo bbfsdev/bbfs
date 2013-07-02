@@ -7,7 +7,7 @@
 
 # NOTE this file mainly is a copy of content_server
 
-require 'content_server/globals'
+require 'content_server/server'
 require 'log'
 require 'params'
 require 'run_in_background'

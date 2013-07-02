@@ -1,4 +1,4 @@
-require 'content_server/globals'
+require 'content_server/server'
 require 'log'
 require 'params'
 

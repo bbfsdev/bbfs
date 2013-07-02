@@ -2,7 +2,7 @@ require 'tempfile'
 require 'thread'
 
 require 'file_indexing/index_agent'
-require 'content_server/globals'
+require 'content_server/server'
 require 'log'
 require 'params'
 
@@ -256,7 +256,6 @@ module ContentServer
         if local_file_checksum == file_checksum
           Log.debug1(message)
           begin
-            #make sure file is closed (on some cases in Win7 the file could not be moved)
             File.rename(tmp_file_path, path)
             Log.debug1("End move tmp file to permanent location #{path}.")
             @file_done_clb.call(local_file_checksum, path) unless @file_done_clb.nil?

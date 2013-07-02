@@ -1,6 +1,6 @@
 require 'thread'
 
-require 'content_server/globals'
+require 'content_server/server'
 require 'params'
 
 module ContentData
