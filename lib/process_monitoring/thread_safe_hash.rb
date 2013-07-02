@@ -17,6 +17,17 @@ module ThreadSafeHash
       end
     end
 
+    def dec(key)
+      @mutex.synchronize do
+        value = @hash_data[key]
+        if value.nil?
+          @hash_data[key] = -1
+        else
+          @hash_data[key] = value - 1
+        end
+      end
+    end
+
     def get(key)
       @mutex.synchronize do
         @hash_data[key]
@@ -33,6 +44,33 @@ module ThreadSafeHash
       @mutex.synchronize do
         @hash_data.clone
       end
+    end
+  end
+
+  class ThreadSafeHashMonitored < ThreadSafeHash
+    def initialize(monitored)
+      super()
+      @monitored = monitored
+    end
+
+    def inc(key)
+      super if @monitored
+    end
+
+    def dec(key)
+      super if @monitored
+    end
+
+    def get(key)
+      super if @monitored
+    end
+
+    def set(key, value)
+      super if @monitored
+    end
+
+    def clone
+      super if @monitored
     end
   end
 end
