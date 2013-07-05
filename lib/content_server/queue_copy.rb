@@ -10,7 +10,7 @@ require 'params'
 module ContentServer
   Params.integer('ack_timeout', 5, 'Timeout of ack from backup server in seconds.')
   Params.integer('local_timeout', 60, 'Timeout of content being under copy process.')
-  Params.integer('max_copy_streams', 10, 'max contents being copied at once.')
+  Params.integer('max_copy_streams', 20, 'max contents being copied at once.')
   # Copy message types.
   :SEND_COPY_MESSAGE
   :ACK_MESSAGE
@@ -64,7 +64,9 @@ module ContentServer
     def remove_content(checksum)
       @keeper.synchronize{
         @contents_under_copy.delete(checksum)
+        Log.debug1("removing checksum:#{checksum} from contents under copy")
         @contents_to_copy.delete(checksum)
+        Log.debug1("removing checksum:#{checksum} from contents to copy")
         $process_vars.set('contents to copy', @contents_to_copy.size)
         $process_vars.set('contents under copy', @contents_under_copy.size)
       }
@@ -74,6 +76,7 @@ module ContentServer
       @keeper.synchronize{
         @contents_under_copy.delete(checksum)
         $process_vars.set('contents under copy', @contents_under_copy.size)
+        Log.debug1("removing checksum:#{checksum} from contents under copy")
       }
     end
 
@@ -82,7 +85,7 @@ module ContentServer
     def run_thread
       @thread = Thread.new do
         loop {
-          sleep 1
+          sleep 2
           @keeper.synchronize{
 
             # clean timed out contents
@@ -99,21 +102,18 @@ module ContentServer
             # Go over waiting list and start copy based on an open place
             @contents_to_copy.each_key { |checksum|
               # check if open place
-              if @contents_under_copy.size < @max_contents_under_copy
-                # check if waiting content is already under copy process
-                if !@contents_under_copy[checksum]
-                  @contents_under_copy[checksum] = [@contents_to_copy[checksum], false, Time.now]
-                  $process_vars.set('contents under copy', @contents_under_copy.size)
-                  # remove content from waiting list
-                  @contents_to_copy.delete(checksum)
-                  $process_vars.set('contents to copy', @contents_to_copy.size)
-                  @copy_input_queue.push([:SEND_ACK_MESSAGE, checksum])
-                  $process_vars.set('Copy File Queue Size', @copy_input_queue.size)
-                else
-                  Log.warning("Content:#{checksum} waiting to copy is already under copy. Skipping")
-                end
+              break if @contents_under_copy.size >= @max_contents_under_copy
+              # start copy new content only if not already under copy process
+              if !@contents_under_copy[checksum]
+                @contents_under_copy[checksum] = [@contents_to_copy[checksum], false, Time.now]
+                $process_vars.set('contents under copy', @contents_under_copy.size)
+                # remove content from waiting list
+                @contents_to_copy.delete(checksum)
+                $process_vars.set('contents to copy', @contents_to_copy.size)
+                @copy_input_queue.push([:SEND_ACK_MESSAGE, checksum])
+                $process_vars.set('Copy File Queue Size', @copy_input_queue.size)
               else
-                break  # no need to go over next elements since there is no open place
+                Log.warning("Content:#{checksum} waiting to copy is already under copy. Skipping")
               end
             }
           }
@@ -161,7 +161,7 @@ module ContentServer
           Log.debug1("Content copy message:#{[message_type, message_content]}")
 
           if message_type == :SEND_ACK_MESSAGE
-            Log.info("Sending ack for: #{message_content}")
+            Log.debug1("Sending ack for: #{message_content}")
             @backup_tcp.send_obj([:ACK_MESSAGE, [message_content, Time.now.to_i]])
           elsif message_type == :COPY_MESSAGE
             message_content.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
@@ -196,12 +196,12 @@ module ContentServer
             # We open the message here for printing info and deleting copy_prepare!
             file_checksum, offset, file_size, content, content_checksum = message_content
             Log.debug1("Send chunk for file #{file_checksum}, offset: #{offset} " \
-                         "filesize: #{file_size}.")
+                         "filesize: #{file_size}, checksum:#{content_checksum}")
             # Blocking send.
             @backup_tcp.send_obj([:COPY_CHUNK, message_content])
             if content.nil? and content_checksum.nil?
               # Sending enf of file and removing file from list
-              @file_copy_manager.remove_content(checksum)
+              @file_copy_manager.remove_content(file_checksum)
             end
           elsif message_type == :ABORT_COPY
             Log.debug1("Aborting file copy: #{message_content}")
@@ -282,14 +282,18 @@ module ContentServer
         if @file_receiver.receive_chunk(*message_content)
           file_checksum, offset, file_size, content, content_checksum = message_content
           @tcp_client.send_obj([:COPY_CHUNK_FROM_REMOTE, file_checksum])
+        else
+          file_checksum, offset, file_size, content, content_checksum = message_content
+          Log.error("receive_chunk failed for checksum:#{content_checksum}")
         end
       elsif message_type == :ACK_MESSAGE
         checksum, timestamp = message_content
-        # Here we should check file existence
-        Log.debug1("Returning ack for content: #{checksum}, timestamp: #{timestamp}")
-        Log.debug1("Ack: #{!@dynamic_content_data.exists?(checksum)}")
+        # check if checksum exists in final destination
+        dest_path = FileReceiver.destination_filename(Params['backup_destination_folder'][0]['path'], checksum)
+        need_to_copy = !File.exists?(dest_path)
+        Log.debug1("Returning ack for content:'#{checksum}' timestamp:'#{timestamp}' Ack:'#{need_to_copy}'")
         @tcp_client.send_obj([:ACK_MESSAGE, [timestamp,
-                                             !@dynamic_content_data.exists?(checksum),
+                                             need_to_copy,
                                              checksum]])
       elsif message_type == :ABORT_COPY
         @tcp_client.send_obj([:ABORT_COPY, message_content])

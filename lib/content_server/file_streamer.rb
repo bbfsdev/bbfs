@@ -247,7 +247,6 @@ module ContentServer
         path = FileReceiver.destination_filename(Params['backup_destination_folder'][0]['path'],
                                                  file_checksum)
         Log.debug1("Moving tmp file #{@streams[file_checksum].path} to #{path}")
-        Log.debug1("Creating directory: #{path}")
         file_dir = File.dirname(path)
         FileUtils.makedirs(file_dir) unless File.directory?(file_dir)
         # Move tmp file to permanent location.
@@ -262,13 +261,19 @@ module ContentServer
             File.rename(tmp_file_path, path)
             Log.debug1("End move tmp file to permanent location #{path}.")
             @file_done_clb.call(local_file_checksum, path) unless @file_done_clb.nil?
-          rescue IOError => e
-            Log.warning("Could not move tmp file to permanent file #{path}. #{e.to_s}")
+          rescue Exception => e
+            Log.warning("Could not move tmp file to permanent path #{path}." +
+                        " Error msg:#{e.message}\nError type:#{e.type}")
           end
         else
-          Log.error(message)
-          Log.debug1("Deleting tmp file: #{tmp_file_path}")
-          File.delete(tmp_file_path)
+          begin
+            Log.error(message)
+            Log.debug1("Deleting tmp file: #{tmp_file_path}")
+            File.delete(tmp_file_path)
+          rescue Exception => e
+            Log.warning("Could not delete tmp file from tmp path #{tmp_file_path}." +
+                            " Error msg:#{e.message}\nError type:#{e.type}")
+          end
         end
       else
         Log.error("Handling last chunk and tmp stream does not exists.")
