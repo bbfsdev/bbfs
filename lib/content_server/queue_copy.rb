@@ -8,10 +8,11 @@ require 'networking/tcp'
 require 'params'
 
 module ContentServer
-  Params.integer('ack_timeout', 5, 'Timeout of ack from backup server in seconds.')
+  Params.integer('ack_timeout', 3, 'Timeout of ack from backup server in seconds.')
   Params.integer('local_timeout', 30, 'Timeout of content being under copy process.')
-  Params.integer('max_copy_streams', 3, 'max contents being copied at once.')
+  Params.integer('max_copy_streams', 10, 'max contents being copied at once.')
   # Copy message types.
+  :SEND_COPY_MESSAGE
   :ACK_MESSAGE
   :COPY_MESSAGE
   :SEND_COPY_MESSAGE
@@ -21,12 +22,12 @@ module ContentServer
   :RESET_RESUME_COPY # Sends the stream sender to resend chunk or resume from different offset.
 
   class FileCopyManager
-    def initialize(backup_tcp, file_streamer)
-      @backup_tcp = backup_tcp
+    def initialize(copy_input_queue, file_streamer)
+      @copy_input_queue = copy_input_queue
       @file_streamer = file_streamer
       @max_contents_under_copy = Params['max_copy_streams']
-      @ContentsUnderCopy = {}
-      @ContentsToCopy = {}
+      @contents_under_copy = {}
+      @contents_to_copy = {}
       @keeper = Mutex.new
       @thread = run_thread
     end
@@ -34,19 +35,19 @@ module ContentServer
     def add_content(checksum, path)
       @keeper.synchronize{
         # if content is being copied then skip it
-        if !@ContentsUnderCopy[checksum]
-          @ContentsToCopy[checksum] = path
-          $process_vars.set('contents to copy', @ContentsToCopy.size)
+        if !@contents_under_copy[checksum]
+          @contents_to_copy[checksum] = path
+          $process_vars.set('contents to copy', @contents_to_copy.size)
         end
       }
     end
 
     def receive_ack(checksum)
       @keeper.synchronize{
-        record = @ContentsUnderCopy[checksum]
+        record = @contents_under_copy[checksum]
         if record
           if !record[1]
-            path = @ContentsUnderCopy[checksum][0]
+            path = @contents_under_copy[checksum][0]
             Log.info "Streaming to backup server. content: #{checksum} path:#{path}."
             @file_streamer.start_streaming(checksum, path)
             # updating Ack
@@ -62,17 +63,17 @@ module ContentServer
 
     def remove_content(checksum)
       @keeper.synchronize{
-        @ContentsUnderCopy.delete(checksum)
-        @ContentsToCopy.delete(checksum)
-        $process_vars.set('contents to copy', @ContentsToCopy.size)
-        $process_vars.set('contents under copy', @ContentsUnderCopy.size)
+        @contents_under_copy.delete(checksum)
+        @contents_to_copy.delete(checksum)
+        $process_vars.set('contents to copy', @contents_to_copy.size)
+        $process_vars.set('contents under copy', @contents_under_copy.size)
       }
     end
 
     def remove_content_under_copy(checksum)
       @keeper.synchronize{
-        @ContentsUnderCopy.delete(checksum)
-        $process_vars.set('contents under copy', @ContentsUnderCopy.size)
+        @contents_under_copy.delete(checksum)
+        $process_vars.set('contents under copy', @contents_under_copy.size)
       }
     end
 
@@ -81,32 +82,33 @@ module ContentServer
     def run_thread
       @thread = Thread.new do
         loop {
-          sleep 0.1
+          sleep 1
           @keeper.synchronize{
 
             # clean timed out contents
             time_now = Time.now
-            @ContentsUnderCopy.each_key { |checksum|
-              if time_now - @ContentsUnderCopy[checksum][2] > Params['local_timeout']
-                @ContentsUnderCopy.delete(checksum)
-                $process_vars.set('contents under copy', @ContentsUnderCopy.size)
+            @contents_under_copy.each_key { |checksum|
+              if time_now - @contents_under_copy[checksum][2] > Params['local_timeout']
+                @contents_under_copy.delete(checksum)
+                $process_vars.set('contents under copy', @contents_under_copy.size)
                 Log.warning("Content:#{checksum} has timed out on copy process")
+                @file_streamer.abort_streaming(checksum)
               end
             }
 
             # Go over waiting list and start copy based on an open place
-            @ContentsToCopy.each_key { |checksum|
+            @contents_to_copy.each_key { |checksum|
               # check if open place
-              if @ContentsUnderCopy.size < @max_contents_under_copy
+              if @contents_under_copy.size < @max_contents_under_copy
                 # check if waiting content is already under copy process
-                if !@ContentsUnderCopy[checksum]
-                  @ContentsUnderCopy[checksum] = [@ContentsToCopy[checksum], false, Time.now]
-                  $process_vars.set('contents under copy', @ContentsUnderCopy.size)
+                if !@contents_under_copy[checksum]
+                  @contents_under_copy[checksum] = [@contents_to_copy[checksum], false, Time.now]
+                  $process_vars.set('contents under copy', @contents_under_copy.size)
                   # remove content from waiting list
-                  @ContentsToCopy.delete(checksum)
-                  $process_vars.set('contents to copy', @ContentsToCopy.size)
-                  Log.info("Sending ack for: #{checksum}")
-                  @backup_tcp.send_obj([:ACK_MESSAGE, [checksum, Time.now.to_i]])
+                  @contents_to_copy.delete(checksum)
+                  $process_vars.set('contents to copy', @contents_to_copy.size)
+                  @copy_input_queue.push([:SEND_ACK_MESSAGE, checksum])
+                  $process_vars.set('Copy File Queue Size', @copy_input_queue.size)
                 else
                   Log.warning("Content:#{checksum} waiting to copy is already under copy. Skipping")
                 end
@@ -133,7 +135,7 @@ module ContentServer
       @copy_prepare = {}
       @file_streamer = FileStreamer.new(method(:send_chunk))
       Log.debug3("initialize FileCopyServer on port:#{port}")
-      @file_copy_manager = FileCopyManager.new(@backup_tcp, @file_streamer)
+      @file_copy_manager = FileCopyManager.new(@copy_input_queue, @file_streamer)
     end
 
     def send_chunk(*arg)
@@ -158,7 +160,10 @@ module ContentServer
           $process_vars.set('Copy File Queue Size', @copy_input_queue.size)
           Log.debug1("Content copy message:#{[message_type, message_content]}")
 
-          if message_type == :COPY_MESSAGE
+          if message_type == :SEND_ACK_MESSAGE
+            Log.info("Sending ack for: #{message_content}")
+            @backup_tcp.send_obj([:ACK_MESSAGE, [message_content, Time.now.to_i]])
+          elsif message_type == :COPY_MESSAGE
             message_content.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
               @file_copy_manager.add_content(checksum, path)
             }
@@ -202,9 +207,9 @@ module ContentServer
             Log.debug1("Aborting file copy: #{message_content}")
             @file_streamer.abort_streaming(message_content)
             # remove only content under copy
-            @file_copy_manager.remove_content_under_copy(checksum)
+            @file_copy_manager.remove_content_under_copy(message_content)
           elsif message_type == :RESET_RESUME_COPY
-            file_checksum, new_offset = message_content
+            (file_checksum, new_offset) = message_content
             Log.debug1("Resetting/Resuming file (#{file_checksum}) copy to #{new_offset}")
             @file_streamer.reset_streaming(file_checksum, new_offset)
           else
