@@ -8,8 +8,8 @@ require 'networking/tcp'
 require 'params'
 
 module ContentServer
-  Params.integer('ack_timeout', 3, 'Timeout of ack from backup server in seconds.')
-  Params.integer('local_timeout', 30, 'Timeout of content being under copy process.')
+  Params.integer('ack_timeout', 5, 'Timeout of ack from backup server in seconds.')
+  Params.integer('local_timeout', 60, 'Timeout of content being under copy process.')
   Params.integer('max_copy_streams', 10, 'max contents being copied at once.')
   # Copy message types.
   :SEND_COPY_MESSAGE
