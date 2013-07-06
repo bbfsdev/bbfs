@@ -30,21 +30,29 @@ module ContentServer
       @contents_to_copy = {}
       @contents_to_copy_queue = Queue.new
       @keeper = Mutex.new
-      @start_copy_thread = start_copy_thread
       @clean_time_out_thread = clean_time_out_thread
     end
 
+    # Add content to copy process. If already in copy process or waiting for copy then skip.
+    # If no open places for copy then put in waiting list
     def add_content(checksum, path)
       Log.debug2("Try to add content:#{checksum} to copy waiting list")
       @keeper.synchronize{
-        # if content is being copied then skip it
+        # if content is being copied or waiting then skip it
         if !@contents_under_copy[checksum]
           if !@contents_to_copy[checksum]
-            Log.debug2("add content:#{checksum} to copy waiting list")
-            @contents_to_copy[checksum] = true  # replace with a set
-            @contents_to_copy_queue.push([checksum, path])
-            $process_vars.set('contents to copy', @contents_to_copy.size)
-            $process_vars.set('contents to copy queue', @contents_to_copy_queue.size)
+            if @contents_under_copy.size < @max_contents_under_copy
+              @contents_under_copy[checksum] = [path, false, Time.now]
+              $process_vars.set('contents under copy', @contents_under_copy.size)
+              @copy_input_queue.push([:SEND_ACK_MESSAGE, checksum])
+              $process_vars.set('Copy File Queue Size', @copy_input_queue.size)
+            else
+              # no place in copy streams. Add to waiting list
+              Log.debug2("add content:#{checksum} to copy waiting list")
+              @contents_to_copy[checksum] = true  # replace with a set
+              @contents_to_copy_queue.push([checksum, path])
+              $process_vars.set('contents to copy queue', @contents_to_copy_queue.size)
+            end
           else
             Log.debug2("content:#{checksum} already in waiting list. skipping.")
           end
@@ -75,31 +83,20 @@ module ContentServer
 
     def remove_content(checksum)
       @keeper.synchronize{
-        @contents_under_copy.delete(checksum)
         Log.debug3("removing checksum:#{checksum} from contents under copy")
+        @contents_under_copy.delete(checksum)
         $process_vars.set('contents under copy', @contents_under_copy.size)
+        #1 place is became available. Put another file in copy process if waiting
+        if (@contents_to_copy_queue.size > 0)
+          new_content = @contents_to_copy_queue.pop
+          $process_vars.set('contents to copy queue', @contents_to_copy_queue.size)
+          @contents_to_copy.delete(new_content[0])
+          @contents_under_copy[new_content[0]] = [new_content[1], false, Time.now]
+          $process_vars.set('contents under copy', @contents_under_copy.size)
+          @copy_input_queue.push([:SEND_ACK_MESSAGE, new_content[0]])
+          $process_vars.set('Copy File Queue Size', @copy_input_queue.size)
+        end
       }
-    end
-
-    # Pull next content to start copy process
-    def start_copy_thread
-      @thread = Thread.new do
-        loop {
-          while @contents_under_copy.size < @max_contents_under_copy
-            new_content = @contents_to_copy_queue.pop
-            $process_vars.set('contents to copy queue', @contents_to_copy_queue.size)
-            @keeper.synchronize{
-              @contents_to_copy.delete(new_content[0])
-              $process_vars.set('contents to copy', @contents_to_copy.size)
-              @contents_under_copy[new_content[0]] = [new_content[1], false, Time.now]
-              $process_vars.set('contents under copy', @contents_under_copy.size)
-              @copy_input_queue.push([:SEND_ACK_MESSAGE, new_content[0]])
-              $process_vars.set('Copy File Queue Size', @copy_input_queue.size)
-            }
-          end
-          sleep 0.1
-        }
-      end
     end
 
     # clean timed out contents
@@ -108,16 +105,28 @@ module ContentServer
         loop {
           sleep 10
           @keeper.synchronize{
-
             # clean timed out contents
             time_now = Time.now
+            new_contents_under_copy = {}
             @contents_under_copy.each_key { |checksum|
               if time_now - @contents_under_copy[checksum][2] > Params['local_timeout']
                 @contents_under_copy.delete(checksum)
                 $process_vars.set('contents under copy', @contents_under_copy.size)
                 Log.warning("Content:#{checksum} has timed out on copy process")
                 @file_streamer.abort_streaming(checksum)
+                if (@contents_to_copy_queue.size > 0)
+                  new_content = @contents_to_copy_queue.pop
+                  $process_vars.set('contents to copy queue', @contents_to_copy_queue.size)
+                  @contents_to_copy.delete(new_content[0])
+                  new_contents_under_copy[new_content[0]] = new_content[1]
+                end
               end
+            }
+            new_contents_under_copy.each_key { |checksum|
+              @contents_under_copy[checksum.clone] = [new_contents_under_copy[checksum].clone, false, time_now]
+              $process_vars.set('contents under copy', @contents_under_copy.size)
+              @copy_input_queue.push([:SEND_ACK_MESSAGE, checksum])
+              $process_vars.set('Copy File Queue Size', @copy_input_queue.size)
             }
           }
         }
