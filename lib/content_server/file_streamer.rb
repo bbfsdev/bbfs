@@ -32,6 +32,7 @@ module ContentServer
                         " #{e.to_s}")
         end
         streams_hash.delete(checksum)
+        $process_vars.set('Streams size', streams_hash.size)
       end
     end
 
@@ -133,6 +134,7 @@ module ContentServer
           Log.warning("Could not stream local file #{path}. #{e.to_s}")
         end
         @streams[checksum] = Stream.new(checksum, path, file, file.size)
+        $process_vars.set('Streams size', @streams.size)
       else
         @streams[checksum].file.seek(offset)
       end
@@ -197,7 +199,7 @@ module ContentServer
 
     # open new stream
     def handle_new_stream(file_checksum, file_size)
-      Log.info("enter handle_new_stream")
+      Log.debug1("enter handle_new_stream")
       # final destination path
       tmp_path = FileReceiver.destination_filename(
           File.join(Params['backup_destination_folder'][0]['path'], 'tmp'),
@@ -213,6 +215,7 @@ module ContentServer
         FileUtils.makedirs(File.dirname(tmp_path)) unless File.directory?(File.dirname(tmp_path))
         tmp_file = File.new(tmp_path, 'wb')
         @streams[file_checksum] = Stream.new(file_checksum, tmp_path, tmp_file, file_size)
+        $process_vars.set('Streams size', @streams.size)
       end
     end
 
@@ -244,7 +247,6 @@ module ContentServer
         path = FileReceiver.destination_filename(Params['backup_destination_folder'][0]['path'],
                                                  file_checksum)
         Log.debug1("Moving tmp file #{@streams[file_checksum].path} to #{path}")
-        Log.debug1("Creating directory: #{path}")
         file_dir = File.dirname(path)
         FileUtils.makedirs(file_dir) unless File.directory?(file_dir)
         # Move tmp file to permanent location.
@@ -259,13 +261,19 @@ module ContentServer
             File.rename(tmp_file_path, path)
             Log.debug1("End move tmp file to permanent location #{path}.")
             @file_done_clb.call(local_file_checksum, path) unless @file_done_clb.nil?
-          rescue IOError => e
-            Log.warning("Could not move tmp file to permanent file #{path}. #{e.to_s}")
+          rescue Exception => e
+            Log.warning("Could not move tmp file to permanent path #{path}." +
+                        " Error msg:#{e.message}\nError type:#{e.type}")
           end
         else
-          Log.error(message)
-          Log.debug1("Deleting tmp file: #{tmp_file_path}")
-          File.delete(tmp_file_path)
+          begin
+            Log.error(message)
+            Log.debug1("Deleting tmp file: #{tmp_file_path}")
+            File.delete(tmp_file_path)
+          rescue Exception => e
+            Log.warning("Could not delete tmp file from tmp path #{tmp_file_path}." +
+                            " Error msg:#{e.message}\nError type:#{e.type}")
+          end
         end
       else
         Log.error("Handling last chunk and tmp stream does not exists.")
