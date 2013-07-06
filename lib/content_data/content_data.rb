@@ -33,10 +33,13 @@ module ContentData
       ObjectSpace.define_finalizer(self,
                                    self.class.method(:finalize).to_proc)
       $process_vars.inc('ContentData size')
+      @instances = {}  # location --> checksum to optimize instances query
       if other.nil?
         @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
+        @instances_info = {}  # location --> checksum to optimize instances query
       else
         @contents_info = other.clone_contents_info
+        @instances_info = other.clone_instances_info  # location --> checksum to optimize instances query
       end
     end
 
@@ -44,7 +47,13 @@ module ContentData
       $process_vars.dec('ContentData size')
     end
 
-    # getting a cloned data base
+    def clone_instances_info
+      @instances_info.keys.inject({}) { |clone_instances_info, location|
+        clone_instances_info[[location[0].clone, location[1].clone]] = @instances_info[location].clone
+        clone_instances_info
+      }
+    end
+
     def clone_contents_info
       @contents_info.keys.inject({}) { |clone_contents_info, checksum|
         instances = @contents_info[checksum]
@@ -138,6 +147,7 @@ module ContentData
         instances = content_info[1]
         instances[location] = modification_time
       end
+      @instances_info[location] = checksum
     end
 
     def empty?
@@ -148,55 +158,37 @@ module ContentData
       @contents_info.has_key?(checksum)
     end
 
-
-    # TODO (genadyp) consider about using hash for optional defining of parameters
-    def instance_exists(path, server, checksum=nil)
-      location = [server, path]
-      if checksum.nil?
-        @contents_info.values.any? { |content_db|
-          content_db[1].has_key?(location)
-        }
-      else
-        content_info = @contents_info[checksum]
-        return false if content_info.nil?
-        content_info[1].has_key?(location)
-      end
+    def instance_exists(path, server)
+      @instances_info.has_key?([server, path])
     end
 
     def stats_by_location(location)
-      @contents_info.each_value { |content_db|
-        if content_db[1].has_key?(location)
-          return [content_db[0], content_db[1][location]]
-        end
-      }
-      return nil
+      checksum = @instances_info[location]
+      content_info = @contents_info[checksum]
+      return nil if content_info.nil?
+      return [content_info[0], content_info[1][location]]
     end
 
-
-    # removes an instance from known content (faster then unknown content)
-    # remove also the content, if content becomes empty
-    def remove_instance(location, checksum=nil)
-      if checksum.nil?
-        @contents_info.keys.each { |checksum|
-          instances =  @contents_info[checksum][1]
-          instances.delete(location)
-          @contents_info.delete(checksum) if instances.empty?
-        }
-      else
-        content_info = @contents_info[checksum]
-        unless content_info.nil?
-          instances =  content_info[1]
-          instances.delete(location)
-          @contents_info.delete(checksum) if instances.empty?
-        end
-      end
+    # removes an instance.
+    # removes also the content, if content becomes empty
+    def remove_instance(location)
+      checksum = @instances_info[location]
+      content_info = @contents_info[checksum]
+      return nil if content_info.nil?
+      instances = content_info[1]
+      instances.delete(location)
+      @contents_info.delete(checksum) if instances.empty?
+      @instances_info.delete(location)
     end
 
     def remove_directory(dir_to_remove, server)
       @contents_info.keys.each { |checksum|
         instances =  @contents_info[checksum][1]
-        instances.delete_if { |location, _|
-          location[0] == server and location[1].scan(dir_to_remove).size > 0
+        instances.each_key { |location|
+          if location[0] == server and location[1].scan(dir_to_remove).size > 0
+            instances.delete(location)
+            @instances_info.delete(location)
+          end
         }
         @contents_info.delete(checksum) if instances.empty?
       }
@@ -207,6 +199,7 @@ module ContentData
       return false if other.nil?
       return false if @contents_info.size != other.contents_size
       other.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
+        return false if instance_exists(path, server) != other.instance_exists(path, server)
         local_content_info = @contents_info[checksum]
         return false if local_content_info.nil?
         return false if local_content_info[0] != size
@@ -223,7 +216,13 @@ module ContentData
     end
 
     def remove_content(checksum)
-      @contents_info.delete(checksum)
+      content_info = @contents_info[checksum]
+      if content_info
+        content_info[1].each_key { |location|
+          @instances_info.delete(location)
+        }
+        @contents_info.delete(checksum)
+      end
     end
 
     def to_s
@@ -578,22 +577,16 @@ module ContentData
     return ContentData.new(b) if a.nil?
     c = ContentData.new(b)  # create new cloned content C from B
     # remove contents of A from newly cloned content A
-    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
-      location = [server, path]
-      c.remove_instance(location, checksum)
+    a.each_instance { |_, _, _, _, server, path|
+      c.remove_instance([server, path])
     }
     c
   end
 
   def self.remove_directory(content_data, dir_to_remove, server_to_remove)
     return nil if content_data.nil?
-    result_content_data = ContentData.new()
-    content_data.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
-      # Keep instance if path is not of server to remove or path does not include dir to remove
-      if (server_to_remove!=server) or (path.scan(dir_to_remove).size == 0)
-        result_content_data.add_instance(checksum.clone, size, server, path.clone, instance_mod_time)
-      end
-    }
+    result_content_data = ContentData.new(content_data)  # clone from content_data
+    result_content_data.remove_directory(dir_to_remove, server_to_remove)
     result_content_data
   end
 
