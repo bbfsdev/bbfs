@@ -59,13 +59,6 @@ require 'yaml'
 
 module Params
 
-  @init_debug_messages = []
-  @show_help_and_exit = false
-
-  def Params.get_init_messages
-    return @init_debug_messages
-  end
-
   # Represents a parameter.
   class Param
     attr_accessor :name
@@ -145,8 +138,17 @@ module Params
     end
   end
 
-  # The parameters data structure.
-  @params_data_base = Hash.new
+  @params_data_base = Hash.new # The parameters data structure.
+  @init_info_messages = []
+  @show_help_and_exit = false
+
+  def Params.get_init_info_messages
+    return @init_info_messages
+  end
+
+  def Params.get_init_warning_messages
+    return @init_warning_messages
+  end
 
   def Params.raise_error_if_param_does_not_exist(name)
     if not @params_data_base[name]
@@ -250,26 +252,33 @@ module Params
   # Initializes the project parameters.
   # Precedence is: Defined params, file and command line is highest.
   def Params.init(args)
-    @init_debug_messages = []
+    #define default configuration file
+    Params['conf_file'] = "~/.bbfs/etc/config_#{executable_name}.yml"
+    
+    @init_info_messages = []
+    @init_warning_messages = []
+
+    #parse command line argument and set configuration file if provided by user
     results = parse_command_line_arguments(args)
-    if not results['conf_file'].nil?
+    if results['conf_file']
       Params['conf_file'] = File.expand_path(results['conf_file'])
+      if !File.exist?(Params['conf_file']) or File.directory?(Params['conf_file'])
+        raise("Param:'conf_file' value:'#{Params['conf_file']}' is a file name which does not exist" +
+                  " or a directory name")
+      end
     end
 
+    Params['conf_file'] = File.expand_path(Params['conf_file'])
+
     #load yml params if path is provided and exists
-    if Params['conf_file'].nil?
-      @init_debug_messages << 'Configuration file was not provided.' + \
-                                'Skipping loading file parameters.'
-    else
-      if File.exist?(Params['conf_file'])
-        @init_debug_messages << "Loading parameters from configuration file:'#{Params['conf_file']}'"
-        if not read_yml_params(File.open(Params['conf_file'], 'r'))
-          @init_debug_messages << "Bad configuration file #{Params['conf_file']}."
-        end
-      else
-        @init_debug_messages << "Configuration file path:'#{Params['conf_file']}' does not exist. " + \
-                                "Skipping loading file parameters."
+    if File.exist?(Params['conf_file'])
+      @init_info_messages << "Loading parameters from configuration file:'#{Params['conf_file']}'"
+      if not read_yml_params(File.open(Params['conf_file'], 'r'))
+        raise("Bad configuration file #{Params['conf_file']}.")
       end
+    else
+      @init_warning_messages << "Configuration file path:'#{Params['conf_file']}' does not exist. " + \
+                                "Skipping loading file parameters."
     end
 
     #override command line argument
@@ -288,14 +297,14 @@ module Params
     end
 
     # Add parameters to log init messages (used by Log.init if param:print_params_to_stdout is true)
-    @init_debug_messages << 'Initialized executable parameters:'
-    @init_debug_messages << '---------------------------------'
+    @init_info_messages << 'Initialized executable parameters:'
+    @init_info_messages << '---------------------------------'
     counter=0
     @params_data_base.values.each do |param|
       counter += 1
-      @init_debug_messages << "Param ##{counter}: #{param.name}=#{param.value}"
+      @init_info_messages << "Param ##{counter}: #{param.name}=#{param.value}"
     end
-    @init_debug_messages << '---------------------------------'
+    @init_info_messages << '---------------------------------'
   end
 
   # Load yml params and override default values.
@@ -399,16 +408,8 @@ paths:
     /([a-zA-Z0-9\-_\.]+):\d+/ =~ caller[caller.size-1]
     return $1
   end
-  #define default params:
-  # 1. configuration file
-  if $0 =~ /content_server/
-    Params.path('conf_file', '~/.bbfs/etc/config_content_server.yml', 'Configuration file path.')
-  elsif $0 =~ /backup_server/
-    Params.path('conf_file', '~/.bbfs/etc/config_backup_server.yml', 'Configuration file path.')
-  else
-    Params.path('conf_file', nil, 'Configuration file path.')
-  end
-  # 2. Print params to stdout
+  
+  Params.path('conf_file', nil, 'Configuration file path.')
   Params.boolean('print_params_to_stdout', false, 'print_params_to_stdout or not during Params.init')
 
   private_class_method :parse_command_line_arguments, \

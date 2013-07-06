@@ -103,14 +103,21 @@ module Log
     # Write init message and user parameters
     @log4r.info('BBFS Log initialized.') # log first data
 
-    # print params
+    # print params to console
     if Params['print_params_to_stdout']
-      Params.get_init_messages().each { |msg|
-        Log.info(msg)
+      Params.get_init_info_messages().each { |msg|
+        puts(msg)
       }
     else
-      Log.info("Not printing executable parameters since param:'print_params_to_stdout' is false")
+      Log.info("Not printing executable parameters to console since param:'print_params_to_stdout' is false")
     end
+    #print params to log info and warning
+    Params.get_init_info_messages().each { |msg|
+      Log.info(msg)
+    }
+    Params.get_init_warning_messages().each { |msg|
+      Log.warning(msg)
+    }
   end
 
   # Auxiliary method to add the calling method to the message
