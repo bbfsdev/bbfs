@@ -15,6 +15,7 @@ module ContentServer
     #Write exception message to console
     message = "\nInterrupt or Exit happened in server:'#{Params['service_name']}'.\n" +
       "Exception type:'#{exception.class}'.\n" +
+      "Exception message:'#{exception.message}'.\n" +
       "Stopping process.\n" +
       "Backtrace:\n#{exception.backtrace.join("\n")}"
     puts(message)
