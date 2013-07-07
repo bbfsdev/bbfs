@@ -42,9 +42,15 @@ module ContentData
       }
     end
 
-    def remove_instance(location, checksum=nil)
+    def remove_instance(server, path)
       @last_content_data_available_mutex.synchronize {
-        @last_content_data.remove_instance(location, checksum)
+        @last_content_data.remove_instance([server, path])
+      }
+    end
+
+    def remove_directory(server, path)
+      @last_content_data_available_mutex.synchronize {
+        @last_content_data.remove_directory(path, server)
       }
     end
 
