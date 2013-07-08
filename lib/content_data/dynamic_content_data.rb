@@ -50,7 +50,7 @@ module ContentData
 
     def remove_directory(server, path)
       @last_content_data_available_mutex.synchronize {
-        @last_content_data.remove_directory(path, server)
+        @last_content_data.remove_directory(server, path)
       }
     end
 

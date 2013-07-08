@@ -182,7 +182,7 @@ module ContentData
       @instances_info.delete(location)
     end
 
-    def remove_directory(dir_to_remove, server)
+    def remove_directory(server, dir_to_remove)
       @contents_info.keys.each { |checksum|
         instances =  @contents_info[checksum][1]
         instances.each_key { |location|
