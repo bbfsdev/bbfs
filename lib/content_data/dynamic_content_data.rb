@@ -44,7 +44,7 @@ module ContentData
 
     def remove_instance(server, path)
       @last_content_data_available_mutex.synchronize {
-        @last_content_data.remove_instance([server, path])
+        @last_content_data.remove_instance(server, path)
       }
     end
 

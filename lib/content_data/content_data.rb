@@ -171,7 +171,8 @@ module ContentData
 
     # removes an instance.
     # removes also the content, if content becomes empty
-    def remove_instance(location)
+    def remove_instance(server, path)
+      location = [server, path]
       checksum = @instances_info[location]
       content_info = @contents_info[checksum]
       return nil if content_info.nil?
@@ -578,7 +579,7 @@ module ContentData
     c = ContentData.new(b)  # create new cloned content C from B
     # remove contents of A from newly cloned content A
     a.each_instance { |_, _, _, _, server, path|
-      c.remove_instance([server, path])
+      c.remove_instance(server, path)
     }
     c
   end
