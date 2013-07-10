@@ -47,7 +47,14 @@ module ContentServer
     # Read here for initial content data that exist from previous system run
     initial_content_data = ContentData::ContentData.new
     content_data_path = Params['local_content_data_path']
-    initial_content_data.from_file(content_data_path) if File.exists?(content_data_path)
+    if File.exists?(content_data_path) and !File.directory?(content_data_path)
+      Log.info("reading initial content data that exist from previous system run from file:#{content_data_path}")
+      initial_content_data.from_file(content_data_path)
+    else
+      raise("Param:'local_content_data_path':'#{content_data_path}' is a file name which does not exist" +
+                " or a directory name")
+    end
+
     # Update local dynamic content with existing content
     $local_dynamic_content_data = ContentData::DynamicContentData.new
     $local_dynamic_content_data.update(initial_content_data)
