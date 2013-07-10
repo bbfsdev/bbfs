@@ -4,11 +4,12 @@
 # The files in those directories are indexed (calculating their SHA1).
 # Each unique content is backed up to the remote (backup) server.
 
-require 'content_server/server'
+require 'content_server'  #todo: yarondbb need it?
+require 'content_server/content_server'  # specific content server impl
+require 'content_server/server'  # shared file between content\backup
 require 'log'
 require 'params'
 require 'run_in_background'
-require 'content_server'
 
 Params.init ARGV
 Log.init
