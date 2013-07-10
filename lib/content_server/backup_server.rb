@@ -56,7 +56,6 @@ module ContentServer
 
     # Read here for initial content data that exist from previous system run
     initial_content_data = ContentData::ContentData.new
-    initial_content_data = ContentData::ContentData.new
     content_data_path = Params['local_content_data_path']
     if File.exists?(content_data_path) and !File.directory?(content_data_path)
       Log.info("reading initial content data that exist from previous system run from file:#{content_data_path}")
