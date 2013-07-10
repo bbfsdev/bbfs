@@ -3,6 +3,8 @@
 require 'log'
 require 'params'
 require 'content_server'
+require 'content_server/content_server'  # specific content server impl
+require 'content_server/backup_server' # specific backup server impl
 require 'content_data'
 require 'email'
 require 'file_utils/file_generator/file_generator'
