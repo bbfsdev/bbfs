@@ -86,10 +86,9 @@ class TestContentData < Test::Unit::TestCase
                               "/home/file_1", 2222222222)
     assert_equal(true, content_data.content_exists('A1'))
     assert_equal(true, content_data.instance_exists('/home/file_1', 'server_1'))
-    content_data.remove_instance(['server_1','/home/file_1'])
+    content_data.remove_instance('server_1', '/home/file_1')
     assert_equal(false, content_data.instance_exists('/home/file_1', 'server_1'))
     assert_equal(false, content_data.content_exists('A1'))
-
 
     #remove instance does not remove content
     content_data.add_instance("A1", 50, "server_1",
@@ -98,12 +97,12 @@ class TestContentData < Test::Unit::TestCase
                               "/home/file_2", 3333333333)
     assert_equal(true, content_data.content_exists('A1'))
     assert_equal(true, content_data.instance_exists('/home/file_1', 'server_1'))
-    content_data.remove_instance(['server_1','/home/file_1'])
+    content_data.remove_instance('server_1', '/home/file_1')
     assert_equal(false, content_data.instance_exists('/home/file_1', 'server_1'))
     assert_equal(true, content_data.content_exists('A1'))
 
     #remove also removes content
-    content_data.remove_instance(['server_1', '/home/file_2'])
+    content_data.remove_instance('server_1', '/home/file_2')
     assert_equal(false, content_data.instance_exists('/home/file_1', 'server_1'))
     assert_equal(false, content_data.content_exists('A1'))
   end
@@ -137,9 +136,9 @@ class TestContentData < Test::Unit::TestCase
                                 "/home/file_3", 55555555555)
     content_data_merged = ContentData.merge(content_data_a, content_data_b)
     assert_equal(content_data_merged.to_s, "2\nB1,60,44444444444\nA1,50,22222222222\n3\nB1,60,server_1,/home/file_2,44444444444\nB1,60,server_1,/home/file_3,55555555555\nA1,50,server_1,/home/file_1,22222222222\n")
-    content_data_a.remove_instance(['server_1','/home/file_1'])
+    content_data_a.remove_instance('server_1', '/home/file_1')
     assert_equal(content_data_merged.to_s, "2\nB1,60,44444444444\nA1,50,22222222222\n3\nB1,60,server_1,/home/file_2,44444444444\nB1,60,server_1,/home/file_3,55555555555\nA1,50,server_1,/home/file_1,22222222222\n")
-    content_data_b.remove_instance(['server_1','/home/file_2'])
+    content_data_b.remove_instance('server_1', '/home/file_2')
     assert_equal(content_data_merged.to_s, "2\nB1,60,44444444444\nA1,50,22222222222\n3\nB1,60,server_1,/home/file_2,44444444444\nB1,60,server_1,/home/file_3,55555555555\nA1,50,server_1,/home/file_1,22222222222\n")
 
   end
@@ -160,10 +159,10 @@ class TestContentData < Test::Unit::TestCase
     assert_equal("2\nA1,50,22222222222\nB1,60,44444444444\n3\nA1,50,server_1,/home/file_1,22222222222\nB1,60,server_1,/home/file_2,44444444444\nB1,60,server_1,/home/file_3,55555555555\n",
                  content_data_merged.to_s)
 
-    content_data_a.remove_instance(['server_1','/home/file_1'])
+    content_data_a.remove_instance('server_1', '/home/file_1')
     assert_equal("2\nA1,50,22222222222\nB1,60,44444444444\n3\nA1,50,server_1,/home/file_1,22222222222\nB1,60,server_1,/home/file_2,44444444444\nB1,60,server_1,/home/file_3,55555555555\n",
                  content_data_merged.to_s)
-    content_data_b.remove_instance(['server_1','/home/file_2'])
+    content_data_b.remove_instance('server_1', '/home/file_2')
     assert_equal("2\nA1,50,22222222222\nB1,60,44444444444\n2\nA1,50,server_1,/home/file_1,22222222222\nB1,60,server_1,/home/file_3,55555555555\n",
                  content_data_b.to_s)
 
@@ -186,9 +185,9 @@ class TestContentData < Test::Unit::TestCase
                                 "/home/file_3", 55555555555)
     content_data_removed = ContentData.remove(content_data_a, content_data_b)
     assert_equal(content_data_removed.to_s, "1\nB1,60,44444444444\n2\nB1,60,server_1,/home/file_2,44444444444\nB1,60,server_1,/home/file_3,55555555555\n")
-    content_data_a.remove_instance(['server_1','/home/file_1'])
+    content_data_a.remove_instance('server_1', '/home/file_1')
     assert_equal(content_data_removed.to_s, "1\nB1,60,44444444444\n2\nB1,60,server_1,/home/file_2,44444444444\nB1,60,server_1,/home/file_3,55555555555\n")
-    content_data_b.remove_instance(['server_1','/home/file_2'])
+    content_data_b.remove_instance('server_1', '/home/file_2')
     assert_equal(content_data_removed.to_s, "1\nB1,60,44444444444\n2\nB1,60,server_1,/home/file_2,44444444444\nB1,60,server_1,/home/file_3,55555555555\n")
 
     #check nil
@@ -214,9 +213,9 @@ class TestContentData < Test::Unit::TestCase
                                 "/home/file_3", 55555555555)
     content_data_removed = ContentData.remove_instances(content_data_a, content_data_b)
     assert_equal(content_data_removed.to_s,"2\nA1,50,22222222222\nB1,60,44444444444\n3\nA1,50,server_1,extra_inst,66666666666\nB1,60,server_1,/home/file_2,44444444444\nB1,60,server_1,/home/file_3,55555555555\n")
-    content_data_a.remove_instance(['server_1','/home/file_1'])
+    content_data_a.remove_instance('server_1', '/home/file_1')
     assert_equal(content_data_removed.to_s,"2\nA1,50,22222222222\nB1,60,44444444444\n3\nA1,50,server_1,extra_inst,66666666666\nB1,60,server_1,/home/file_2,44444444444\nB1,60,server_1,/home/file_3,55555555555\n")
-    content_data_b.remove_instance(['server_1','/home/file_2'])
+    content_data_b.remove_instance('server_1', '/home/file_2')
     assert_equal(content_data_removed.to_s,"2\nA1,50,22222222222\nB1,60,44444444444\n3\nA1,50,server_1,extra_inst,66666666666\nB1,60,server_1,/home/file_2,44444444444\nB1,60,server_1,/home/file_3,55555555555\n")
 
     #assert_equal(content_data_b, nil)
@@ -243,7 +242,7 @@ class TestContentData < Test::Unit::TestCase
     assert_equal("1\nA1,50,22222222222\n1\nA1,50,server_1,extra_inst,66666666666\n",
                  content_data_removed.to_s)
 
-    content_data_b.remove_instance(['server_1','/home/file_2'])
+    content_data_b.remove_instance('server_1', '/home/file_2')
     assert_equal("1\nA1,50,22222222222\n1\nA1,50,server_1,extra_inst,66666666666\n",
                  content_data_removed.to_s)
 
