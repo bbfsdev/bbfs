@@ -45,12 +45,12 @@ module ContentServer
             Log.debug2("NonExisting/Changed (file): #{path}")
             # Remove file but only when non-existing.
             Log.debug1("File to remove: #{path}")
-            @local_dynamic_content_data.remove_instance([Params['local_server_name'],path])
+            @local_dynamic_content_data.remove_instance(Params['local_server_name'], path)
           elsif state == FileMonitoring::FileStatEnum::NON_EXISTING && is_dir
             Log.debug2("NonExisting/Changed (dir): #{path}")
             # Remove directory but only when non-existing.
             Log.debug1("Directory to remove: #{path}")
-            @local_dynamic_content_data.remove_directory(path, Params['local_server_name'])
+            @local_dynamic_content_data.remove_directory(Params['local_server_name'], path)
           else
             Log.debug1("This case should not be handled: #{state}, #{is_dir}, #{path}.")
           end

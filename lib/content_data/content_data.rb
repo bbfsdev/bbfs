@@ -169,9 +169,11 @@ module ContentData
       return [content_info[0], content_info[1][location]]
     end
 
-    # removes an instance.
-    # removes also the content, if content becomes empty
-    def remove_instance(location)
+    # removes an instance record both in @instances_info and @instances_info.
+    # input params: server & path - are the instance unique key (called location)
+    # removes also the content, if content becomes empty after removing the instance
+    def remove_instance(server, path)
+      location = [server, path]
       checksum = @instances_info[location]
       content_info = @contents_info[checksum]
       return nil if content_info.nil?
@@ -181,7 +183,11 @@ module ContentData
       @instances_info.delete(location)
     end
 
-    def remove_directory(dir_to_remove, server)
+    # removes all instances records which are located under input param: dir_to_remove.
+    # found records are removed from both @instances_info and @instances_info.
+    # input params: server & dir_to_remove - are used to check each instance unique key (called location)
+    # removes also content\s, if a content\s become\s empty after removing instance\s
+    def remove_directory(server, dir_to_remove)
       @contents_info.keys.each { |checksum|
         instances =  @contents_info[checksum][1]
         instances.each_key { |location|
@@ -578,7 +584,7 @@ module ContentData
     c = ContentData.new(b)  # create new cloned content C from B
     # remove contents of A from newly cloned content A
     a.each_instance { |_, _, _, _, server, path|
-      c.remove_instance([server, path])
+      c.remove_instance(server, path)
     }
     c
   end
