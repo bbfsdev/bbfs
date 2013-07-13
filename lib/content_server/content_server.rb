@@ -53,8 +53,9 @@ module ContentServer
       Log.info("reading initial content data that exist from previous system run from file:#{content_data_path}")
       initial_content_data.from_file(content_data_path)
     else
-      raise("Param:'local_content_data_path':'#{content_data_path}' is a file name which does not exist" +
-                " or a directory name")
+      if File.directory?(content_data_path)
+        raise("Param:'local_content_data_path':'#{Params['local_content_data_path']}'cannot be a directory name")
+      end
     end
 
     # Update local dynamic content with existing content
