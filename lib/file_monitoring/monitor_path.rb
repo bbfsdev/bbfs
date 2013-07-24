@@ -37,7 +37,7 @@ module FileMonitoring
     def initialize(path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
       ObjectSpace.define_finalizer(self,
                                    self.class.method(:finalize).to_proc)
-      $process_vars.inc('FileStat size')
+      $process_vars.inc('FileStat size') if self.instance_of?(FileStat)
       @path ||= path
       @size = nil
       @creation_time = nil
@@ -48,7 +48,7 @@ module FileMonitoring
     end
 
     def self.finalize(id)
-      $process_vars.dec('FileStat size')
+      $process_vars.dec('FileStat size') if self.instance_of?(FileStat)
     end
 
     def set_output_queue(event_queue)
@@ -117,7 +117,7 @@ module FileMonitoring
           @@log.info(state + ": " + path)
           @@log.outputters[0].flush if Params['log_flush_each_message']
         end
-        if (!@event_queue.nil?)
+        if @event_queue and FileStatEnum::NEW != @state  # NEW state is ignored in indexer
           Log.debug1 "Writing to event queue [#{self.state}, #{self.path}]"
           @event_queue.push([self.state, self.instance_of?(DirStat), self.path,
                              self.modification_time, self.size])

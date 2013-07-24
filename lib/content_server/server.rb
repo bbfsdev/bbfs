@@ -47,27 +47,24 @@ module ContentServer
   end
 
   def monitor_general_process_vars
-    mutex = Mutex.new
     while true do
       sleep(Params['process_vars_delay'])
       $process_vars.set('time', Time.now)
-      #enable following line to see full list of object:count
-      #obj_array = ''
-      total_obj_count = 0
-      string_count = 0
-      mutex.synchronize do
-        ObjectSpace.each_object(Class) {|obj|
-          obj_count_per_class = ObjectSpace.each_object(obj).count
-          #enable following line to see full list of object:count
-          #obj_array = "#{obj_array} * #{obj.name}:#{obj_count_per_class}"
-          total_obj_count = total_obj_count + obj_count_per_class
-        }
-        string_count = ObjectSpace.each_object(String).count
-      end
-      #enable following line to see full list of object:count
-      #$process_vars.set('Live objs full', obj_array)
-      $process_vars.set('Live objs total', total_obj_count)
-      $process_vars.set('Live String size', string_count)
+      count = ObjectSpace.each_object(String).count
+      $process_vars.set('String count', count)
+      count = ObjectSpace.each_object(ContentData::ContentData).count
+      $process_vars.set('ContentData count', count)
+      dir_count = ObjectSpace.each_object(FileMonitoring::DirStat).count
+      $process_vars.set('DirStat count', count)
+      file_count = ObjectSpace.each_object(FileMonitoring::FileStat).count
+      $process_vars.set('FileStat count', file_count-dir_count)
+
+      #i=0
+      #ObjectSpace.each_object(FileMonitoring::DirStat) { |o|
+      #  i+=1
+      #  $process_vars.set("dir-#{i}", o.to_s)
+      #}
+
     end
   end
 
