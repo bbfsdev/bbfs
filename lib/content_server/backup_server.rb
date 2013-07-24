@@ -91,7 +91,6 @@ module ContentServer
     # Start dump local content data to file thread
     Log.debug1('Start dump local content data to file thread')
     all_threads << Thread.new do
-      dir = File.dirname()
       FileUtils.mkdir_p(Params['tmp_path']) unless File.directory?(Params['tmp_path'])
       last_data_flush_time = nil
       while true do
