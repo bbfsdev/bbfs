@@ -41,6 +41,9 @@ module TestingServer
   def init_log4r
     #init log4r
     log_path = Params['testing_log_path']
+    unless log_path
+      raise("pls specify testing log path through param:'testing_log_path'")
+    end
     log_dir = File.dirname(log_path)
     FileUtils.mkdir_p(log_dir) unless File.exists?(log_dir)
 
