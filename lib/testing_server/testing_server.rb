@@ -182,7 +182,7 @@ module TestingServer
       end
     end
   end
-  module_function :run_backup_testing_server
+
 
   def generate_mem_report
     # Generate memory report
@@ -225,7 +225,8 @@ EOF
                      'Testing server update',
                      msg)
   end
-  module_function :send_email
+
+  module_function :send_email, :run_backup_testing_server, :init_log4r
 
 end # module TestingServer
 
