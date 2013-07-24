@@ -12,6 +12,8 @@ local_content_data_port: 3333 # TCP/IP port to start server to send content data
 #content data file, i.e., state of content server.
 local_content_data_path: '~/.bbfs/var/test.content.data' # File to store content data
 default_monitoring_log_path: '~/.bbfs/log/content_file_monitoring.log' # Log of file changes
+testing_log_path: '~/.bbfs/log/content_testing_log.log'
+
 # Paths to monitor\backup files from. All path files and recursive sub paths are used.
 monitoring_paths:
   - path: '~/.bbfs/test_files'

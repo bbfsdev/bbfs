@@ -1,3 +1,4 @@
+require 'log'
 require 'params'
 require 'process_monitoring/thread_safe_hash'
 
@@ -24,6 +25,7 @@ module ContentServer
     $process_vars = ThreadSafeHash::ThreadSafeHashMonitored.new(Params['enable_monitoring'])
     $tmp_content_data_file = nil  # will be init during execution
     $local_dynamic_content_data = nil  # will be init during execution
+    $monitoring_process_vars_report = ""
   end
 
   def handle_program_termination(exception)
@@ -47,18 +49,38 @@ module ContentServer
   end
 
   def monitor_general_process_vars
+    objects_counters = {}
+    objects_counters["Time"] = Time.now.to_i
     while true do
+      current_objects_counters = {}
       sleep(Params['process_vars_delay'])
-      $process_vars.set('time', Time.now)
+      time = Time.now
+      $process_vars.set('time', time)
+      current_objects_counters['Time'] = time.to_i
       count = ObjectSpace.each_object(String).count
       $process_vars.set('String count', count)
+      current_objects_counters['String'] = count
       count = ObjectSpace.each_object(ContentData::ContentData).count
       $process_vars.set('ContentData count', count)
+      current_objects_counters['ContentData'] = count
       dir_count = ObjectSpace.each_object(FileMonitoring::DirStat).count
-      $process_vars.set('DirStat count', count)
+      $process_vars.set('DirStat count', dir_count)
+      current_objects_counters['DirStat'] = dir_count
       file_count = ObjectSpace.each_object(FileMonitoring::FileStat).count
       $process_vars.set('FileStat count', file_count-dir_count)
+      current_objects_counters['FileStat'] = file_count-dir_count
 
+      # Generate report and update global counters
+      report = ""
+      current_objects_counters.each_key { |type|
+        objects_counters[type] = 0 unless objects_counters[type]
+        diff =  current_objects_counters[type] - objects_counters[type]
+        report += "Type:#{type} raised in:#{diff}   \n"
+        objects_counters[type] = current_objects_counters[type]
+      }
+      $process_vars.set('MEM REPORT', report)
+      $monitoring_process_vars_report += "MEM REPORT at:#{time}:\n#{report}\n"
+      Log.info($monitoring_process_vars_report)
       #i=0
       #ObjectSpace.each_object(FileMonitoring::DirStat) { |o|
       #  i+=1
