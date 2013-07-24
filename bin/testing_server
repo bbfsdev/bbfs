@@ -18,6 +18,7 @@ Params.string('server_to_test', nil, 'Server that will be run under test_server.
 
 Params.init ARGV
 Log.init
+ContentServer.init_globals
 
 Thread.abort_on_exception = true
 
@@ -42,7 +43,7 @@ rescue SystemExit, SignalException => exc
   Log.flush
   exit
 rescue Exception => exc
-  Log.puts("Exception happened in #{Params['service_name']} server: #{exc.class}:#{exc.message}\nBacktrace:\n" +
+  puts("Exception happened in #{Params['service_name']} server: #{exc.class}:#{exc.message}\nBacktrace:\n" +
                 "#{exc.backtrace.join("\n")}")
   Log.error("Exception happened in #{Params['service_name']} server: #{exc.class}:#{exc.message}\nBacktrace:\n" +
                 "#{exc.backtrace.join("\n")}")
