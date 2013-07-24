@@ -64,6 +64,9 @@ module ContentServer
       if File.directory?(content_data_path)
         raise("Param:'local_content_data_path':'#{Params['local_content_data_path']}'cannot be a directory name")
       end
+      # create directory if needed
+      dir = File.dirname(Params['local_content_data_path'])
+      FileUtils.mkdir_p(dir) unless File.exists?(dir)
     end
     # Update local dynamic content with existing content
     $local_dynamic_content_data = ContentData::DynamicContentData.new
@@ -88,6 +91,8 @@ module ContentServer
     # Start dump local content data to file thread
     Log.debug1('Start dump local content data to file thread')
     all_threads << Thread.new do
+      dir = File.dirname()
+      FileUtils.mkdir_p(Params['tmp_path']) unless File.directory?(Params['tmp_path'])
       last_data_flush_time = nil
       while true do
         if last_data_flush_time.nil? || last_data_flush_time + Params['data_flush_delay'] < Time.now.to_i

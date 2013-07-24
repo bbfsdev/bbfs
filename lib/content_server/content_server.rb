@@ -54,6 +54,9 @@ module ContentServer
       if File.directory?(content_data_path)
         raise("Param:'local_content_data_path':'#{Params['local_content_data_path']}'cannot be a directory name")
       end
+      # create directory if needed
+      dir = File.dirname(Params['local_content_data_path'])
+      FileUtils.mkdir_p(dir) unless File.exists?(dir)
     end
 
     # Update local dynamic content with existing content
