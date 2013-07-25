@@ -143,8 +143,6 @@ module FileMonitoring
       @files = nil
       @non_utf8_paths = {}
       @content_data_cache = content_data_cache
-      ObjectSpace.define_finalizer(self,
-                                   self.class.method(:finalize).to_proc)
     end
 
     #  Adds directory for monitoring.
