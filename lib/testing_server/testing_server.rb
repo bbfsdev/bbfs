@@ -210,7 +210,7 @@ module TestingServer
       $objects_counters[type] = current_objects_counters[type]
     }
     final_report = "Memory report at Time:#{time}:\n#{report}\n"
-    $log4r.Info(final_report)
+    $log4r.info(final_report)
     final_report
   end
   def send_email(is_master_ok, is_cur_synch_ok, is_backup_ok, numb_backuped_contents)
