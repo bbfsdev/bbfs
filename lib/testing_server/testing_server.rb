@@ -229,7 +229,7 @@ EOF
                      msg)
   end
 
-  module_function :send_email, :run_backup_testing_server, :init_log4r
+  module_function :send_email, :run_backup_testing_server, :init_log4r, :generate_mem_report
 
 end # module TestingServer
 
