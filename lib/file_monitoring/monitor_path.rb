@@ -35,9 +35,6 @@ module FileMonitoring
     # * <tt>path</tt> - File location
     # * <tt>stable_state</tt> - Number of iterations to move unchanged file to stable state
     def initialize(path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
-      ObjectSpace.define_finalizer(self,
-                                   self.class.method(:finalize).to_proc)
-      $process_vars.inc('FileStat size') if self.instance_of?(FileStat)
       @path ||= path
       @size = nil
       @creation_time = nil
@@ -45,10 +42,6 @@ module FileMonitoring
       @cycles = 0  # number of iterations from the last file modification
       @state = state
       @stable_state = stable_state  # number of iteration to move unchanged file to stable state
-    end
-
-    def self.finalize(id)
-      $process_vars.dec('FileStat size') if self.instance_of?(FileStat)
     end
 
     def set_output_queue(event_queue)
@@ -145,9 +138,6 @@ module FileMonitoring
     # * <tt>path</tt> - File location
     # * <tt>stable_state</tt> - Number of iterations to move unchanged directory to stable state
     def initialize(path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
-      ObjectSpace.define_finalizer(self,
-                                   self.class.method(:finalize).to_proc)
-      $process_vars.inc('DirStat size')
       super
       @dirs = nil
       @files = nil
@@ -155,10 +145,6 @@ module FileMonitoring
       @content_data_cache = content_data_cache
       ObjectSpace.define_finalizer(self,
                                    self.class.method(:finalize).to_proc)
-    end
-
-    def self.finalize(id)
-      $process_vars.dec('DirStat size')
     end
 
     #  Adds directory for monitoring.

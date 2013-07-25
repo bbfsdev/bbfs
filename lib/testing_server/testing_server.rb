@@ -204,7 +204,7 @@ module TestingServer
     # Generate report and update global counters
     report = ""
     current_objects_counters.each_key { |type|
-      objects_counters[type] = 0 unless $objects_counters[type]
+      $objects_counters[type] = 0 unless $objects_counters[type]
       diff =  current_objects_counters[type] - $objects_counters[type]
       report += "Type:#{type} raised in:#{diff}   \n"
       $objects_counters[type] = current_objects_counters[type]
