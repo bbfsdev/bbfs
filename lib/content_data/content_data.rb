@@ -30,9 +30,6 @@ module ContentData
   class ContentData
 
     def initialize(other = nil)
-      ObjectSpace.define_finalizer(self,
-                                   self.class.method(:finalize).to_proc)
-      $process_vars.inc('ContentData size')
       @instances = {}  # location --> checksum to optimize instances query
       if other.nil?
         @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
@@ -41,10 +38,6 @@ module ContentData
         @contents_info = other.clone_contents_info
         @instances_info = other.clone_instances_info  # location --> checksum to optimize instances query
       end
-    end
-
-    def self.finalize(id)
-      $process_vars.dec('ContentData size')
     end
 
     def clone_instances_info
