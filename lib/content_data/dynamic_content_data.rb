@@ -20,20 +20,16 @@ module ContentData
     end
 
     def exists?(checksum)
-      ref = nil
       @last_content_data_available_mutex.synchronize {
-        ref = @last_content_data
+        return @last_content_data.content_exists(checksum) if @last_content_data != nil
       }
-      return ref.content_exists(checksum) if ref != nil
-      false
+      return false
     end
 
     def each_instance(&block)
-      ref = nil
       @last_content_data_available_mutex.synchronize {
-        ref = @last_content_data
+        @last_content_data.each_instance(&block)
       }
-      ref.each_instance(&block)
     end
 
     def add_instance(checksum, size, server_name, path, modification_time)
@@ -55,19 +51,17 @@ module ContentData
     end
 
     def stats_by_location(location)
-      ref = nil
       @last_content_data_available_mutex.synchronize {
-        ref = @last_content_data
+        return @last_content_data.stats_by_location(location)
       }
-      return ref.stats_by_location(location)
     end
 
+    # TODO(kolman): This is not safe, i.e., content data may be changed
+    # outside this function. For now all usages are read only.
     def last_content_data
-      ref = nil
       @last_content_data_available_mutex.synchronize {
-        ref = @last_content_data
+        return @last_content_data
       }
-      return ref
     end
   end
 

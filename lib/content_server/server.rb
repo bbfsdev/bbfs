@@ -86,7 +86,6 @@ module ContentServer
       #  i+=1
       #  $process_vars.set("dir-#{i}", o.to_s)
       #}
-
     end
   end
 
