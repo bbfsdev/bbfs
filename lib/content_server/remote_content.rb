@@ -17,6 +17,7 @@ module ContentServer
       @remote_tcp = Networking::TCPClient.new(host, port, method(:receive_content))
       @last_fetch_timestamp = nil
       @last_save_timestamp = nil
+      @last_message = nil
       @content_server_content_data_path = File.join(local_backup_folder, 'remote',
                                                     host + '_' + port.to_s)
       Log.debug3("Initialized RemoteContentClient: host:#{host}   port:#{port}  local_backup_folder:#{local_backup_folder}")
@@ -37,10 +38,15 @@ module ContentServer
       	@last_save_timestamp = Time.now.to_i
         write_to = File.join(@content_server_content_data_path,
                              @last_save_timestamp.to_s + '.cd')
-        FileUtils.makedirs(@content_server_content_data_path) unless \
+        same_message = message.to_s.eql?(@last_message.to_s)  #check if same message received
+        if(!same_message)
+          FileUtils.makedirs(@content_server_content_data_path) unless \
               File.directory?(@content_server_content_data_path)
-        count = File.open(write_to, 'wb') { |f| f.write(message.to_s) }
-        Log.debug1("Written content data to file:#{write_to}.")
+          count = File.open(write_to, 'wb') { |f| f.write(message.to_s) }
+          Log.debug1("Written content data to file:#{write_to}.")
+          @last_message =   message
+        end
+        Log.debug1("No need to write remote content data, it has not changed.")
       else
         Log.debug1("No need to write remote content data, it has not changed.")
       end
