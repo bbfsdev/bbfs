@@ -1,0 +1,60 @@
+#!/usr/bin/env ruby
+
+# Runs a memory test:
+# 1. Run content server or backup server
+# 2. Generate files.
+# 3. Monitor files.
+# 4. Index files.
+# 5. Report memory of proces at different phases\times
+# Examples:
+#   testing_server --conf_file=~/.bbfs/etc/backup_testing_memory.yml --server_to_test=backup
+#   testing_server --conf_file=~/.bbfs/etc/content_testing_memory.yml --server_to_test=content
+
+# TODO add command line help/usage
+
+require 'params'
+require 'run_in_background'
+require 'testing_memory/testing_memory'
+
+Params.string('server_to_test', nil, 'Server that will be run under test_server. Values are: content, backup')
+
+Params.init ARGV
+Log.init
+ContentServer.init_globals
+
+Thread.abort_on_exception = true
+
+retries = 0  # number of retries to run a server
+
+begin
+  case Params['server_to_test']
+    when 'content'
+      RunInBackground.run { TestingMemory.run_content_memory_server }
+    when 'backup'
+      RunInBackground.run { TestingMemory.run_backup_memory_server }
+    else
+      raise ArgumentError.new "Incorrect server_to_test parameter value: #{Params['server_to_test']}"
+  end
+  retries -=1
+
+rescue SystemExit, SignalException => exc
+  # TODO (genadyp) do we need to trap signals by types?
+  puts("Interrupt or Exit happened in #{Params['service_name']} server: #{exc.class}, " +
+                "stopping process.\nBacktrace:\n#{exc.backtrace.join("\n")}")
+  Log.error("Interrupt or Exit happened in #{Params['service_name']} server: #{exc.class}, " +
+            "stopping process.\nBacktrace:\n#{exc.backtrace.join("\n")}")
+  Log.flush
+  exit
+rescue Exception => exc
+  puts("Exception happened in #{Params['service_name']} server: #{exc.class}:#{exc.message}\nBacktrace:\n" +
+                "#{exc.backtrace.join("\n")}")
+  Log.error("Exception happened in #{Params['service_name']} server: #{exc.class}:#{exc.message}\nBacktrace:\n" +
+                "#{exc.backtrace.join("\n")}")
+  if retries > 0
+    Log.debug1("Restarting (retries:#{retries}).")
+  else
+    Log.debug1("Exiting...")
+    Log.flush
+  end
+  retries -= 1
+end while retries >= 0

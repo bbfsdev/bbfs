@@ -1,0 +1,135 @@
+############# START OF FILE #################
+############# Testing Memory (content side) Config #################
+#example: bbfs>ruby -Ilib bin\testing_memory --server_to_test=backup --conf_file=~\.bbfs\etc\backup_memory_server.yml
+
+#Backup server parameters
+content_server_hostname: 'localhost' # Default is nil
+content_server_files_port: 4444 # TCP/IP port to start server to send files to backup.
+# TCP/IP port to start server to send content data upon request from client.
+content_server_data_port: 3333
+#backup data file, i.e. state(index) of backup server destination folder.
+local_content_data_path: '~/.bbfs/var/memory.backup.data' # File to store content data
+
+# Path to backup files from master and to monitor
+backup_destination_folder:
+  - path: '~/.bbfs/backup_files' # Directory to monitor.
+    scan_period: 5 # Number of seconds before initiating another directory scan.
+    stable_state: 1 # Number of scan times for a file to be unchanged before his state becomes stable.
+
+# Paths to monitor directories. All path files and recursive sub paths are used.
+monitoring_paths:
+  - path: '~/.bbfs/test_files'
+    scan_period: 1 # Number of seconds before initiating another directory scan.
+    stable_state: 5 # Number of scan times for a file to be unchanged before his state becomes stable.
+
+#cycles of fetch period used by backup server to ping content server for its content
+remote_content_save_timeout: 120
+
+#Cycles where backup is checking if sync is required between remote and backup contents
+backup_check_delay: 60
+
+#Cycles where server write the content data to a local file
+data_flush_delay: 60
+
+######process variables monitoring parameters
+enable_monitoring: true
+#Browing on server:port will show the varialbes
+process_monitoring_web_port: 5555
+#Cycles(seconds) to update variables
+process_vars_delay: 15
+
+############## Memory report
+memory_count_delay: 12
+
+#Logging options
+log_write_to_file: true # Will print all log messages to file
+log_file_name: '~/.bbfs/log/backup_testing_server.log4r'
+log_write_to_console: false # Will print all log messages to standard output. Default is false.
+log_write_to_email: false # Will print errors to mail on system crush only . Default is false.
+# Verbosity of logging. 0 will log INFO messages. 3 will print ALL debug messages as well.
+log_debug_level: 0
+from_email: 'jhon.doe@gmail.com'  # user should change to real value
+from_email_password: 'hihahu'  # user should change to real value
+to_email: 'jhon.doe@gmail.com'  # user should change to real value
+default_monitoring_log_path: '~/.bbfs/log/backup_file_monitoring.log' # Log of file changes
+testing_log_path: '~/.bbfs/log/backup_testing.log'
+# print all parameters to console at the beginning of execution log.
+print_params_to_stdout: true
+
+
+############# File Generator Config ##################
+# Represents the root path where directories and files will be
+# generated.
+target_path: '~/.bbfs/test_files'
+
+# Represents the directory name template. Name of created
+# directories will be dir_name_prefix_xxx. where xxx is random
+# characters
+dir_name_prefix: 'auto_gen_dir'
+
+# Represents the file name template for generated file. Name of
+# created files will be dir_name_prefix_xxx. where xxx is random
+# characters
+file_name_prefix: 'auto_gen_file'
+
+#*******************************************Processing**********************************************
+# Represents the total created directories. Use any
+# negative value or zero for Infinity. Not relevant if
+# random calculation is triggered.
+total_created_directories: 2
+
+# Indicates that total files in a directory will be
+# calculated randomly. If false then value will be
+# taken from parameter:'total_files_in_dir'.
+# Also lower\upper_limit_4_files_in_dir parameters will
+# not be used.
+is_tot_files_in_dir_random: false
+
+# - Represents the Lower limit for total files in
+#   directory for random calculation. Active only if
+#   parameter:'is_tot_files_in_dir_random' is true.
+lower_limit_4_files_in_dir: -1
+
+# Represents the Upper limit for total files in
+# directory for random calculation. Active only if
+# parameter:'is_tot_files_in_dir_random' is true.
+upper_limit_4_files_in_dir: -1
+
+# Maximum number of files to generate, 0 for no limit.
+max_total_files: -1
+
+# Represents the total files in directory. Use any
+# negative value or zero for Infinity. Active only if
+# parameter:'is_tot_files_in_dir_random' is false.
+total_files_in_dir: 3
+
+# Indicates that file size will be calculated randomly.
+# If false then value will be taken from
+# parameter:'file_size_in_bytes'. Also next 2 parameters
+# will not be used.
+is_use_random_size: true
+
+# Represents the upper limit file size in MB for random
+# size calculation.
+# Active only if parameter:'is_use_random_size' is
+# true.
+upper_size_in_bytes: 100
+
+# Represents the Lower limit file size in MB for random
+# size calculation. Active only if
+# parameter:'is_use_random_size' is true.
+down_size_in_bytes: 1
+
+# Represents the file size in MB. Not relevant if
+# random calculation is triggered. Active only if
+# parameter:'is_use_random_size' is false.
+file_size_in_bytes: -1
+
+# Represent delay between two close cycles of
+# processing. In each cycle of processing
+# file\s and\or folder\s created.
+sleep_time_in_seconds: 0
+
+# Should files and directories already presented in target path be removed
+is_clear_target_path: true
+############# END OF FILE #################
