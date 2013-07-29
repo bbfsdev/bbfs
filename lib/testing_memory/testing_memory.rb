@@ -135,7 +135,7 @@ module TestingMemory
 
     }
     memory_of_process = `ps -o rss= -p #{Process.pid}`.to_i / 1000
-    final_report = "Time:#{Time.now}.  Process memory:#{memory_of_process}[M]\nCount report:\n#{report}\n"
+    final_report = "Time:#{Time.now}.  Process memory:#{memory_of_process}[M]\nCount report:\n#{report}"
     #$log4r.info(final_report)
     final_report
   end
