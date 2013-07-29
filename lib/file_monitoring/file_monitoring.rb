@@ -82,6 +82,7 @@ module FileMonitoring
         if (time_span > 0)
           sleep(time_span)
         end
+        puts "Start monitor at :#{Time.now}"
         dir_stat.monitor
 
         # push entry with new a next time it should be checked as a priority key
