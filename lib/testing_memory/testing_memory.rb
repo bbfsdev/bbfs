@@ -65,6 +65,7 @@ module TestingMemory
   end
 
   def check_memory_loop
+    start_time = Time.now
     total_files = Params['total_created_directories']*Params['total_files_in_dir']
     $log4r.info("Start check all files:#{total_files} are indexed")
     email_report = generate_mem_report
@@ -75,6 +76,7 @@ module TestingMemory
       email_report += "indexed files:#{instances_size}\n"
       puts "indexed files:#{instances_size}"
       if total_files == instances_size
+        stop_time = Time.now
         email_report += "\nAt this point all files are indexed. No mem changes should occur\n"
         sleep(10)
         email_report += generate_mem_report
@@ -89,6 +91,7 @@ module TestingMemory
         $log4r.info('All files have been indexed and written to file. Exiting')
         $log4r.info("Mem Report:\n#{email_report}\n")
         #send_email("Final report:#{email_report}\nprocess memory:#{memory_of_process}\n")
+        $log4r.info("Total execution time = #{stop_time.to_i - start_time.to_i}[S]")
         exit
       end
     }
