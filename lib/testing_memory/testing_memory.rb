@@ -66,6 +66,7 @@ module TestingMemory
 
   def check_memory_loop
     start_time = Time.now
+    $log4r.info(Params.get_init_info_messages)
     total_files = Params['total_created_directories']*Params['total_files_in_dir']
     $log4r.info("Start check all files:#{total_files} are indexed")
     email_report = generate_mem_report
