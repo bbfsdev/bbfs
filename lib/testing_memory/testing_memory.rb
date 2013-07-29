@@ -82,7 +82,9 @@ module TestingMemory
           File.rename($tmp_content_data_file, Params['local_content_data_path'])
         end
         $log4r.info('All files have been indexed and written to file. Exiting')
-        send_email(email_report)
+        memory_of_process = `ps -o rss= -p #{Process.pid}`.to_i
+        $log4r.info("Final report:#{email_report}\nprocess memory:#{memory_of_process}\n")
+        #send_email("Final report:#{email_report}\nprocess memory:#{memory_of_process}\n")
         exit
       end
     }
@@ -127,7 +129,7 @@ module TestingMemory
 
     }
     final_report = "Memory report at Time:#{Time.now}:\n#{report}\n"
-    $log4r.info(final_report)
+    #$log4r.info(final_report)
     final_report
   end
 
