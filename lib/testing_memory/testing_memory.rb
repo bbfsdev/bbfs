@@ -82,8 +82,8 @@ module TestingMemory
           File.rename($tmp_content_data_file, Params['local_content_data_path'])
         end
         $log4r.info('All files have been indexed and written to file. Exiting')
-        memory_of_process = `ps -o rss= -p #{Process.pid}`.to_i
-        $log4r.info("Final report:#{email_report}\nprocess memory:#{memory_of_process}\n")
+        email_report += generate_mem_report
+        $log4r.info("Mem Report:\n#{email_report}\n")
         #send_email("Final report:#{email_report}\nprocess memory:#{memory_of_process}\n")
         exit
       end
@@ -128,7 +128,8 @@ module TestingMemory
       report += "Type:#{type} count:#{current_objects_counters[type]}   \n"
 
     }
-    final_report = "Memory report at Time:#{Time.now}:\n#{report}\n"
+    memory_of_process = `ps -o rss= -p #{Process.pid}`.to_i / 1000
+    final_report = "Time:#{Time.now}.  Process memory:#{memory_of_process}[M]\nCount report:\n#{report}\n"
     #$log4r.info(final_report)
     final_report
   end
