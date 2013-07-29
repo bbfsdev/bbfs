@@ -84,6 +84,7 @@ module FileMonitoring
         end
         puts "Start monitor at :#{Time.now}"
         dir_stat.monitor
+        puts "End monitor at :#{Time.now}"
 
         # push entry with new a next time it should be checked as a priority key
         priority = (Time.now + conf['scan_period']).to_i

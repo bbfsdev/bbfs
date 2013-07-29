@@ -53,13 +53,11 @@ module TestingMemory
     $log4r.info 'Testing server started'
     all_threads = [];
 
-    all_threads << Thread.new do
-      ContentServer.run_content_server
-    end
+    fg = FileGenerator::FileGenerator.new
+    fg.run
 
     all_threads << Thread.new do
-      fg = FileGenerator::FileGenerator.new
-      fg.run
+      ContentServer.run_content_server
     end
 
     check_memory_loop
@@ -102,13 +100,11 @@ module TestingMemory
     $log4r.info 'Testing server started'
     all_threads = [];
 
-    all_threads << Thread.new do
-      ContentServer.run_backup_server
-    end
+    fg = FileGenerator::FileGenerator.new
+    fg.run
 
     all_threads << Thread.new do
-      fg = FileGenerator::FileGenerator.new
-      fg.run
+      ContentServer.run_backup_server
     end
 
     check_memory_loop
