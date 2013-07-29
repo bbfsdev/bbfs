@@ -74,6 +74,7 @@ module TestingMemory
       sleep(Params['memory_count_delay'])
       email_report += generate_mem_report
       instances_size = $local_dynamic_content_data.last_content_data.instances_size
+      puts "indexed files:#{instances_size}"
       email_report += "indexed files:#{instances_size}\n"
       if total_files == instances_size
         email_report += "\nAt this point all files are indexed. No mem changes should occur\n"
