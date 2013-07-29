@@ -74,7 +74,11 @@ module TestingMemory
       sleep(Params['memory_count_delay'])
       email_report += generate_mem_report
       if total_files == $local_dynamic_content_data.last_content_data.instances_size
+        email_report += "\nAt this point all files are indexed. No mem changes should occur\n"
         sleep(10)
+        email_report += generate_mem_report
+        sleep(10)
+        email_report += generate_mem_report
         # force write content data to file
         if !$local_dynamic_content_data.nil?
           puts("\nForce writing local content data to #{Params['local_content_data_path']}.")
@@ -82,7 +86,6 @@ module TestingMemory
           File.rename($tmp_content_data_file, Params['local_content_data_path'])
         end
         $log4r.info('All files have been indexed and written to file. Exiting')
-        email_report += generate_mem_report
         $log4r.info("Mem Report:\n#{email_report}\n")
         #send_email("Final report:#{email_report}\nprocess memory:#{memory_of_process}\n")
         exit
