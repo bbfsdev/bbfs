@@ -26,6 +26,7 @@ module ContentServer
     $tmp_content_data_file = nil  # will be init during execution
     $local_dynamic_content_data = nil  # will be init during execution
     $monitoring_process_vars_report = ""
+    $indexed_files = 0
   end
 
   def handle_program_termination(exception)

@@ -73,7 +73,7 @@ module TestingMemory
     loop {
       sleep(Params['memory_count_delay'])
       email_report += generate_mem_report
-      instances_size = $local_dynamic_content_data.last_content_data.instances_size
+      instances_size = $indexed_files
       email_report += "indexed files:#{instances_size}\n"
       puts "indexed files:#{instances_size}"
       if total_files == instances_size
