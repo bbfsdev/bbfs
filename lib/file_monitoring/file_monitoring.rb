@@ -9,9 +9,10 @@ module FileMonitoring
   # Manages file monitoring of number of file system locations
   class FileMonitoring
 
-    def initialize (dynamic_content_data)
+    def initialize (initial_content_data=nil)
       @content_data_cache = Set.new
-      dynamic_content_data.each_instance(){
+      return if initial_content_data.nil?
+      initial_content_data.each_instance(){
           |checksum, size, content_modification_time,
            instance_modification_time, server, file_path|
         # save files to cache
@@ -25,6 +26,10 @@ module FileMonitoring
     # @param queue [Queue]
     def set_event_queue(queue)
       @event_queue = queue
+    end
+
+    def set_monitor_dirs_container(monitor_dirs)
+      @monitor_dirs = monitor_dirs
     end
 
     # The main method. Loops on all paths, each time span and monitors them.
@@ -46,11 +51,14 @@ module FileMonitoring
       pq = Containers::PriorityQueue.new
       conf_array.each { |elem|
         priority = (Time.now + elem['scan_period']).to_i
-        dir_stat = DirStat.new(File.expand_path(elem['path']), elem['stable_state'], @content_data_cache, FileStatEnum::NON_EXISTING)
+        dir_stat = DirStat.new(nil, File.expand_path(elem['path']), elem['stable_state'], @content_data_cache, FileStatEnum::NON_EXISTING)
         dir_stat.set_event_queue(@event_queue) if @event_queue
         Log.debug1 "File monitoring started for: #{elem}"
-        pq.push([priority, elem, dir_stat], -priority)
+        pq.push([1, priority, elem, dir_stat], -priority)
+        @monitor_dirs.push(dir_stat)
       }
+      priority = (Time.now + Params['data_flush_delay']).to_i
+      pq.push([2, priority], -priority)
 
       #init log4r
       monitoring_log_path = Params['default_monitoring_log_path']
@@ -76,19 +84,30 @@ module FileMonitoring
       while true do
         # pull entry that should be checked next,
         # according to it's scan_period
-        time, conf, dir_stat = pq.pop
+        type, time, conf, dir_stat = pq.pop
         # time remains to wait before directory should be checked
         time_span = time - Time.now.to_i
         if (time_span > 0)
           sleep(time_span)
         end
-        puts "Start monitor at :#{Time.now}"
-        dir_stat.monitor
-        puts "End monitor at :#{Time.now}"
-
-        # push entry with new a next time it should be checked as a priority key
-        priority = (Time.now + conf['scan_period']).to_i
-        pq.push([priority, conf, dir_stat], -priority)
+        if 1 == type
+          dir_stat.monitor
+          # push entry with new a next time it should be checked as a priority key
+          priority = (Time.now + conf['scan_period']).to_i
+          pq.push([1, priority, conf, dir_stat], -priority)
+        else
+          Log.info "Start Writing local content data to #{Params['local_content_data_path']}."
+          content_data = ContentData::ContentData.new
+          @monitor_dirs.each { |dir| dir.add_to_content_data(content_data)}
+          #$local_dynamic_content_data.last_content_data.to_file($tmp_content_data_file)
+          content_data.to_file($tmp_content_data_file)
+          #content_data.clear
+          File.rename($tmp_content_data_file, Params['local_content_data_path'])
+          content_data = ContentData::ContentData.new  # for some reason this line enables GC to release the mem. Nil does not.
+          Log.info "End Writing local local content data"
+          priority = (Time.now + Params['data_flush_delay']).to_i
+          pq.push([2, priority], -priority)
+        end
       end
 
       log.close

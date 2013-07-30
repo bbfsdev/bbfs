@@ -130,6 +130,21 @@ module ContentData
       instance_time = instances[location]
     end
 
+    def clear
+      return if 0 == @instances_info.size
+      @instances_info.each_value { | checksum|
+        content = @contents_info[checksum]
+        next if content.nil?
+        content[1].each_key { |location|
+          content[1][location] = nil
+        }
+        @contents_info[checksum] = nil
+        content = nil
+      }
+      @contents_info.clear
+      @instances_info.clear
+    end
+
     def add_instance(checksum, size, server, path, modification_time)
       location = [server, path]
       content_info = @contents_info[checksum]

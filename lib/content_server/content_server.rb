@@ -45,27 +45,26 @@ module ContentServer
     monitoring_events = Queue.new
 
     # Read here for initial content data that exist from previous system run
-    initial_content_data = ContentData::ContentData.new
-    content_data_path = Params['local_content_data_path']
-    if File.exists?(content_data_path) and !File.directory?(content_data_path)
-      Log.info("reading initial content data that exist from previous system run from file:#{content_data_path}")
-      initial_content_data.from_file(content_data_path)
-    else
-      if File.directory?(content_data_path)
-        raise("Param:'local_content_data_path':'#{Params['local_content_data_path']}'cannot be a directory name")
-      end
+    #initial_content_data = ContentData::ContentData.new
+    #content_data_path = Params['local_content_data_path']
+    #if File.exists?(content_data_path) and !File.directory?(content_data_path)
+    #  Log.info("reading initial content data that exist from previous system run from file:#{content_data_path}")
+    #  initial_content_data.from_file(content_data_path)
+    #else
+    #  if File.directory?(content_data_path)
+    #    raise("Param:'local_content_data_path':'#{Params['local_content_data_path']}'cannot be a directory name")
+    #  end
       # create directory if needed
       dir = File.dirname(Params['local_content_data_path'])
       FileUtils.mkdir_p(dir) unless File.exists?(dir)
-    end
+    #end
 
-    # Update local dynamic content with existing content
-    $local_dynamic_content_data = ContentData::DynamicContentData.new
-    $local_dynamic_content_data.update(initial_content_data)
+    # Create monitor dirs object to be used to generate content data on demand
+    $monitor_dirs = []
 
-    #Start files monitor taking into consideration  existing content  data
-    fm = FileMonitoring::FileMonitoring.new($local_dynamic_content_data)
+    fm = FileMonitoring::FileMonitoring.new()
     fm.set_event_queue(monitoring_events)
+    fm.set_monitor_dirs_container($monitor_dirs)
     # Start monitoring and writing changes to queue
     all_threads << Thread.new do
       fm.monitor_files
@@ -74,27 +73,11 @@ module ContentServer
     # # # # # # # # # # # # # #
     # Initialize/Start local indexer
     Log.debug1('Start indexer')
-    queue_indexer = QueueIndexer.new(monitoring_events, $local_dynamic_content_data)
+    queue_indexer = QueueIndexer.new(monitoring_events)
     # Start indexing on demand and write changes to queue
     all_threads << queue_indexer.run
 
-    # # # # # # # # # # # # # # # # # # # # # # # #
-    # Start dump local content data to file thread
-    Log.debug1('Start dump local content data to file thread')
-    all_threads << Thread.new do
-      last_data_flush_time = nil
-      while true do
-        if last_data_flush_time.nil? || last_data_flush_time + Params['data_flush_delay'] < Time.now.to_i
-          Log.info "Writing local content data to #{Params['local_content_data_path']}."
-          $local_dynamic_content_data.last_content_data.to_file($tmp_content_data_file)
-          File.rename($tmp_content_data_file, Params['local_content_data_path'])
-          last_data_flush_time = Time.now.to_i
-        end
-        sleep(1)
-      end
-    end
-
-    remote_content_client = RemoteContentServer.new($local_dynamic_content_data,
+    remote_content_client = RemoteContentServer.new($monitor_dirs,
                                                     Params['local_content_data_port'])
     all_threads << remote_content_client.tcp_thread
 

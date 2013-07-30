@@ -23,7 +23,7 @@ module FileMonitoring
 
   #  This class holds current state of file and methods to control and report changes
   class FileStat
-    attr_reader :cycles, :path, :stable_state, :state, :size, :modification_time
+    attr_reader :checksum, :cycles, :path, :stable_state, :state, :size, :modification_time
 
     DEFAULT_STABLE_STATE = 10
 
@@ -34,7 +34,8 @@ module FileMonitoring
     #
     # * <tt>path</tt> - File location
     # * <tt>stable_state</tt> - Number of iterations to move unchanged file to stable state
-    def initialize(path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
+    def initialize(parent, path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
+      @parent = parent
       @path ||= path
       @size = nil
       @creation_time = nil
@@ -42,6 +43,28 @@ module FileMonitoring
       @cycles = 0  # number of iterations from the last file modification
       @state = state
       @stable_state = stable_state  # number of iteration to move unchanged file to stable state
+      @checksum = ""
+      @checksum_lock = Mutex.new
+    end
+
+    def checksum=(checksum)
+      @checksum_lock.synchronize{
+        @checksum=checksum
+      }
+    end
+
+    def add_to_content_data(content_data)
+      #return if (content_data.contents_size>10)
+      @checksum_lock.synchronize{
+        if (FileStatEnum::STABLE == @state) and !@checksum.empty?
+          content_data.add_instance(@checksum, @size, Params['local_server_name'], get_path, @modification_time)
+        end
+      }
+    end
+
+    def get_path
+      return @path if @parent.nil?
+      File.join(@parent.get_path, @path)
     end
 
     def set_output_queue(event_queue)
@@ -59,7 +82,7 @@ module FileMonitoring
     # Checks whether file was changed from the last iteration.
     # For files, size and modification time are checked.
     def monitor
-      file_stats = File.lstat(@path) rescue nil
+      file_stats = File.lstat(get_path) rescue nil
       new_state = nil
       if file_stats == nil
         new_state = FileStatEnum::NON_EXISTING
@@ -107,13 +130,13 @@ module FileMonitoring
       if (@state != new_state or @state == FileStatEnum::CHANGED)
         @state = new_state
         if (@@log)
-          @@log.info(state + ": " + path)
+          @@log.info(state + ": " + get_path)
           @@log.outputters[0].flush if Params['log_flush_each_message']
         end
-        if @event_queue and FileStatEnum::NEW != @state  # NEW state is ignored in indexer
-          Log.debug1 "Writing to event queue [#{self.state}, #{self.path}]"
-          @event_queue.push([self.state, self.instance_of?(DirStat), self.path,
-                             self.modification_time, self.size])
+        if (!@event_queue.nil?)
+          Log.debug1 "Writing to event queue [#{self.state}, #{self.get_path}]"
+          @event_queue.push([self.state, self.instance_of?(DirStat), self.get_path,
+                             self.modification_time, self.size, self])
           $process_vars.set('monitor to index queue size', @event_queue.size)
         end
       end
@@ -121,12 +144,12 @@ module FileMonitoring
 
     #  Checks whether path and state are the same as of the argument
     def == (other)
-      @path == other.path and @stable_state == other.stable_state
+      get_path == other.get_path and @stable_state == other.stable_state
     end
 
     #  Returns path and state of the file with indentation
     def to_s (indent = 0)
-      (" " * indent) + path.to_s + " : " + state.to_s
+      (" " * indent) + get_path.to_s + " : " + @state.to_s
     end
   end
 
@@ -137,12 +160,16 @@ module FileMonitoring
     #
     # * <tt>path</tt> - File location
     # * <tt>stable_state</tt> - Number of iterations to move unchanged directory to stable state
-    def initialize(path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
+    def initialize(parent, path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
       super
       @dirs = nil
       @files = nil
       @non_utf8_paths = {}
       @content_data_cache = content_data_cache
+    end
+    def add_to_content_data(content_data)
+      @files.each_value { |file| file.add_to_content_data(content_data)} if @files
+      @dirs.each_value { |dir| dir.add_to_content_data(content_data)} if @dirs
     end
 
     #  Adds directory for monitoring.
@@ -194,7 +221,7 @@ module FileMonitoring
     def monitor
       was_changed = false
       new_state = nil
-      self_stat = File.lstat(@path) rescue nil
+      self_stat = File.lstat(get_path) rescue nil
       if self_stat == nil
         new_state = FileStatEnum::NON_EXISTING
         @files = nil
@@ -252,40 +279,43 @@ module FileMonitoring
     #  Globs the directory for new files and directories
     def glob_me
       was_changed = false
-      files = Dir.glob(path + "/*")
+      files = Dir.glob(get_path + "/*")
 
       # add and monitor new files and directories
-      files.each do |file|
+      files.each do |file_path|
         # keep only files with names in UTF-8
-        next if @non_utf8_paths[file]
-        check_utf_8_encoding_file = file.clone
+        next if @non_utf8_paths[file_path]
+        check_utf_8_encoding_file = file_path.clone
         unless check_utf_8_encoding_file.force_encoding("UTF-8").valid_encoding?
           Log.warning("Non UTF-8 file name '#{check_utf_8_encoding_file}', skipping.")
-          @non_utf8_paths[file]=true
+          @non_utf8_paths[file_path]=true
           next
         end
-        file_stat = File.lstat(file) rescue nil
+        file_stat = File.lstat(file_path) rescue nil
+        next if file_stat.nil?
+        (file_dir, file_name) = File.split(file_path)
         if (file_stat.directory?)
-          unless (has_dir?(file)) # new directory
+          unless (has_dir?(file_name)) # new directory
                                   # change state only for existing directories
                                   # newly added directories have to remain with NEW state
             was_changed = true
-            ds = DirStat.new(file, self.stable_state, @content_data_cache, FileStatEnum::NON_EXISTING)
+            ds = DirStat.new(self, file_name, self.stable_state, @content_data_cache, FileStatEnum::NON_EXISTING)
             ds.set_event_queue(@event_queue) unless @event_queue.nil?
             ds.monitor
             add_dir(ds)
           end
         else # it is a file
-          unless(has_file?(file)) # new file
+          unless(has_file?(file_name)) # new file
                                   # change state only for existing directories
                                   # newly added directories have to remain with NEW state
             was_changed = true
             # check if file exist in content data cache - set state to STABLE
             file_state = FileStatEnum::NON_EXISTING
-            if !@content_data_cache.nil? && @content_data_cache.include?(file)
+            if !@content_data_cache.nil? && @content_data_cache.include?(file_path)
               file_state = FileStatEnum::STABLE
+              @content_data_cache.delete(file_path)
             end
-            fs = FileStat.new(file, self.stable_state, @content_data_cache, file_state)
+            fs = FileStat.new(self, file_name, self.stable_state, @content_data_cache, file_state)
 
             fs.set_event_queue(@event_queue) unless @event_queue.nil?
             fs.monitor

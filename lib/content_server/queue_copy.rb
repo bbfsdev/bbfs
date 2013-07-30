@@ -234,9 +234,8 @@ module ContentServer
   end  # class QueueCopy
 
   class FileCopyClient
-    def initialize(host, port, dynamic_content_data)
+    def initialize(host, port)
       @local_queue = Queue.new
-      @dynamic_content_data = dynamic_content_data
       @tcp_client = Networking::TCPClient.new(host, port, method(:handle_message))
       @file_receiver = FileReceiver.new(method(:done_copy),
                                         method(:abort_copy),
