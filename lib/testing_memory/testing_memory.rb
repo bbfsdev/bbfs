@@ -65,6 +65,23 @@ module TestingMemory
     raise("code should never reach here")
   end
 
+  def run_backup_memory_server
+    Log.info('Testing server started')
+    init_log4r
+    $testing_memory_log.info 'Testing server started'
+    all_threads = [];
+
+    fg = FileGenerator::FileGenerator.new
+    fg.run
+
+    all_threads << Thread.new do
+      ContentServer.run_backup_server
+    end
+
+    check_memory_loop
+    raise("code should never reach here")
+  end
+
   def check_memory_loop
     $testing_memory_active = true  # this activates debug messages to console
     start_time = Time.now
@@ -102,24 +119,6 @@ module TestingMemory
         exit
       end
     }
-  end
-
-  def run_backup_memory_server
-    Log.info('Testing server started')
-    init_log4r
-    $testing_memory_log =
-    $log4r.info 'Testing server started'
-    all_threads = [];
-
-    fg = FileGenerator::FileGenerator.new
-    fg.run
-
-    all_threads << Thread.new do
-      ContentServer.run_backup_server
-    end
-
-    check_memory_loop
-    raise("code should never reach here")
   end
 
   def generate_mem_report
