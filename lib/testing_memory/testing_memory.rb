@@ -22,6 +22,7 @@ module TestingMemory
 
   Params.path('testing_log_path', nil, 'Testing server log path.')
   Params.integer('memory_count_delay', 10, 'Memory report cycles in sec.')
+  Params.string('testing_title', 'Memory report', 'title to memory report')
 
   def init_log4r
     #init log4r
@@ -32,8 +33,8 @@ module TestingMemory
     log_dir = File.dirname(log_path)
     FileUtils.mkdir_p(log_dir) unless File.exists?(log_dir)
 
-    $log4r = Log4r::Logger.new 'BBFS testing server log'
-    $log4r.trace = true
+    $testing_memory_log = Log4r::Logger.new 'BBFS testing server log'
+    $testing_memory_log.trace = true
     formatter = Log4r::PatternFormatter.new(:pattern => "[%d] [%m]")
     #file setup
     file_config = {
@@ -44,13 +45,13 @@ module TestingMemory
     file_outputter = Log4r::RollingFileOutputter.new("testing_log", file_config)
     file_outputter.level = Log4r::INFO
     file_outputter.formatter = formatter
-    $log4r.outputters << file_outputter
+    $testing_memory_log.outputters << file_outputter
   end
 
   def run_content_memory_server
-    Log.info('Testing server started')
+    Log.info('Testing memory server started')
     init_log4r
-    $log4r.info 'Testing server started'
+    $testing_memory_log.info 'Testing server started'
     all_threads = [];
 
     fg = FileGenerator::FileGenerator.new
@@ -65,18 +66,20 @@ module TestingMemory
   end
 
   def check_memory_loop
+    $testing_memory_active = true  # this activates debug messages to console
     start_time = Time.now
-    $log4r.info(Params.get_init_info_messages)
+    Params.get_init_info_messages.each { |msg|
+      $testing_memory_log.info(msg)
+    }
     total_files = Params['total_created_directories']*Params['total_files_in_dir']
-    $log4r.info("Start check all files:#{total_files} are indexed")
+    $testing_memory_log.info("Start check all files:#{total_files} are indexed")
     email_report = generate_mem_report
     loop {
       sleep(Params['memory_count_delay'])
       email_report += generate_mem_report
-      instances_size = $local_dynamic_content_data.last_content_data.instances_size
-      email_report += "indexed files:#{instances_size}\n"
-      puts "indexed files:#{instances_size}"
-      if total_files == instances_size
+      email_report += "indexed files:#{$indexed_file_count}\n"
+      puts "indexed files:#{$indexed_file_count}"
+      if total_files == $indexed_file_count
         stop_time = Time.now
         email_report += "\nAt this point all files are indexed. No mem changes should occur\n"
         sleep(10)
@@ -89,10 +92,10 @@ module TestingMemory
           $local_dynamic_content_data.last_content_data.to_file($tmp_content_data_file)
           File.rename($tmp_content_data_file, Params['local_content_data_path'])
         end
-        $log4r.info('All files have been indexed and written to file. Exiting')
-        $log4r.info("Mem Report:\n#{email_report}\n")
+        $testing_memory_log.info('All files have been indexed and written to file. Exiting')
+        $testing_memory_log.info("Mem Report:\n#{email_report}\n")
         #send_email("Final report:#{email_report}\nprocess memory:#{memory_of_process}\n")
-        $log4r.info("Total execution time = #{stop_time.to_i - start_time.to_i}[S]")
+        $testing_memory_log.info("Total execution time = #{stop_time.to_i - start_time.to_i}[S]")
         exit
       end
     }
@@ -101,6 +104,7 @@ module TestingMemory
   def run_backup_memory_server
     Log.info('Testing server started')
     init_log4r
+    $testing_memory_log =
     $log4r.info 'Testing server started'
     all_threads = [];
 

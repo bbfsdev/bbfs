@@ -39,7 +39,7 @@ process_monitoring_web_port: 5555
 process_vars_delay: 15
 
 ############## Memory report
-memory_count_delay: 12
+memory_count_delay: 15
 
 #Logging options
 log_write_to_file: true # Will print all log messages to file
@@ -53,6 +53,7 @@ from_email_password: 'hihahu'  # user should change to real value
 to_email: 'jhon.doe@gmail.com'  # user should change to real value
 default_monitoring_log_path: '~/.bbfs/log/backup_file_monitoring.log' # Log of file changes
 testing_log_path: '~/.bbfs/log/backup_testing.log'
+testing_title: 'Memory report'
 # print all parameters to console at the beginning of execution log.
 print_params_to_stdout: true
 

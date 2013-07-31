@@ -34,6 +34,7 @@ module ContentServer
               Log.info "Indexing file:'#{path}'."
               checksum = calc_SHA1(path)
               $process_vars.inc('indexed_files')
+              $indexed_file_count += 1
               Log.debug1("Index info:checksum:#{checksum} size:#{size} time:#{mtime.to_i}")
               Log.debug1('Adding index to content data. put in queue for dynamic update.')
               @local_dynamic_content_data.add_instance(checksum, size, Params['local_server_name'], path, mtime.to_i)
