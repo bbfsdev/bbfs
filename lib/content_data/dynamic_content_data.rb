@@ -16,6 +16,7 @@ module ContentData
       @last_content_data_available_mutex.synchronize {
         puts "start update(content_data)"
         @last_content_data = content_data
+        puts "end1 update(content_data)"
         Log.debug2("updating last content data:#{@last_content_data}\n")
       }
       puts "end update(content_data)"
