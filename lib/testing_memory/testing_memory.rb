@@ -48,37 +48,54 @@ module TestingMemory
   end
 
   def run_content_memory_server
-    Log.info('Testing memory server started')
-    init_log4r
-    $testing_memory_log.info 'Testing server started'
-    all_threads = [];
+    $testing_memory_active = true  # this activates debug messages to console
 
+    Log.info('Testing server started')
+
+    #Init log
+    init_log4r
+
+    #create files
+    total_files = Params['total_created_directories']*Params['total_files_in_dir']
+    $testing_memory_log.info("Testing server started\nCreating #{total_files} files")
     fg = FileGenerator::FileGenerator.new
     fg.run
+    $testing_memory_log.info('Finished creating files')
 
-    all_threads << Thread.new do
+    # run backup
+    Thread.new do
       ContentServer.run_content_server
     end
 
+    # run memory report cycles
     check_memory_loop
+
     raise("code should never reach here")
   end
 
   def run_backup_memory_server
     $testing_memory_active = true  # this activates debug messages to console
-    Log.info('Testing server started')
-    init_log4r
-    $testing_memory_log.info 'Testing server started'
-    all_threads = [];
 
+    Log.info('Testing server started')
+
+    #Init log
+    init_log4r
+
+    #create files
+    total_files = Params['total_created_directories']*Params['total_files_in_dir']
+    $testing_memory_log.info("Testing server started\nCreating #{total_files} files")
     fg = FileGenerator::FileGenerator.new
     fg.run
+    $testing_memory_log.info('Finished creating files')
 
-    all_threads << Thread.new do
+    # run backup
+    Thread.new do
       ContentServer.run_backup_server
     end
 
+    # run memory report cycles
     check_memory_loop
+
     raise("code should never reach here")
   end
 
