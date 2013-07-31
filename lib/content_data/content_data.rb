@@ -47,6 +47,12 @@ module ContentData
       $process_vars.dec('ContentData size')
     end
 
+    # Content Data unique identification
+    # @return [ID] hash ID
+    def unique_id
+      @instances_info.hash
+    end
+
     def clone_instances_info
       @instances_info.keys.inject({}) { |clone_instances_info, location|
         clone_instances_info[[location[0].clone, location[1].clone]] = @instances_info[location].clone

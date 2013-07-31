@@ -11,7 +11,7 @@ module ContentServer
   Params.integer('remote_content_fetch_timeout', 10, 'Remote content desired freshness in seconds.')
   Params.integer('remote_content_save_timeout', 60*60, 'Remote content force refresh in seconds.')
 
-  # TODO(kolman): Use only one tcp/ip socket by utilizing one NQueue for many queues!
+
   # Remote content Client
   # Remote Content (client) - Periodically requests remote content (content server) from Remote Content Server.
   # Stores locally the remote content data structure.
@@ -29,7 +29,7 @@ module ContentServer
       @remote_tcp = Networking::TCPClient.new(host, port, method(:receive_content))
       @last_fetch_timestamp = nil
       @last_save_timestamp = nil
-      @last_message = nil
+      @last_content_data_id = nil
       @content_server_content_data_path = File.join(local_backup_folder, 'remote',
                                                     host + '_' + port.to_s)
       Log.debug3("Initialized RemoteContentClient: host:#{host}   port:#{port}  local_backup_folder:#{local_backup_folder}")
@@ -54,13 +54,12 @@ module ContentServer
         write_to = File.join(@content_server_content_data_path,
                              @last_save_timestamp.to_s + '.cd')
 
-        is_same_content = (message==@last_message)  #check if same ContentData received
-        if(!is_same_content)
+        if(!(message.unique_id==@last_content_data_id)) #check if same ContentData received
           FileUtils.makedirs(@content_server_content_data_path) unless \
               File.directory?(@content_server_content_data_path)
           File.open(write_to, 'wb') { |f| f.write(message.to_s) }
           Log.debug1("Written content data to file:#{write_to}.")
-          @last_message = message
+          @last_content_data_id = message.unique_id   # save last content data ID
         end
         Log.debug1("No need to write remote content data, it has not changed.")
       else
