@@ -106,13 +106,13 @@ module ContentData
     end
 
     def contents_size()
-      @contents_info.size
+      @contents_info.length
     end
 
     def instances_size()
       counter=0
       @contents_info.values.each { |content_info|
-        counter += content_info[1].size
+        counter += content_info[1].length
       }
       counter
     end
@@ -120,7 +120,7 @@ module ContentData
     def checksum_instances_size(checksum)
       content_info = @contents_info[checksum]
       return 0 if content_info.nil?
-      content_info[1].size
+      content_info[1].length
     end
 
     def get_instance_mod_time(checksum, location)
@@ -204,7 +204,7 @@ module ContentData
 
     def ==(other)
       return false if other.nil?
-      return false if @contents_info.size != other.contents_size
+      return false if @contents_info.length != other.contents_size
       other.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
         return false if instance_exists(path, server) != other.instance_exists(path, server)
         local_content_info = @contents_info[checksum]
@@ -213,7 +213,7 @@ module ContentData
         return false if local_content_info[2] != content_mod_time
         #check instances
         local_instances =  local_content_info[1]
-        return false if other.checksum_instances_size(checksum) != local_instances.size
+        return false if other.checksum_instances_size(checksum) != local_instances.length
         location = [server, path]
         local_instance_mod_time = local_instances[location]
         return false if local_instance_mod_time.nil?
