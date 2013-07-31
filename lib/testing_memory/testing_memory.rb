@@ -113,7 +113,7 @@ module TestingMemory
           File.rename($tmp_content_data_file, Params['local_content_data_path'])
         end
         $testing_memory_log.info('All files have been indexed and written to file. Exiting')
-        $testing_memory_log.info("Mem Report:\n#{email_report}\n")
+        #$testing_memory_log.info("Mem Report:\n#{email_report}\n")
         #send_email("Final report:#{email_report}\nprocess memory:#{memory_of_process}\n")
         $testing_memory_log.info("Total execution time = #{stop_time.to_i - start_time.to_i}[S]")
         exit
@@ -142,7 +142,7 @@ module TestingMemory
     }
     memory_of_process = `ps -o rss= -p #{Process.pid}`.to_i / 1000
     final_report = "Time:#{Time.now}.  Process memory:#{memory_of_process}[M]\nCount report:\n#{report}"
-    #$log4r.info(final_report)
+    $testing_memory_log.info(final_report)
     final_report
   end
 
