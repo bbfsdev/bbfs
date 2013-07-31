@@ -251,9 +251,11 @@ module ContentData
       }
       puts "to_s 5"
       return_str << "%d\n" % [@contents_info.size]
+      puts "to_s 6"
       return_str << contents_str
       return_str << "%d\n" % [instances_counter]
       return_str << instances_str
+      puts "to_s 7"
       return_str
     end
 
