@@ -31,7 +31,6 @@ module ContentData
   class ContentData
 
     def initialize(other = nil)
-      puts "start initialize content data"
       if other.nil?
         @contents_info = GoogleHashDenseRubyToRuby.new  # Checksum --> [size, paths-->time(instance), time(content)]
         @instances_info = GoogleHashDenseRubyToRuby.new  # location --> checksum to optimize instances query
@@ -39,7 +38,6 @@ module ContentData
         @contents_info = other.clone_contents_info
         @instances_info = other.clone_instances_info  # location --> checksum to optimize instances query
       end
-      puts "end initialize content data"
     end
 
     def clone_instances_info

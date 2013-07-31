@@ -49,6 +49,7 @@ module FileMonitoring
         dir_stat = DirStat.new(File.expand_path(elem['path']), elem['stable_state'], @content_data_cache, FileStatEnum::NON_EXISTING)
         dir_stat.set_event_queue(@event_queue) if @event_queue
         Log.debug1 "File monitoring started for: #{elem}"
+        puts "File monitoring started for: #{elem}"
         pq.push([priority, elem, dir_stat], -priority)
       }
 
