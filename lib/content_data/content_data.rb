@@ -237,25 +237,18 @@ module ContentData
       contents_str = ""
       instances_str = ""
       instances_counter = 0
-      puts "to_s 1"
       each_content { |checksum, size, content_mod_time|
-        puts "to_s 2"
         contents_str << "%s,%d,%d\n" % [checksum, size, content_mod_time]
       }
-      puts "to_s 3"
       instances_counter = 0
       each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
-        puts "to_s 4"
         instances_counter += 1
         instances_str <<  "%s,%d,%s,%s,%d\n" % [checksum, size, server, path, instance_mod_time]
       }
-      puts "to_s 5"
       return_str << "%d\n" % [@contents_info.length]
-      puts "to_s 6"
       return_str << contents_str
       return_str << "%d\n" % [instances_counter]
       return_str << instances_str
-      puts "to_s 7"
       return_str
     end
 

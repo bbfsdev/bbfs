@@ -69,12 +69,10 @@ module ContentServer
       FileUtils.mkdir_p(dir) unless File.exists?(dir)
     end
     # Update local dynamic content with existing content
-    puts "Init $local_dynamic_content_data"
     $local_dynamic_content_data = ContentData::DynamicContentData.new
     $local_dynamic_content_data.update(initial_content_data)
 
     Log.info("Init monitoring")
-    puts "Init monitoring"
     monitoring_events = Queue.new
     fm = FileMonitoring::FileMonitoring.new($local_dynamic_content_data)
     fm.set_event_queue(monitoring_events)
