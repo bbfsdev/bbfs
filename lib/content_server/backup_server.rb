@@ -96,7 +96,9 @@ module ContentServer
       while true do
         if last_data_flush_time.nil? || last_data_flush_time + Params['data_flush_delay'] < Time.now.to_i
           Log.info "Writing local content data to #{Params['local_content_data_path']}."
+          $testing_memory_log.info("Start flush content data to file") if $testing_memory_log
           $local_dynamic_content_data.last_content_data.to_file($tmp_content_data_file)
+          $testing_memory_log.info("End flush content data to file") if $testing_memory_log
           File.rename($tmp_content_data_file, Params['local_content_data_path'])
           last_data_flush_time = Time.now.to_i
         end

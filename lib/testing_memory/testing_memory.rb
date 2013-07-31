@@ -39,10 +39,9 @@ module TestingMemory
     #file setup
     file_config = {
         "filename" => Params['testing_log_path'],
-        "maxsize" => Params['log_rotation_size'],
         "trunc" => true
     }
-    file_outputter = Log4r::RollingFileOutputter.new("testing_log", file_config)
+    file_outputter = Log4r::FileOutputter.new("testing_log", file_config)
     file_outputter.level = Log4r::INFO
     file_outputter.formatter = formatter
     $testing_memory_log.outputters << file_outputter
