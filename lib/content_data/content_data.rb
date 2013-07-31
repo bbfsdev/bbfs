@@ -250,7 +250,7 @@ module ContentData
         instances_str <<  "%s,%d,%s,%s,%d\n" % [checksum, size, server, path, instance_mod_time]
       }
       puts "to_s 5"
-      return_str << "%d\n" % [@contents_info.size]
+      return_str << "%d\n" % [@contents_info.length]
       puts "to_s 6"
       return_str << contents_str
       return_str << "%d\n" % [instances_counter]
