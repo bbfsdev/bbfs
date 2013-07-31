@@ -1,6 +1,7 @@
 require 'content_server/server'
 require 'log'
 require 'params'
+require 'google_hash'
 
 module ContentData
   Params.string('instance_check_level', 'shallow', 'Defines check level. Supported levels are: ' \
@@ -32,8 +33,8 @@ module ContentData
     def initialize(other = nil)
       @instances = {}  # location --> checksum to optimize instances query
       if other.nil?
-        @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
-        @instances_info = {}  # location --> checksum to optimize instances query
+        @contents_info = GoogleHashDenseRubyToRuby.new  # Checksum --> [size, paths-->time(instance), time(content)]
+        @instances_info = GoogleHashDenseRubyToRuby.new  # location --> checksum to optimize instances query
       else
         @contents_info = other.clone_contents_info
         @instances_info = other.clone_instances_info  # location --> checksum to optimize instances query
