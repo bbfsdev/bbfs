@@ -66,6 +66,7 @@ module TestingMemory
   end
 
   def run_backup_memory_server
+    $testing_memory_active = true  # this activates debug messages to console
     Log.info('Testing server started')
     init_log4r
     $testing_memory_log.info 'Testing server started'
@@ -83,7 +84,6 @@ module TestingMemory
   end
 
   def check_memory_loop
-    $testing_memory_active = true  # this activates debug messages to console
     start_time = Time.now
     $testing_memory_log.info(Params['testing_title'])
     total_files = Params['total_created_directories']*Params['total_files_in_dir']
