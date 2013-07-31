@@ -68,12 +68,15 @@ module TestingMemory
   def check_memory_loop
     $testing_memory_active = true  # this activates debug messages to console
     start_time = Time.now
+    $testing_memory_log.info(Params['testing_title'])
+    total_files = Params['total_created_directories']*Params['total_files_in_dir']
+    $testing_memory_log.info("Start check all files:#{total_files} are indexed")
     Params.get_init_info_messages.each { |msg|
       $testing_memory_log.info(msg)
     }
-    total_files = Params['total_created_directories']*Params['total_files_in_dir']
-    $testing_memory_log.info("Start check all files:#{total_files} are indexed")
     email_report = generate_mem_report
+
+    # memory loop
     loop {
       sleep(Params['memory_count_delay'])
       email_report += generate_mem_report
