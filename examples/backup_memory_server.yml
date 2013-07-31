@@ -54,6 +54,8 @@ to_email: 'jhon.doe@gmail.com'  # user should change to real value
 default_monitoring_log_path: '~/.bbfs/log/backup_file_monitoring.log' # Log of file changes
 testing_log_path: '~/.bbfs/log/backup_testing.log'
 testing_title: 'Memory report'
+generate_files: true
+
 # print all parameters to console at the beginning of execution log.
 print_params_to_stdout: true
 

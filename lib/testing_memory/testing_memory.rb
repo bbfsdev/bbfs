@@ -23,6 +23,7 @@ module TestingMemory
   Params.path('testing_log_path', nil, 'Testing server log path.')
   Params.integer('memory_count_delay', 10, 'Memory report cycles in sec.')
   Params.string('testing_title', 'Memory report', 'title to memory report')
+  Params.boolean('generate_files', true, 'if true, files will be generated.')
 
   def init_log4r
     #init log4r
@@ -54,13 +55,17 @@ module TestingMemory
 
     #Init log
     init_log4r
+    $testing_memory_log.info('Testing server started')
 
     #create files
-    total_files = Params['total_created_directories']*Params['total_files_in_dir']
-    $testing_memory_log.info("Testing server started\nCreating #{total_files} files")
-    fg = FileGenerator::FileGenerator.new
-    fg.run
-    $testing_memory_log.info('Finished creating files')
+    if Params['generate_files']
+      total_files = Params['total_created_directories']*Params['total_files_in_dir']
+      $testing_memory_log.info("Creating #{total_files} files")
+      fg = FileGenerator::FileGenerator.new
+      fg.run
+      $testing_memory_log.info('Finished creating files')
+    end
+
 
     # run backup
     Thread.new do
@@ -80,13 +85,16 @@ module TestingMemory
 
     #Init log
     init_log4r
+    $testing_memory_log.info('Testing server started')
 
     #create files
-    total_files = Params['total_created_directories']*Params['total_files_in_dir']
-    $testing_memory_log.info("Testing server started\nCreating #{total_files} files")
-    fg = FileGenerator::FileGenerator.new
-    fg.run
-    $testing_memory_log.info('Finished creating files')
+    if Params['generate_files']
+      total_files = Params['total_created_directories']*Params['total_files_in_dir']
+      $testing_memory_log.info("Creating #{total_files} files")
+      fg = FileGenerator::FileGenerator.new
+      fg.run
+      $testing_memory_log.info('Finished creating files')
+    end
 
     # run backup
     Thread.new do
