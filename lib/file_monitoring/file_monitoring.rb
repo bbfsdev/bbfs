@@ -82,8 +82,7 @@ module FileMonitoring
         if (time_span > 0)
           sleep(time_span)
         end
-        puts "active?=#{$testing_memory_tive}"
-        $testing_memory_log.info("Start monitor at :#{Time.now}") if $testing_memory_tive
+        $testing_memory_log.info("Start monitor at :#{Time.now}") if $testing_memory_ative
         dir_stat.monitor
         $testing_memory_log.info("End monitor at :#{Time.now}") if $testing_memory_active
 
