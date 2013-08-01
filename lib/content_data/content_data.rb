@@ -1,7 +1,6 @@
 require 'content_server/server'
 require 'log'
 require 'params'
-require 'google_hash'
 
 module ContentData
   Params.string('instance_check_level', 'shallow', 'Defines check level. Supported levels are: ' \
@@ -32,8 +31,8 @@ module ContentData
 
     def initialize(other = nil)
       if other.nil?
-        @contents_info = GoogleHashDenseRubyToRuby.new  # Checksum --> [size, paths-->time(instance), time(content)]
-        @instances_info = GoogleHashDenseRubyToRuby.new  # location --> checksum to optimize instances query
+        @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
+        @instances_info = {}  # location --> checksum to optimize instances query
       else
         @contents_info = other.clone_contents_info
         @instances_info = other.clone_instances_info  # location --> checksum to optimize instances query
@@ -41,19 +40,19 @@ module ContentData
     end
 
     def clone_instances_info
-      @instances_info.keys.inject(GoogleHashDenseRubyToRuby.new) { |clone_instances_info, location|
+      @instances_info.keys.inject({}) { |clone_instances_info, location|
         clone_instances_info[[location[0].clone, location[1].clone]] = @instances_info[location].clone
         clone_instances_info
       }
     end
 
     def clone_contents_info
-      @contents_info.keys.inject(GoogleHashDenseRubyToRuby.new) { |clone_contents_info, checksum|
+      @contents_info.keys.inject({}) { |clone_contents_info, checksum|
         instances = @contents_info[checksum]
         size = instances[0]
         content_time = instances[2]
         instances_db = instances[1]
-        instances_db_cloned = GoogleHashDenseRubyToRuby.new
+        instances_db_cloned = {}
         instances_db.keys.each { |location|
           instance_mtime = instances_db[location]
           instances_db_cloned[[location[0].clone,location[1].clone]]=instance_mtime
