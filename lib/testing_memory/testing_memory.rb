@@ -127,21 +127,13 @@ module TestingMemory
       if total_files == $indexed_file_count
         stop_time = Time.now
         email_report += "\nAt this point all files are indexed. No mem changes should occur\n"
-        sleep(10)
-        email_report += generate_mem_report
-        sleep(10)
-        email_report += generate_mem_report
-        # force write content data to file
-        if !$local_dynamic_content_data.nil?
-          puts("\nForce writing local content data to #{Params['local_content_data_path']}.")
-          $local_dynamic_content_data.last_content_data.to_file($tmp_content_data_file)
-          File.rename($tmp_content_data_file, Params['local_content_data_path'])
-        end
-        $testing_memory_log.info('All files have been indexed and written to file. Exiting')
-        #$testing_memory_log.info("Mem Report:\n#{email_report}\n")
+        $testing_memory_log.info("Total indexing time = #{stop_time.to_i - start_time.to_i}[S]")
+        $testing_memory_log.info("\nAt this point all files are indexed. No mem changes should occur\n")
+        loop {
+          sleep(Params['memory_count_delay'])
+          email_report += generate_mem_report
+        }
         #send_email("Final report:#{email_report}\nprocess memory:#{memory_of_process}\n")
-        $testing_memory_log.info("Total execution time = #{stop_time.to_i - start_time.to_i}[S]")
-        exit
       end
     }
   end
@@ -170,6 +162,7 @@ module TestingMemory
       memory_of_process = `tasklist /FI \"PID eq #{Process.pid}\" /NH /FO \"CSV\"`.split(',')[4]
     end
     final_report = "Time:#{Time.now}.  Process memory:#{memory_of_process}[M]\nCount report:\n#{report}"
+    puts "Process memory:#{memory_of_process}[M]"
     $testing_memory_log.info(final_report)
     final_report
   end
