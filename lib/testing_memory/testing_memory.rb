@@ -163,9 +163,12 @@ module TestingMemory
     report = ""
     current_objects_counters.each_key { |type|
       report += "Type:#{type} count:#{current_objects_counters[type]}   \n"
-
     }
-    memory_of_process = `ps -o rss= -p #{Process.pid}`.to_i / 1000
+    unless Gem::win_platform?
+      memory_of_process = `ps -o rss= -p #{Process.pid}`.to_i / 1000
+    else
+      memory_of_process = `tasklist /FI \"PID eq #{Process.pid}\" /NH /FO \"CSV\"`.split(',')[4]
+    end
     final_report = "Time:#{Time.now}.  Process memory:#{memory_of_process}[M]\nCount report:\n#{report}"
     $testing_memory_log.info(final_report)
     final_report
