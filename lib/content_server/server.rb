@@ -29,8 +29,10 @@ module ContentServer
     $testing_memory_active = false
     $testing_memory_log = nil
     $indexed_file_count = 0
-    #$local_content_data = nil
-    #$local_content_data_lock = Mutex.new
+    $local_content_data = nil
+    $local_content_data_lock = nil
+    $remote_content_data_lock = nil
+    $remote_content_data = nil
   end
 
   def handle_program_termination(exception)
