@@ -125,15 +125,16 @@ module ContentServer
         $local_content_data_lock.synchronize{
           $remote_content_data_lock.synchronize{
             diff = ContentData.remove($local_content_data, $remote_content_data)
-            Log.debug2("Backup content:\n#{$local_content_data}")
-            Log.debug2("Remote content:\n#{$remote_content_data}")
-            Log.debug2("Missing contents:\n#{diff}")
             unless diff.nil? || diff.empty?
+              Log.debug2("Backup content:\n#{$local_content_data}")
+              Log.debug2("Remote content:\n#{$remote_content_data}")
+              Log.debug2("Missing contents:\n#{diff}")
               Log.info('Start sync check. Backup and remote contents need a sync, requesting copy files:')
               file_copy_client.request_copy(diff)
             else
               Log.info("Start sync check. Local and remote contents are equal. No sync required.")
             end
+            diff = ContentData::ContentData.new  # to clear the memory
           }
         }
       end
