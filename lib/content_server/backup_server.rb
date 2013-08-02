@@ -97,7 +97,7 @@ module ContentServer
           Log.info "Writing local content data to #{Params['local_content_data_path']}."
           $testing_memory_log.info("Start flush content data to file") if $testing_memory_log
           $local_content_data_lock.synchronize{
-            $local_content_data.last_content_data.to_file($tmp_content_data_file)
+            $local_content_data.to_file($tmp_content_data_file)
           }
           $testing_memory_log.info("End flush content data to file") if $testing_memory_log
           File.rename($tmp_content_data_file, Params['local_content_data_path'])
@@ -125,11 +125,11 @@ module ContentServer
         $local_content_data_lock.synchronize{
           $remote_content_data_lock.synchronize{
             diff = ContentData.remove($local_content_data, $remote_content_data)
+            Log.debug2("Backup content:\n#{$local_content_data}")
+            Log.debug2("Remote content:\n#{$remote_content_data}")
+            Log.debug2("Missing contents:\n#{diff}")
             unless diff.nil? || diff.empty?
               Log.info('Start sync check. Backup and remote contents need a sync, requesting copy files:')
-              Log.debug2("Backup content:\n#{$local_content_data}")
-              Log.debug2("Remote content:\n#{$remote_content_data}")
-              Log.info("Missing contents:\n#{diff}")
               file_copy_client.request_copy(diff)
             else
               Log.info("Start sync check. Local and remote contents are equal. No sync required.")
