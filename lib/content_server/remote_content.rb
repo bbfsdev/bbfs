@@ -12,8 +12,7 @@ module ContentServer
 
   # TODO(kolman): Use only one tcp/ip socket by utilizing one NQueue for many queues!
   class RemoteContentClient
-    def initialize(dynamic_content_data, host, port, local_backup_folder)
-      @dynamic_content_data = dynamic_content_data
+    def initialize(host, port, local_backup_folder)
       @remote_tcp = Networking::TCPClient.new(host, port, method(:receive_content))
       @last_fetch_timestamp = nil
       @last_save_timestamp = nil
@@ -25,7 +24,9 @@ module ContentServer
     def receive_content(message)
       Log.debug1("Backup server received Remote content data:#{message.to_s}")
       Log.info("Backup server received Remote content data")
-      @dynamic_content_data.update(message)
+      $remote_content_data_lock.synchronize{
+        $remote_content_data = message
+      }
       @last_fetch_timestamp = Time.now.to_i
 
       save_time_span = Params['remote_content_save_timeout']
@@ -39,7 +40,9 @@ module ContentServer
                              @last_save_timestamp.to_s + '.cd')
         FileUtils.makedirs(@content_server_content_data_path) unless \
               File.directory?(@content_server_content_data_path)
-        count = File.open(write_to, 'wb') { |f| f.write(message.to_s) }
+        $remote_content_data_lock.synchronize{
+          $remote_content_data.to_file(write_to)
+        }
         Log.debug1("Written content data to file:#{write_to}.")
       else
         Log.debug1("No need to write remote content data, it has not changed.")
@@ -71,8 +74,7 @@ module ContentServer
   end
 
   class RemoteContentServer
-    def initialize(dynamic_content_data, port)
-      @dynamic_content_data = dynamic_content_data
+    def initialize(port)
       @tcp_server = Networking::TCPServer.new(port, method(:content_requested))
       Log.debug3("initialize RemoteContentServer on port:#{port}")
     end
@@ -80,8 +82,10 @@ module ContentServer
     def content_requested(addr_info, message)
       # Send response.
       Log.info("Content server received content data request")
-      Log.debug1("Sending content data:#{@dynamic_content_data.last_content_data}")
-      @tcp_server.send_obj(@dynamic_content_data.last_content_data)
+      $local_content_data_lock.synchronize{
+        Log.debug1("Sending content data:#{$local_content_data}")
+        @tcp_server.send_obj($remote_content_data)
+      }
       Log.info('Content server sent content data')
     end
 

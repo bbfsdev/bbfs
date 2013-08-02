@@ -2,21 +2,22 @@ require 'algorithms'
 require 'fileutils'
 require 'log4r'
 require 'params'
-
+require 'content_server/server'
 require 'file_monitoring/monitor_path'
 
 module FileMonitoring
   # Manages file monitoring of number of file system locations
   class FileMonitoring
 
-    def initialize (dynamic_content_data)
+    def initialize ()
       @content_data_cache = Set.new
-      dynamic_content_data.each_instance(){
-          |checksum, size, content_modification_time,
-           instance_modification_time, server, file_path|
-        # save files to cache
-        Log.info("File in cache: #{file_path}")
-        @content_data_cache.add(file_path)
+      $local_content_data_lock.synchronize {
+        $local_content_data.each_instance(){
+            |_, _, _, _, _, file_path|
+          # save files to cache
+          Log.info("File in cache: #{file_path.clone}")
+          @content_data_cache.add(file_path.clone)
+        }
       }
     end
 
