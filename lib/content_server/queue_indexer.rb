@@ -27,6 +27,7 @@ module ContentServer
           Log.debug1 "index event: state:#{state}, dir?#{is_dir}, path:#{path}, mtime:#{mtime}, size:#{size}."
           if state == FileMonitoring::FileStatEnum::STABLE && !is_dir
             # Calculating checksum
+            instance_stats = nil  # definition
             $local_content_data_lock.synchronize{
               instance_stats = $local_content_data.stats_by_location([Params['local_server_name'], path])
             }
