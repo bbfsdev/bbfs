@@ -48,7 +48,7 @@ module ContentData
     end
 
     # Content Data unique identification
-    # @return [ID] hash ID
+    # @return [ID] hash identification
     def unique_id
       @instances_info.hash
     end
