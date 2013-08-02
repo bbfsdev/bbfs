@@ -32,7 +32,7 @@ module ContentServer
             }
             Log.debug1("instance !#{instance_stats}! mtime: #{mtime.to_i}, size: #{size}")
             if instance_stats.nil? || mtime.to_i != instance_stats[1] || size != instance_stats[0]
-              Log.info "Indexing file:'#{path}'."
+              Log.debug1 "Indexing file:'#{path}'."
               checksum = calc_SHA1(path)
               $process_vars.inc('indexed_files')
               $indexed_file_count += 1
