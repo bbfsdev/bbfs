@@ -5,7 +5,7 @@
 # 2. Generate files.
 # 3. Monitor files.
 # 4. Index files.
-# 5. Report memory of proces at different phases\times
+# 5. Report memory of process at different phases\times
 # Examples:
 #   testing_server --conf_file=~/.bbfs/etc/backup_testing_memory.yml --server_to_test=backup
 #   testing_server --conf_file=~/.bbfs/etc/content_testing_memory.yml --server_to_test=content
