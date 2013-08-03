@@ -7,8 +7,6 @@ local_files_port: 4444 # TCP/IP port to start server to send files to backup.
 local_content_data_port: 3333 # TCP/IP port to start server to send content data upon request from client.
 #content data file, i.e., state of content server.
 local_content_data_path: '~/.bbfs/var/memory.content.data' # File to store content data
-default_monitoring_log_path: '~/.bbfs/log/content_file_monitoring.log' # Log of file changes
-testing_log_path: '~/.bbfs/log/content_testing.log'
 
 # Paths to monitor\backup files from. All path files and recursive sub paths are used.
 monitoring_paths:
@@ -21,14 +19,11 @@ monitoring_paths:
 data_flush_delay: 60
 
 ############process variables monitoring parameters
-enable_monitoring: true
+enable_monitoring: false
 #Browing on server:port will show the varialbes
 process_monitoring_web_port: 5556
 #Cycles(seconds) to update variables
 process_vars_delay: 15
-
-############## Memory report
-memory_count_delay: 10
 
 ############# Logging options
 log_write_to_console: false # Will print all log messages to standard output. Default is false.
@@ -41,8 +36,16 @@ from_email: 'jhon.doe@gmail.com'  # user should change to real value
 from_email_password: 'hihahu'  # user should change to real value
 to_email: 'jhon.doe@gmail.com'  # user should change to real value
 
+default_monitoring_log_path: '~/.bbfs/log/content_file_monitoring.log' # Log of file changes
+
 # print all parameters to console at the beginning of execution log.
 print_params_to_stdout: true
+
+############## Memory report
+memory_count_delay: 15
+testing_log_path: '~/.bbfs/log/content_testing.log'  # memory server - log file
+testing_title: 'Content server - Memory report'  # memory server - report title
+generate_files: true  # memory server - Enables file generator part
 
 
 ############# File Generator Config ##################
@@ -89,7 +92,7 @@ max_total_files: -1
 # Represents the total files in directory. Use any
 # negative value or zero for Infinity. Active only if
 # parameter:'is_tot_files_in_dir_random' is false.
-total_files_in_dir: 3
+total_files_in_dir: 1000
 
 # Indicates that file size will be calculated randomly.
 # If false then value will be taken from
@@ -106,7 +109,7 @@ upper_size_in_bytes: 100
 # Represents the Lower limit file size in MB for random
 # size calculation. Active only if
 # parameter:'is_use_random_size' is true.
-down_size_in_bytes: 1
+down_size_in_bytes: 50
 
 # Represents the file size in MB. Not relevant if
 # random calculation is triggered. Active only if
