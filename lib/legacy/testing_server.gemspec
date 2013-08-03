@@ -5,7 +5,7 @@ Gem::Specification.new do |s|
   s.version     = TestingServer::VERSION
   s.summary     = 'Testing Server for backup system validation'
   s.description = 'The server runs 24-7, generates/deletes files and validates content at backup periodically.'
-  s.authors     = ['Kolman Vornovitsky, Genady Petelko']
+  s.authors     = ['BBFS Team']
   s.email       = 'bbfsdev@gmail.com'
   s.homepage    = 'http://github.com/bbfsdev/bbfs'
   s.files       = Dir['lib/testing_server.rb', 'lib/testing_server/**/*'] \
