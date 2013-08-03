@@ -2,21 +2,22 @@ require 'algorithms'
 require 'fileutils'
 require 'log4r'
 require 'params'
-
+require 'content_server/server'
 require 'file_monitoring/monitor_path'
 
 module FileMonitoring
   # Manages file monitoring of number of file system locations
   class FileMonitoring
 
-    def initialize (dynamic_content_data)
+    def initialize ()
       @content_data_cache = Set.new
-      dynamic_content_data.each_instance(){
-          |checksum, size, content_modification_time,
-           instance_modification_time, server, file_path|
-        # save files to cache
-        Log.info("File in cache: #{file_path}")
-        @content_data_cache.add(file_path)
+      $local_content_data_lock.synchronize {
+        $local_content_data.each_instance(){
+            |_, _, _, _, _, file_path|
+          # save files to cache
+          Log.info("File in cache: #{file_path.clone}")
+          @content_data_cache.add(file_path.clone)
+        }
       }
     end
 
@@ -48,7 +49,7 @@ module FileMonitoring
         priority = (Time.now + elem['scan_period']).to_i
         dir_stat = DirStat.new(File.expand_path(elem['path']), elem['stable_state'], @content_data_cache, FileStatEnum::NON_EXISTING)
         dir_stat.set_event_queue(@event_queue) if @event_queue
-        Log.debug1 "File monitoring started for: #{elem}"
+        Log.debug1("File monitoring started for: #{elem}")
         pq.push([priority, elem, dir_stat], -priority)
       }
 
@@ -82,14 +83,21 @@ module FileMonitoring
         if (time_span > 0)
           sleep(time_span)
         end
-        dir_stat.monitor
+
+        unless $testing_memory_active
+          dir_stat.monitor
+        else
+          $testing_memory_log.info("Start monitor at :#{Time.now}")
+          puts "Start monitor at :#{Time.now}"
+          dir_stat.monitor
+          $testing_memory_log.info("End monitor at :#{Time.now}")
+          puts "End monitor at :#{Time.now}"
+        end
 
         # push entry with new a next time it should be checked as a priority key
         priority = (Time.now + conf['scan_period']).to_i
         pq.push([priority, conf, dir_stat], -priority)
       end
-
-      log.close
     end
   end
 

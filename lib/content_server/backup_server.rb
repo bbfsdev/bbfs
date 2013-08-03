@@ -54,23 +54,27 @@ module ContentServer
       Log.info("  Path:'#{path['path']}'")
     }
 
+    # initial global local content data object
+    $local_content_data_lock = Mutex.new
+    $local_content_data = ContentData::ContentData.new
+
     # Read here for initial content data that exist from previous system run
-    initial_content_data = ContentData::ContentData.new
     content_data_path = Params['local_content_data_path']
     if File.exists?(content_data_path) and !File.directory?(content_data_path)
       Log.info("reading initial content data that exist from previous system run from file:#{content_data_path}")
-      initial_content_data.from_file(content_data_path)
+      $local_content_data.from_file(content_data_path)
     else
       if File.directory?(content_data_path)
         raise("Param:'local_content_data_path':'#{Params['local_content_data_path']}'cannot be a directory name")
       end
+      # create directory if needed
+      dir = File.dirname(Params['local_content_data_path'])
+      FileUtils.mkdir_p(dir) unless File.exists?(dir)
     end
-    # Update local dynamic content with existing content
-    $local_dynamic_content_data = ContentData::DynamicContentData.new
-    $local_dynamic_content_data.update(initial_content_data)
 
+    Log.info("Init monitoring")
     monitoring_events = Queue.new
-    fm = FileMonitoring::FileMonitoring.new($local_dynamic_content_data)
+    fm = FileMonitoring::FileMonitoring.new()
     fm.set_event_queue(monitoring_events)
     # Start monitoring and writing changes to queue
     all_threads << Thread.new do
@@ -80,7 +84,7 @@ module ContentServer
     # # # # # # # # # # # # # #
     # Initialize/Start local indexer
     Log.debug1('Start indexer')
-    queue_indexer = QueueIndexer.new(monitoring_events, $local_dynamic_content_data)
+    queue_indexer = QueueIndexer.new(monitoring_events)
     # Start indexing on demand and write changes to queue
     all_threads << queue_indexer.run
 
@@ -88,27 +92,29 @@ module ContentServer
     # Start dump local content data to file thread
     Log.debug1('Start dump local content data to file thread')
     all_threads << Thread.new do
-      last_data_flush_time = nil
-      while true do
-        if last_data_flush_time.nil? || last_data_flush_time + Params['data_flush_delay'] < Time.now.to_i
-          Log.info "Writing local content data to #{Params['local_content_data_path']}."
-          $local_dynamic_content_data.last_content_data.to_file($tmp_content_data_file)
-          File.rename($tmp_content_data_file, Params['local_content_data_path'])
-          last_data_flush_time = Time.now.to_i
-        end
-        sleep(1)
-      end
+      FileUtils.mkdir_p(Params['tmp_path']) unless File.directory?(Params['tmp_path'])
+      loop{
+        sleep(Params['data_flush_delay'])
+        Log.info("Writing local content data to #{Params['local_content_data_path']}.")
+        $testing_memory_log.info("Start flush content data to file") if $testing_memory_log
+        $local_content_data_lock.synchronize{
+          $local_content_data.to_file($tmp_content_data_file)
+        }
+        $testing_memory_log.info("End flush content data to file") if $testing_memory_log
+        File.rename($tmp_content_data_file, Params['local_content_data_path'])
+      }
     end
-    content_server_dynamic_content_data = ContentData::DynamicContentData.new
-    remote_content = ContentServer::RemoteContentClient.new(content_server_dynamic_content_data,
-                                                            Params['content_server_hostname'],
+
+    #initialize global - remote content data
+    $remote_content_data_lock = Mutex.new
+    $remote_content_data = ContentData::ContentData.new
+    remote_content = ContentServer::RemoteContentClient.new(Params['content_server_hostname'],
                                                             Params['content_server_data_port'],
                                                             Params['backup_destination_folder'][0]['path'])
     all_threads.concat(remote_content.run())
 
     file_copy_client = FileCopyClient.new(Params['content_server_hostname'],
-                                          Params['content_server_files_port'],
-                                          $local_dynamic_content_data)
+                                          Params['content_server_files_port'])
     all_threads.concat(file_copy_client.threads)
 
     # Each
@@ -116,21 +122,21 @@ module ContentServer
     all_threads << Thread.new do
       loop do
         sleep(Params['backup_check_delay'])
-        local_cd = $local_dynamic_content_data.last_content_data()
-        remote_cd = content_server_dynamic_content_data.last_content_data()
-        diff = ContentData.remove(local_cd, remote_cd)
-
-        Log.debug2("Backup content:\n#{local_cd}")
-        Log.debug2("Remote content:\n#{remote_cd}")
-        Log.debug2("Diff content:\n#{diff}")
-
-        unless diff.nil? || diff.empty?
-          Log.info('Start sync check. Backup and remote contents need a sync, requesting copy files:')
-          Log.info("Missing contents:\n#{diff}")
-          file_copy_client.request_copy(diff)
-        else
-          Log.info("Start sync check. Local and remote contents are equal. No sync required.")
-        end
+        $local_content_data_lock.synchronize{
+          $remote_content_data_lock.synchronize{
+            diff = ContentData.remove($local_content_data, $remote_content_data)
+            unless diff.nil? || diff.empty?
+              Log.debug2("Backup content:\n#{$local_content_data}")
+              Log.debug2("Remote content:\n#{$remote_content_data}")
+              Log.debug2("Missing contents:\n#{diff}")
+              Log.info('Start sync check. Backup and remote contents need a sync, requesting copy files:')
+              file_copy_client.request_copy(diff)
+            else
+              Log.info("Start sync check. Local and remote contents are equal. No sync required.")
+            end
+            diff = ContentData::ContentData.new  # to clear the memory
+          }
+        }
       end
     end
 

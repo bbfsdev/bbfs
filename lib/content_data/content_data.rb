@@ -30,10 +30,6 @@ module ContentData
   class ContentData
 
     def initialize(other = nil)
-      ObjectSpace.define_finalizer(self,
-                                   self.class.method(:finalize).to_proc)
-      $process_vars.inc('ContentData size')
-      @instances = {}  # location --> checksum to optimize instances query
       if other.nil?
         @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
         @instances_info = {}  # location --> checksum to optimize instances query
@@ -43,8 +39,10 @@ module ContentData
       end
     end
 
-    def self.finalize(id)
-      $process_vars.dec('ContentData size')
+    # Content Data unique identification
+    # @return [ID] hash identification
+    def unique_id
+      @instances_info.hash
     end
 
     def clone_instances_info
@@ -113,13 +111,21 @@ module ContentData
     end
 
     def contents_size()
-      @contents_info.size
+      @contents_info.length
     end
 
-    def instances_size(checksum)
+    def instances_size()
+      counter=0
+      @contents_info.values.each { |content_info|
+        counter += content_info[1].length
+      }
+      counter
+    end
+
+    def checksum_instances_size(checksum)
       content_info = @contents_info[checksum]
       return 0 if content_info.nil?
-      content_info[1].size
+      content_info[1].length
     end
 
     def get_instance_mod_time(checksum, location)
@@ -203,7 +209,7 @@ module ContentData
 
     def ==(other)
       return false if other.nil?
-      return false if @contents_info.size != other.contents_size
+      return false if @contents_info.length != other.contents_size
       other.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
         return false if instance_exists(path, server) != other.instance_exists(path, server)
         local_content_info = @contents_info[checksum]
@@ -212,7 +218,7 @@ module ContentData
         return false if local_content_info[2] != content_mod_time
         #check instances
         local_instances =  local_content_info[1]
-        return false if other.instances_size(checksum) != local_instances.size
+        return false if other.checksum_instances_size(checksum) != local_instances.length
         location = [server, path]
         local_instance_mod_time = local_instances[location]
         return false if local_instance_mod_time.nil?
@@ -244,7 +250,7 @@ module ContentData
         instances_counter += 1
         instances_str <<  "%s,%d,%s,%s,%d\n" % [checksum, size, server, path, instance_mod_time]
       }
-      return_str << "%d\n" % [@contents_info.size]
+      return_str << "%d\n" % [@contents_info.length]
       return_str << contents_str
       return_str << "%d\n" % [instances_counter]
       return_str << instances_str

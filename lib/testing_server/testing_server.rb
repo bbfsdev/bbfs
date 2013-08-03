@@ -1,5 +1,6 @@
 #require 'net/sftp'
 #require 'net/ssh'
+require 'log4r'
 require 'log'
 require 'params'
 require 'content_server'
@@ -31,8 +32,40 @@ module TestingServer
   #:VALIDATE  # validate index on master
   :PUT_VALIDATION  # message contains validation result from master
 
+  Params.path('testing_log_path', nil, 'Testing server log path.')
+
+  # init process vars
+  $objects_counters = {}
+  $objects_counters["Time"] = Time.now.to_i
+
+  def init_log4r
+    #init log4r
+    log_path = Params['testing_log_path']
+    unless log_path
+      raise("pls specify testing log path through param:'testing_log_path'")
+    end
+    log_dir = File.dirname(log_path)
+    FileUtils.mkdir_p(log_dir) unless File.exists?(log_dir)
+
+    $log4r = Log4r::Logger.new 'BBFS testing server log'
+    $log4r.trace = true
+    formatter = Log4r::PatternFormatter.new(:pattern => "[%d] [%m]")
+    #file setup
+    file_config = {
+        "filename" => Params['testing_log_path'],
+        "maxsize" => Params['log_rotation_size'],
+        "trunc" => true
+    }
+    file_outputter = Log4r::RollingFileOutputter.new("testing_log", file_config)
+    file_outputter.level = Log4r::INFO
+    file_outputter.formatter = formatter
+    $log4r.outputters << file_outputter
+  end
+
   def run_content_testing_server
-    Log.info 'Testing server started'
+    Log.info('Testing server started')
+    init_log4r
+    $log4r.info 'Testing server started'
     all_threads = [];
     messages = Queue.new
 
@@ -46,7 +79,7 @@ module TestingServer
     end
 
     receive_msg_proc = lambda do |addr_info, message|
-      Log.debug2("message received: #{message}")
+      $log4r.info("message received: #{message}")
       messages.push(message)
     end
     tcp = Networking::TCPServer.new(Params['testing_server_port'], receive_msg_proc)
@@ -59,17 +92,19 @@ module TestingServer
         cur_index = ContentData::ContentData.new
         cur_index.from_file(Params['local_content_data_path'])
         tcp.send_obj([:PUT_INDEX, validation_timestamp, cur_index])
-        Log.debug2 "PUT_INDEX sent with timestamp #{validation_timestamp}"
+        $log4r.info "PUT_INDEX sent with timestamp #{validation_timestamp}"
         is_index_ok = cur_index.validate
         tcp.send_obj([:PUT_VALIDATION, validation_timestamp, is_index_ok])
-        Log.debug2 "PUT_VALIDATION sent with timestamp #{validation_timestamp}"
+        $log4r.info "PUT_VALIDATION sent with timestamp #{validation_timestamp}"
       end
     end
   end
   module_function :run_content_testing_server
 
   def run_backup_testing_server
-    Log.info 'Testing server started'
+    Log.info('Testing server started')
+    init_log4r
+    $log4r.info 'Testing server started'
     all_threads = [];
     messages = Queue.new
     # used for synchronization between servers
@@ -90,7 +125,7 @@ module TestingServer
     end
 
     receive_msg_proc = lambda do |message|
-      Log.debug2("message received: #{message}")
+      $log4r.info("message received: #{message}")
       messages.push(message)
     end
     tcp = Networking::TCPClient.new(Params['content_server_hostname'],
@@ -103,7 +138,7 @@ module TestingServer
         sleep Params['validation_interval']
         validation_timestamp = Time.now.to_i
         tcp.send_obj([:GET_INDEX, validation_timestamp])
-        Log.debug2 "GET_INDEX sent with timestamp #{validation_timestamp}"
+        $log4r.info "GET_INDEX sent with timestamp #{validation_timestamp}"
       end
     end
 
@@ -111,10 +146,10 @@ module TestingServer
     # handles them according to type
     while(true) do
       msg_type, response_validation_timestamp, msg_body = messages.pop
-      Log.debug2 "#{msg_type} : #{validation_timestamp} : #{msg_body.class}"
+      $log4r.info "#{msg_type} : #{validation_timestamp} : #{msg_body.class}"
       unless (validation_timestamp == response_validation_timestamp)
         # TODO problem of servers synch. What should be done here?
-        Log.warning "Timestamps differs: requested #{validation_timestamp} : received #{response_validation_timestamp}"
+        $log4r.warning "Timestamps differs: requested #{validation_timestamp} : received #{response_validation_timestamp}"
       end
 
       case msg_type
@@ -138,7 +173,7 @@ module TestingServer
       when :PUT_VALIDATION
         is_master_ok = msg_body
       else
-        Log.error "Incorrect message received: #{msg_type}"
+        $log4r.error "Incorrect message received: #{msg_type}"
       end
 
       unless (is_master_ok.nil? || is_cur_synch_ok.nil? || is_backup_ok.nil?)
@@ -150,14 +185,42 @@ module TestingServer
       end
     end
   end
-  module_function :run_backup_testing_server
 
+
+  def generate_mem_report
+    # Generate memory report
+    current_objects_counters = {}
+    time = Time.now
+    current_objects_counters['Time'] = time.to_i
+    count = ObjectSpace.each_object(String).count
+    current_objects_counters['String'] = count
+    count = ObjectSpace.each_object(ContentData::ContentData).count
+    current_objects_counters['ContentData'] = count
+    dir_count = ObjectSpace.each_object(FileMonitoring::DirStat).count
+    current_objects_counters['DirStat'] = dir_count
+    file_count = ObjectSpace.each_object(FileMonitoring::FileStat).count
+    current_objects_counters['FileStat'] = file_count-dir_count
+
+    # Generate report and update global counters
+    report = ""
+    current_objects_counters.each_key { |type|
+      $objects_counters[type] = 0 unless $objects_counters[type]
+      diff =  current_objects_counters[type] - $objects_counters[type]
+      report += "Type:#{type} raised in:#{diff}   \n"
+      $objects_counters[type] = current_objects_counters[type]
+    }
+    final_report = "Memory report at Time:#{time}:\n#{report}\n"
+    $log4r.info(final_report)
+    final_report
+  end
   def send_email(is_master_ok, is_cur_synch_ok, is_backup_ok, numb_backuped_contents)
+
     msg =<<EOF
 Master index ok: #{is_master_ok}
 Backup index ok: #{is_backup_ok}
 Backup includes all master files upto -#{Params['backup_time_requirement']} sec: #{is_cur_synch_ok}
 Number of contents must be back-up: #{numb_backuped_contents}
+#{generate_mem_report}
 EOF
     Email.send_email(Params['from_email'],
                      Params['from_email_password'],
@@ -165,7 +228,8 @@ EOF
                      'Testing server update',
                      msg)
   end
-  module_function :send_email
+
+  module_function :send_email, :run_backup_testing_server, :init_log4r, :generate_mem_report
 
 end # module TestingServer
 

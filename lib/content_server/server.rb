@@ -1,3 +1,4 @@
+require 'log'
 require 'params'
 require 'process_monitoring/thread_safe_hash'
 
@@ -24,6 +25,13 @@ module ContentServer
     $process_vars = ThreadSafeHash::ThreadSafeHashMonitored.new(Params['enable_monitoring'])
     $tmp_content_data_file = nil  # will be init during execution
     $local_dynamic_content_data = nil  # will be init during execution
+    $testing_memory_active = false
+    $testing_memory_log = nil
+    $indexed_file_count = 0
+    $local_content_data = nil
+    $local_content_data_lock = nil
+    $remote_content_data_lock = nil
+    $remote_content_data = nil
   end
 
   def handle_program_termination(exception)
@@ -47,27 +55,36 @@ module ContentServer
   end
 
   def monitor_general_process_vars
-    mutex = Mutex.new
+    objects_counters = {}
+    objects_counters["Time"] = Time.now.to_i
     while true do
+      current_objects_counters = {}
       sleep(Params['process_vars_delay'])
-      $process_vars.set('time', Time.now)
-      #enable following line to see full list of object:count
-      #obj_array = ''
-      total_obj_count = 0
-      string_count = 0
-      mutex.synchronize do
-        ObjectSpace.each_object(Class) {|obj|
-          obj_count_per_class = ObjectSpace.each_object(obj).count
-          #enable following line to see full list of object:count
-          #obj_array = "#{obj_array} * #{obj.name}:#{obj_count_per_class}"
-          total_obj_count = total_obj_count + obj_count_per_class
-        }
-        string_count = ObjectSpace.each_object(String).count
-      end
-      #enable following line to see full list of object:count
-      #$process_vars.set('Live objs full', obj_array)
-      $process_vars.set('Live objs total', total_obj_count)
-      $process_vars.set('Live String size', string_count)
+      time = Time.now
+      $process_vars.set('time', time)
+      current_objects_counters['Time'] = time.to_i
+      count = ObjectSpace.each_object(String).count
+      $process_vars.set('String count', count)
+      current_objects_counters['String'] = count
+      count = ObjectSpace.each_object(ContentData::ContentData).count
+      $process_vars.set('ContentData count', count)
+      current_objects_counters['ContentData'] = count
+      dir_count = ObjectSpace.each_object(FileMonitoring::DirStat).count
+      $process_vars.set('DirStat count', dir_count)
+      current_objects_counters['DirStat'] = dir_count
+      file_count = ObjectSpace.each_object(FileMonitoring::FileStat).count
+      $process_vars.set('FileStat count', file_count-dir_count)
+      current_objects_counters['FileStat'] = file_count-dir_count
+
+      # Generate report and update global counters
+      report = ""
+      current_objects_counters.each_key { |type|
+        objects_counters[type] = 0 unless objects_counters[type]
+        diff =  current_objects_counters[type] - objects_counters[type]
+        report += "Type:#{type} raised in:#{diff}   \n"
+        objects_counters[type] = current_objects_counters[type]
+      }
+      Log.info("MEM REPORT at:#{time}:\n#{report}\n")
     end
   end
 

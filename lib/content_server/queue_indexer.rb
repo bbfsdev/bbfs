@@ -10,9 +10,8 @@ module ContentServer
   # content data updates into output queue.
   class QueueIndexer
 
-    def initialize(input_queue, local_dynamic_content_data)
+    def initialize(input_queue)
       @input_queue = input_queue
-      @local_dynamic_content_data = local_dynamic_content_data
     end
 
     # index files and add to copy queue
@@ -28,15 +27,21 @@ module ContentServer
           Log.debug1 "index event: state:#{state}, dir?#{is_dir}, path:#{path}, mtime:#{mtime}, size:#{size}."
           if state == FileMonitoring::FileStatEnum::STABLE && !is_dir
             # Calculating checksum
-            instance_stats = @local_dynamic_content_data.stats_by_location([Params['local_server_name'], path])
+            instance_stats = nil  # definition
+            $local_content_data_lock.synchronize{
+              instance_stats = $local_content_data.stats_by_location([Params['local_server_name'], path])
+            }
             Log.debug1("instance !#{instance_stats}! mtime: #{mtime.to_i}, size: #{size}")
             if instance_stats.nil? || mtime.to_i != instance_stats[1] || size != instance_stats[0]
-              Log.info "Indexing file:'#{path}'."
+              Log.debug1 "Indexing file:'#{path}'."
               checksum = calc_SHA1(path)
               $process_vars.inc('indexed_files')
+              $indexed_file_count += 1
               Log.debug1("Index info:checksum:#{checksum} size:#{size} time:#{mtime.to_i}")
               Log.debug1('Adding index to content data. put in queue for dynamic update.')
-              @local_dynamic_content_data.add_instance(checksum, size, Params['local_server_name'], path, mtime.to_i)
+              $local_content_data_lock.synchronize{
+                $local_content_data.add_instance(checksum, size, Params['local_server_name'], path, mtime.to_i)
+              }
             else
               Log.info("Skip file #{path} indexing (shallow check passed)")
             end
@@ -45,12 +50,16 @@ module ContentServer
             Log.debug2("NonExisting/Changed (file): #{path}")
             # Remove file but only when non-existing.
             Log.debug1("File to remove: #{path}")
-            @local_dynamic_content_data.remove_instance(Params['local_server_name'], path)
+            $local_content_data_lock.synchronize{
+              $local_content_data.remove_instance(Params['local_server_name'], path)
+            }
           elsif state == FileMonitoring::FileStatEnum::NON_EXISTING && is_dir
             Log.debug2("NonExisting/Changed (dir): #{path}")
             # Remove directory but only when non-existing.
             Log.debug1("Directory to remove: #{path}")
-            @local_dynamic_content_data.remove_directory(Params['local_server_name'], path)
+            $local_content_data_lock.synchronize{
+              $local_content_data.remove_directory(Params['local_server_name'], path)
+            }
           else
             Log.debug1("This case should not be handled: #{state}, #{is_dir}, #{path}.")
           end
