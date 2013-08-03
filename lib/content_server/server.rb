@@ -85,14 +85,8 @@ module ContentServer
         report += "Type:#{type} raised in:#{diff}   \n"
         objects_counters[type] = current_objects_counters[type]
       }
-      $process_vars.set('MEM REPORT', report)
       $monitoring_process_vars_report += "MEM REPORT at:#{time}:\n#{report}\n"
       Log.info($monitoring_process_vars_report)
-      #i=0
-      #ObjectSpace.each_object(FileMonitoring::DirStat) { |o|
-      #  i+=1
-      #  $process_vars.set("dir-#{i}", o.to_s)
-      #}
     end
   end
 

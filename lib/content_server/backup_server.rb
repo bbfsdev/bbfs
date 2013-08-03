@@ -54,9 +54,11 @@ module ContentServer
       Log.info("  Path:'#{path['path']}'")
     }
 
-    # Read here for initial content data that exist from previous system run
+    # initial global local content data object
     $local_content_data_lock = Mutex.new
     $local_content_data = ContentData::ContentData.new
+
+    # Read here for initial content data that exist from previous system run
     content_data_path = Params['local_content_data_path']
     if File.exists?(content_data_path) and !File.directory?(content_data_path)
       Log.info("reading initial content data that exist from previous system run from file:#{content_data_path}")
@@ -91,21 +93,19 @@ module ContentServer
     Log.debug1('Start dump local content data to file thread')
     all_threads << Thread.new do
       FileUtils.mkdir_p(Params['tmp_path']) unless File.directory?(Params['tmp_path'])
-      last_data_flush_time = nil
-      while true do
-        if last_data_flush_time.nil? || last_data_flush_time + Params['data_flush_delay'] < Time.now.to_i
-          Log.info "Writing local content data to #{Params['local_content_data_path']}."
-          $testing_memory_log.info("Start flush content data to file") if $testing_memory_log
-          $local_content_data_lock.synchronize{
-            $local_content_data.to_file($tmp_content_data_file)
-          }
-          $testing_memory_log.info("End flush content data to file") if $testing_memory_log
-          File.rename($tmp_content_data_file, Params['local_content_data_path'])
-          last_data_flush_time = Time.now.to_i
-        end
-        sleep(1)
-      end
+      loop{
+        sleep(Params['data_flush_delay'])
+        Log.info("Writing local content data to #{Params['local_content_data_path']}.")
+        $testing_memory_log.info("Start flush content data to file") if $testing_memory_log
+        $local_content_data_lock.synchronize{
+          $local_content_data.to_file($tmp_content_data_file)
+        }
+        $testing_memory_log.info("End flush content data to file") if $testing_memory_log
+        File.rename($tmp_content_data_file, Params['local_content_data_path'])
+      }
     end
+
+    #initialize global - remote content data
     $remote_content_data_lock = Mutex.new
     $remote_content_data = ContentData::ContentData.new
     remote_content = ContentServer::RemoteContentClient.new(Params['content_server_hostname'],

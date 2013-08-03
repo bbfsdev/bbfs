@@ -84,7 +84,7 @@ module ContentServer
       Log.info("Content server received content data request")
       $local_content_data_lock.synchronize{
         Log.debug1("Sending content data:#{$local_content_data}")
-        @tcp_server.send_obj($remote_content_data)
+        @tcp_server.send_obj($local_content_data)
       }
       Log.info('Content server sent content data')
     end
