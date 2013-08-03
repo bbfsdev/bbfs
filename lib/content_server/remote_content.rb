@@ -36,31 +36,20 @@ module ContentServer
     # Unchanged data will not be saved
     # @param message [Message] ContentData object
     def receive_content(message)
-      Log.debug1("Backup server received Remote content data:#{message.to_s}")
       Log.info("Backup server received Remote content data")
-      $remote_content_data_lock.synchronize{
-        $remote_content_data = message
-      }
       @last_fetch_timestamp = Time.now.to_i
 
-      save_time_span = Params['remote_content_save_timeout']
-      if !@last_save_timestamp.nil?
-        save_time_span = Time.now.to_i - @last_save_timestamp
-      end
-
-      if save_time_span >= Params['remote_content_save_timeout']
-      	@last_save_timestamp = Time.now.to_i
-        write_to = File.join(@content_server_content_data_path,
-                             @last_save_timestamp.to_s + '.cd')
-        if(message.unique_id != @last_content_data_id)  # check if same ContentData received
-          FileUtils.makedirs(@content_server_content_data_path) unless \
+      # Update remote content data and write to file if changed ContentData received
+      if(message.unique_id != @last_content_data_id)
+        path = File.join(@content_server_content_data_path, @last_save_timestamp.to_s + '.cd')
+        FileUtils.makedirs(@content_server_content_data_path) unless \
               File.directory?(@content_server_content_data_path)
-          $remote_content_data_lock.synchronize{
-            $remote_content_data.to_file(write_to)
-          }
-          Log.debug1("Written content data to file:#{write_to}.")
+        $remote_content_data_lock.synchronize{
+          $remote_content_data = message
+          $remote_content_data.to_file(path)
           @last_content_data_id = message.unique_id   # save last content data ID
-        end
+        }
+        Log.debug1("Written content data to file:#{path}.")
       else
         Log.debug1("No need to write remote content data, it has not changed.")
       end
@@ -76,13 +65,13 @@ module ContentServer
         loop do
           # if need content data
           sleep_time_span = Params['remote_content_save_timeout']
-          if !@last_fetch_timestamp.nil?
+          if @last_fetch_timestamp
             sleep_time_span = Time.now.to_i - @last_fetch_timestamp
           end
           Log.debug1("sleep_time_span: #{sleep_time_span}")
           if sleep_time_span >= Params['remote_content_save_timeout']
             # Send ping!
-            bytes_written = @remote_tcp.send_obj(nil)
+            @remote_tcp.send_obj(nil)
             Log.info("sending ping request for remote content data!")
           end
           sleep(sleep_time_span) if sleep_time_span > 0
