@@ -23,6 +23,7 @@ content_server_data_port: 3333
 #backup data file, i.e. state(index) of backup server destination folder.
 local_content_data_path: '~/.bbfs/var/test.backup.data' # File to store content data
 default_monitoring_log_path: '~/.bbfs/log/backup_file_monitoring.log' # Log of file changes
+testing_log_path: '~/.bbfs/log/backup_testing_log
 
 # Path to backup files from master and to monitor
 backup_destination_folder:

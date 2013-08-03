@@ -130,11 +130,11 @@ module ContentServer
             file.seek(offset)
           end
           Log.debug1("File streamer: #{file.to_s}.")
-        rescue IOError => e
+          @streams[checksum] = Stream.new(checksum, path, file, file.size)
+          $process_vars.set('Streams size', @streams.size)
+        rescue IOError, Errno::ENOENT => e
           Log.warning("Could not stream local file #{path}. #{e.to_s}")
         end
-        @streams[checksum] = Stream.new(checksum, path, file, file.size)
-        $process_vars.set('Streams size', @streams.size)
       else
         @streams[checksum].file.seek(offset)
       end
@@ -185,11 +185,11 @@ module ContentServer
         end
         # If last chunk copy.
       elsif content.nil? && content_checksum.nil?
-        # Handle the case of backup empty file.
+        Log.debug1('Handle the case of backup empty file or last chunk')
+        # Handle the case of backup empty file or last chunk.
         handle_new_stream(file_checksum, 0) if !@streams.key?(file_checksum)
         # Finalize the file copy.
         handle_last_chunk(file_checksum)
-        return false
       else
         Log.warning("Unexpected receive chuck message. file_checksum:#{file_checksum}, " \
                       "content.nil?:#{content.nil?}, content_checksum:#{content_checksum}")

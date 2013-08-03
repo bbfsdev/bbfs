@@ -35,9 +35,6 @@ module FileMonitoring
     # * <tt>path</tt> - File location
     # * <tt>stable_state</tt> - Number of iterations to move unchanged file to stable state
     def initialize(path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
-      ObjectSpace.define_finalizer(self,
-                                   self.class.method(:finalize).to_proc)
-      $process_vars.inc('FileStat size')
       @path ||= path
       @size = nil
       @creation_time = nil
@@ -45,10 +42,6 @@ module FileMonitoring
       @cycles = 0  # number of iterations from the last file modification
       @state = state
       @stable_state = stable_state  # number of iteration to move unchanged file to stable state
-    end
-
-    def self.finalize(id)
-      $process_vars.dec('FileStat size')
     end
 
     def set_output_queue(event_queue)
@@ -117,7 +110,7 @@ module FileMonitoring
           @@log.info(state + ": " + path)
           @@log.outputters[0].flush if Params['log_flush_each_message']
         end
-        if (!@event_queue.nil?)
+        if @event_queue and FileStatEnum::NEW != @state  # NEW state is ignored in indexer
           Log.debug1 "Writing to event queue [#{self.state}, #{self.path}]"
           @event_queue.push([self.state, self.instance_of?(DirStat), self.path,
                              self.modification_time, self.size])
@@ -145,20 +138,11 @@ module FileMonitoring
     # * <tt>path</tt> - File location
     # * <tt>stable_state</tt> - Number of iterations to move unchanged directory to stable state
     def initialize(path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
-      ObjectSpace.define_finalizer(self,
-                                   self.class.method(:finalize).to_proc)
-      $process_vars.inc('DirStat size')
       super
       @dirs = nil
       @files = nil
       @non_utf8_paths = {}
       @content_data_cache = content_data_cache
-      ObjectSpace.define_finalizer(self,
-                                   self.class.method(:finalize).to_proc)
-    end
-
-    def self.finalize(id)
-      $process_vars.dec('DirStat size')
     end
 
     #  Adds directory for monitoring.
