@@ -19,8 +19,8 @@ backup_destination_folder:
 # Paths to monitor directories. All path files and recursive sub paths are used.
 monitoring_paths:
   - path: '~/.bbfs/test_files'
-    scan_period: 1 # Number of seconds before initiating another directory scan.
-    stable_state: 5 # Number of scan times for a file to be unchanged before his state becomes stable.
+    scan_period: 5 # Number of seconds before initiating another directory scan.
+    stable_state: 1 # Number of scan times for a file to be unchanged before his state becomes stable.
 
 #cycles of fetch period used by backup server to ping content server for its content
 remote_content_save_timeout: 120

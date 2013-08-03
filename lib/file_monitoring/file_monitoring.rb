@@ -49,8 +49,7 @@ module FileMonitoring
         priority = (Time.now + elem['scan_period']).to_i
         dir_stat = DirStat.new(File.expand_path(elem['path']), elem['stable_state'], @content_data_cache, FileStatEnum::NON_EXISTING)
         dir_stat.set_event_queue(@event_queue) if @event_queue
-        Log.debug1 "File monitoring started for: #{elem}"
-        puts "File monitoring started for: #{elem}"
+        Log.debug1("File monitoring started for: #{elem}")
         pq.push([priority, elem, dir_stat], -priority)
       }
 
@@ -99,8 +98,6 @@ module FileMonitoring
         priority = (Time.now + conf['scan_period']).to_i
         pq.push([priority, conf, dir_stat], -priority)
       end
-
-      log.close
     end
   end
 

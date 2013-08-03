@@ -214,7 +214,6 @@ module Params
 
   # Define new parameter of type Integer.
   def Params.integer(name, value, description)
-    puts ("Param:#{name} value:#{value}")
     raise_error_if_param_exists(name)
     @params_data_base[name] = Param.new(name, value, 'Integer', description)
   end
