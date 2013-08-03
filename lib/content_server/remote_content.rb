@@ -59,9 +59,8 @@ module ContentServer
               File.directory?(@content_server_content_data_path)
           File.open(write_to, 'wb') { |f| f.write(message.to_s) }
           Log.debug1("Written content data to file:#{write_to}.")
-
           @last_content_data_id = message.unique_id   # save last content data ID
-
+        end
         Log.debug1("No need to write remote content data, it has not changed.")
       else
         Log.debug1("No need to write remote content data, it has not changed.")
