@@ -24,6 +24,7 @@ Gem::Specification.new do |s|
     'lib/process_monitoring.rb', 'lib/process_monitoring/**/*',
     'lib/run_in_background.rb', 'lib/run_in_background/**/*',
     'lib/testing_server.rb', 'lib/testing_server/**/*',
+    'lib/testing_memory/**/*',
     'lib/validations.rb', 'lib/validations/**/*'] \
     & `git ls-files -z`.split("\0")
   s.test_files  = Dir['test/content_data/**/*',
@@ -41,7 +42,7 @@ Gem::Specification.new do |s|
     'spec/validations/**/*'] \
     & `git ls-files -z`.split("\0")
 
-  s.executables = ['content_server', 'backup_server', 'testing_server']
+  s.executables = ['content_server', 'backup_server', 'testing_server', 'memory_server']
   
   # used by content_server, run_in_background
   s.add_runtime_dependency('rake', '0.9.2.2')
