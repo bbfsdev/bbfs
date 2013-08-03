@@ -42,8 +42,8 @@ Gem::Specification.new do |s|
     'spec/validations/**/*'] \
     & `git ls-files -z`.split("\0")
 
-  s.executables = ['content_server', 'backup_server', 'testing_server', 'memory_server']
-  
+  s.executables = ['content_server', 'backup_server', 'testing_server', 'testing_memory']
+
   # used by content_server, run_in_background
   s.add_runtime_dependency('rake', '0.9.2.2')
   # used by file_monitoring
