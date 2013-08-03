@@ -25,7 +25,6 @@ module ContentServer
     $process_vars = ThreadSafeHash::ThreadSafeHashMonitored.new(Params['enable_monitoring'])
     $tmp_content_data_file = nil  # will be init during execution
     $local_dynamic_content_data = nil  # will be init during execution
-    $monitoring_process_vars_report = ""
     $testing_memory_active = false
     $testing_memory_log = nil
     $indexed_file_count = 0
@@ -85,8 +84,7 @@ module ContentServer
         report += "Type:#{type} raised in:#{diff}   \n"
         objects_counters[type] = current_objects_counters[type]
       }
-      $monitoring_process_vars_report += "MEM REPORT at:#{time}:\n#{report}\n"
-      Log.info($monitoring_process_vars_report)
+      Log.info("MEM REPORT at:#{time}:\n#{report}\n")
     end
   end
 
