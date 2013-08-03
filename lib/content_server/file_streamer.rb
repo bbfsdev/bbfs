@@ -185,6 +185,7 @@ module ContentServer
         end
         # If last chunk copy.
       elsif content.nil? && content_checksum.nil?
+        Log.debug1('Handle the case of backup empty file')
         # Handle the case of backup empty file.
         handle_new_stream(file_checksum, 0) if !@streams.key?(file_checksum)
         # Finalize the file copy.
