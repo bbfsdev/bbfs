@@ -37,6 +37,10 @@ module ContentData
         @contents_info = other.clone_contents_info
         @instances_info = other.clone_instances_info  # location --> checksum to optimize instances query
       end
+    # Content Data unique identification
+    # @return [ID] hash identification
+    def unique_id
+      @instances_info.hash
     end
 
     def clone_instances_info
