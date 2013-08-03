@@ -1,6 +1,5 @@
 require 'thread'
 
-require 'content_data/dynamic_content_data'
 require 'log'
 require 'networking/tcp'
 require 'params'
@@ -18,7 +17,6 @@ module ContentServer
   # remote_content_save_timeout is pre defined in config-backup_server.yml
   class RemoteContentClient
     # initializes class variables
-    # @param dynamic_content_data [dynamic_content_data]
     # @param host [ host] host address
     # @param port[ port]  port TCP/IP port
     # @param local_backup_folder [local_backup_folder] pre defined folder for backup
@@ -85,8 +83,6 @@ module ContentServer
    #It connects to server and listens to incoming requests. After receiving the request it sends local content data structure.
   class RemoteContentServer
     # initializes class variables
-    # @param dynamic_content_data [dynamic_content_data] Content data
-    # @param port [dynamic_content_data] TCP/IP port
     def initialize(port)
       @tcp_server = Networking::TCPServer.new(port, method(:content_requested))
       Log.debug3("initialize RemoteContentServer on port:#{port}")
