@@ -284,8 +284,7 @@ module ContentServer
     # of ack. Note that it is being executed from the class thread only!
     def handle(message)
       message_type, message_content = message
-      Log.debug1("backup copy message: Type #{message_type}")
-      Log.debug1("backup copy message: message: #{message_content}")
+      Log.debug1("backup copy message: Type #{message_type}.  message: #{message_content}")
       if message_type == :SEND_COPY_MESSAGE
         bytes_written = @tcp_client.send_obj([:COPY_MESSAGE, message_content])
         Log.debug2("Sending copy message succeeded? bytes_written: #{bytes_written}.")
@@ -295,7 +294,7 @@ module ContentServer
           @tcp_client.send_obj([:COPY_CHUNK_FROM_REMOTE, file_checksum])
         else
           file_checksum, offset, file_size, content, content_checksum = message_content
-          Log.error("receive_chunk failed for checksum:#{content_checksum}")
+          Log.error("receive_chunk failed for chunk checksum:#{content_checksum}")
         end
       elsif message_type == :ACK_MESSAGE
         checksum, timestamp = message_content
