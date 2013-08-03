@@ -130,11 +130,11 @@ module ContentServer
             file.seek(offset)
           end
           Log.debug1("File streamer: #{file.to_s}.")
-        rescue IOError => e
+          @streams[checksum] = Stream.new(checksum, path, file, file.size)
+          $process_vars.set('Streams size', @streams.size)
+        rescue IOError, Errno::ENOENT => e
           Log.warning("Could not stream local file #{path}. #{e.to_s}")
         end
-        @streams[checksum] = Stream.new(checksum, path, file, file.size)
-        $process_vars.set('Streams size', @streams.size)
       else
         @streams[checksum].file.seek(offset)
       end

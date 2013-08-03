@@ -138,7 +138,7 @@ module FileGenerator
         while is_generate_file file_counter, total_file_count
           new_file_name = get_new_file_name
           File.open(File.join(new_dir_name, new_file_name), "w") do |f|
-            f.write ('a' * get_file_bytes_size)
+            get_file_bytes_size.to_i.times { f.write(get_random_letter) }
           end
           file_counter += 1
           total_file_count += 1
