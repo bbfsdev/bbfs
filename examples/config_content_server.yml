@@ -8,18 +8,18 @@ local_content_data_path: '~/.bbfs/var/content.data' # File to store content data
 # Paths to monitor\backup files from. All path files and recursive sub paths are used.
 monitoring_paths:
   - path: '/home/jhon_doe/dir_to_backup'
-    scan_period: 1 # Number of seconds before initiating another directory scan.
-    stable_state: 5 # Number of scan times for a file to be unchanged before his state becomes stable.
+    scan_period: 15 # Number of seconds before initiating another directory scan.
+    stable_state: 1 # Number of scan times for a file to be unchanged before his state becomes stable.
   - path: 'path_2_to_monitor'
-    scan_period: 1 # Number of seconds before initiating another directory scan.
-    stable_state: 5 # Number of scan times for a file to be unchanged before his state becomes stable.
+    scan_period: 15 # Number of seconds before initiating another directory scan.
+    stable_state: 1 # Number of scan times for a file to be unchanged before his state becomes stable.
 # … optional more paths here
 
 #Cycles where server write the content data to a local file
 data_flush_delay: 60
 
 ######process variables monitoring parameters
-enable_monitoring: true
+enable_monitoring: false
 #Browing on server:port will show the varialbes
 process_monitoring_web_port: 5556
 #Cycles(seconds) to update variables

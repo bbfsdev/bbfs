@@ -10,14 +10,14 @@ local_content_data_path: '~/.bbfs/var/backup.data' # File to store content data
 # Path to backup files from master and to monitor
 backup_destination_folder:
   - path: '~/.bbfs/backup_files' # Directory to monitor.
-    scan_period: 5 # Number of seconds before initiating another directory scan.
+    scan_period: 15 # Number of seconds before initiating another directory scan.
     stable_state: 1 # Number of scan times for a file to be unchanged before his state becomes stable.
 
 # Paths to monitor directories. All path files and recursive sub paths are used.
 monitoring_paths:
   - path: '~/.bbfs/monitor_local_files'
-    scan_period: 1 # Number of seconds before initiating another directory scan.
-    stable_state: 5 # Number of scan times for a file to be unchanged before his state becomes stable.
+    scan_period: 15 # Number of seconds before initiating another directory scan.
+    stable_state: 1 # Number of scan times for a file to be unchanged before his state becomes stable.
 
 #cycles of fetch period used by backup server to ping content server for its content
 remote_content_save_timeout: 120
@@ -29,7 +29,7 @@ backup_check_delay: 60
 data_flush_delay: 60
 
 ######process variables monitoring parameters
-enable_monitoring: true
+enable_monitoring: false
 #Browing on server:port will show the varialbes
 process_monitoring_web_port: 5555
 #Cycles(seconds) to update variables
