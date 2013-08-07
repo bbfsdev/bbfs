@@ -241,18 +241,15 @@ module ContentData
       return_str = ""
       contents_str = ""
       instances_str = ""
-      instances_counter = 0
       each_content { |checksum, size, content_mod_time|
         contents_str << "%s,%d,%d\n" % [checksum, size, content_mod_time]
       }
-      instances_counter = 0
       each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
-        instances_counter += 1
         instances_str <<  "%s,%d,%s,%s,%d\n" % [checksum, size, server, path, instance_mod_time]
       }
       return_str << "%d\n" % [@contents_info.length]
       return_str << contents_str
-      return_str << "%d\n" % [instances_counter]
+      return_str << "%d\n" % [@instances_info.length]
       return_str << instances_str
       return_str
     end
@@ -260,7 +257,16 @@ module ContentData
     def to_file(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
-      File.open(filename, 'w') {|f| f.write(to_s) }
+      file = File.open(filename, 'w')
+      file.write("%d\n" % [@contents_info.length])
+      each_content { |checksum, size, content_mod_time|
+        file.write("%s,%d,%d\n" % [checksum, size, content_mod_time])
+      }
+      file.write("%d\n" % [@instances_info.length])
+      each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
+        file.write("%s,%d,%s,%s,%d\n" % [checksum, size, server, path, instance_mod_time])
+      }
+      file.close
     end
 
     # TODO validation that file indeed contains ContentData missing
