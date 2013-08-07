@@ -262,6 +262,7 @@ module ContentData
       each_content { |checksum, size, content_mod_time|
         file.write("%s,%d,%d\n" % [checksum, size, content_mod_time])
       }
+      sleep(1)
       file.write("%d\n" % [@instances_info.length])
       each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
         file.write("%s,%d,%s,%s,%d\n" % [checksum, size, server, path, instance_mod_time])
