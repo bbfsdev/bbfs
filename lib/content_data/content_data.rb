@@ -258,15 +258,13 @@ module ContentData
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
       file = File.open(filename, 'w')
-      file.write("%d\n" % [@contents_info.length])
+      file.write("#{@contents_info.length}\n")
       each_content { |checksum, size, content_mod_time|
-        file.write("%s,%d,%d\n" % [checksum, size, content_mod_time])
-        50.times {|i| j=i}
+        file.write("#{checksum},#{size},#{content_mod_time}\n")
       }
-      file.write("%d\n" % [@instances_info.length])
-      each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
-        file.write("%s,%d,%s,%s,%d\n" % [checksum, size, server, path, instance_mod_time])
-        50.times {|i| j=i}
+      file.write("#{@instances_info.length}\n")
+      each_instance { |checksum, size, _, instance_mod_time, server, path|
+        file.write("#{checksum},#{size},#{server},#{path},#{instance_mod_time}\n")
       }
       file.close
     end
