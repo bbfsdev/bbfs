@@ -123,7 +123,8 @@ module TestingMemory
       email_report += generate_mem_report
       email_report += "indexed files:#{$indexed_file_count}\n"
       $testing_memory_log.info("indexed files:#{$indexed_file_count}")
-      puts "indexed files:#{$indexed_file_count}"
+      puts("indexed files:#{$indexed_file_count}")
+      puts("symobles size:#{Symbol.all_symbols.size}")
       if total_files == $indexed_file_count
         stop_time = Time.now
         email_report += "\nAt this point all files are indexed. No mem changes should occur\n"
