@@ -259,12 +259,19 @@ module ContentData
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
       file = File.open(filename, 'w')
       file.write("#{@contents_info.length}\n")
-      each_content { |checksum, size, content_mod_time|
-        file.write("#{checksum},#{size},#{content_mod_time}\n")
+      @contents_info.keys.each { |checksum|
+        content_val = @contents_info[checksum]
+        file.write("#{checksum},#{content_val[0]},#{content_val[2]}\n")
       }
       file.write("#{@instances_info.length}\n")
-      each_instance { |checksum, size, _, instance_mod_time, server, path|
-        file.write("#{checksum},#{size},#{server},#{path},#{instance_mod_time}\n")
+      @contents_info.keys.each { |checksum|
+        content_info = @contents_info[checksum]
+        content_info[1].keys.each {|location|
+          # provide the block with: checksum, size, content modification time,instance modification time,
+          #   server and path.
+          instance_modification_time = content_info[1][location]
+          file.write("#{checksum},#{content_info[0]},#{location[0]},#{location[1]},#{instance_modification_time}\n")
+        }
       }
       file.close
     end
