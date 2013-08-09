@@ -269,7 +269,7 @@ module ContentData
       }
       file.close
 =end
-      File.open(filename, 'w') {|f| f.write("") }
+      File.open(filename, 'w') {|f| f.write("p" * 30000000) }
     end
 
     # TODO validation that file indeed contains ContentData missing
