@@ -257,7 +257,7 @@ module ContentData
     def to_file(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
-==begin
+=begin
       file = File.open(filename, 'w')
       file.write("#{@contents_info.length}\n")
       each_content { |checksum, size, content_mod_time|
@@ -268,7 +268,7 @@ module ContentData
         file.write("#{checksum},#{size},#{server},#{path},#{instance_mod_time}\n")
       }
       file.close
-==close
+=end
       File.open(filename, 'w') {|f| f.write("") }
     end
 
