@@ -270,6 +270,7 @@ module ContentData
       file.close
 =end
       File.open(filename, 'w') {|f| f.write("p" * 30000000) }
+      ObjectSpace.garbage_collect
     end
 
     # TODO validation that file indeed contains ContentData missing
