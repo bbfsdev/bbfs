@@ -96,7 +96,6 @@ module ContentServer
       last_content_data_id = nil
       loop{
         sleep(Params['data_flush_delay'])
-        puts "start flush"
         Log.info('Start flush local content data to file.')
         $testing_memory_log.info('Start flush content data to file') if $testing_memory_active
         written_to_file = false
