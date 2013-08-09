@@ -99,7 +99,7 @@ module ContentServer
         #Log.info('Start flush local content data to file.')
         #$testing_memory_log.info('Start flush content data to file') if $testing_memory_active
         written_to_file = false
-        $local_content_data_lock.synchronize{
+        #$local_content_data_lock.synchronize{
           local_content_data_unique_id = $local_content_data.unique_id
           if (local_content_data_unique_id != last_content_data_id)
             last_content_data_id = local_content_data_unique_id
@@ -108,8 +108,8 @@ module ContentServer
           else
             #Log.info('no need to flush. content data has not changed')
           end
-        }
-        File.rename($tmp_content_data_file, Params['local_content_data_path']) if written_to_file
+        #}
+        #File.rename($tmp_content_data_file, Params['local_content_data_path']) if written_to_file
         #$testing_memory_log.info("End flush content data to file") if $testing_memory_active
       }
     end
