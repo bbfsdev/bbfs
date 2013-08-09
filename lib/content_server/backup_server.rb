@@ -103,8 +103,8 @@ module ContentServer
           local_content_data_unique_id = $local_content_data.unique_id
           if (local_content_data_unique_id != last_content_data_id)
             last_content_data_id = local_content_data_unique_id
-            $local_content_data.to_file($tmp_content_data_file)
-            written_to_file = true
+            #$local_content_data.to_file($tmp_content_data_file)
+            #written_to_file = true
           else
             #Log.info('no need to flush. content data has not changed')
           end
