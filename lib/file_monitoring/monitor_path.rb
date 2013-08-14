@@ -96,9 +96,11 @@ module FileMonitoring
     def changed?(file_stats)
       Log.info("size:#{file_stats.size}  size:#{@size}")
       Log.info("time:#{file_stats.mtime.utc}  time:#{@modification_time.utc}")
-      not (file_stats.size == @size &&
+      value = not (file_stats.size == @size &&
           #file_stats.ctime.utc == @creation_time.utc &&
           file_stats.mtime.utc == @modification_time.utc)
+      Log.info("changed?=#{value}")
+      value
     end
 
     def set_event_queue(queue)
