@@ -145,28 +145,39 @@ module FileMonitoring
     end
 
     # add instance while initializing tree using content data from file
-    def load_instance(arr_of_paths, next_index, size, modification_time)
-      @files = {} unless @files
+    # Parameters:
+    #   sub_paths - Array of sub paths of the instance which is added to tree
+    #               Example:
+    #                 instance path = /dir1/dir2/file_name
+    #                   Sub path 1: /dir1
+    #                   Sub path 2: /dir1/dir2
+    #                   Sub path 3: /dir1/dir2/file_name
+    #               sub paths would create DirStat objs or FileStat(FileStat create using last sub path).
+    #   sub_paths_index - the index indicates the next sub path to insert to the tree
+    #                     the index will be raised at each recursive call down the tree
+    #   size - the instance size to insert to the tree
+    #   modification_time - the instance modification_time to insert to the tree
+    def load_instance(sub_paths, sub_paths_index, size, modification_time)
+      # initialize dirs and files. This will indicate that the current DirStat is not new.
       @dirs = {} unless @dirs
-      if arr_of_paths.size-1 == next_index  # last index
-        # index points to last entry - file name - leaf case. Add new file.
-        file_stat = FileStat.new(arr_of_paths[next_index], @stable_state)
+      @files = {} unless @files
+      if sub_paths.size-1 == sub_paths_index
+        # Add File case - index points to last entry - leaf case.
+        file_stat = FileStat.new(sub_paths[sub_paths_index], @stable_state)
         file_stat.set_event_queue(@event_queue)
         file_stat.size = size
         file_stat.modification_time = modification_time
         file_stat.state = FileStatEnum::STABLE
-        #Log.info("Add file:#{arr_of_paths[next_index]}")
         add_file(file_stat)
       else
-        # index points to next dir entry. Add new Dir to tree if not present
-        dir_stat = @dirs[arr_of_paths[next_index]]
-        #Log.info("Add Dir:#{arr_of_paths[next_index]}") unless dir_stat
+        # Add Dir to tree if not present. index points to new dir path.
+        dir_stat = @dirs[sub_paths[sub_paths_index]]
         #create new dir if not exist
-        dir_stat = add_dir(DirStat.new(arr_of_paths[next_index], @stable_state)) unless dir_stat
+        dir_stat = add_dir(DirStat.new(sub_paths[sub_paths_index], @stable_state)) unless dir_stat
         dir_stat.state = FileStatEnum::STABLE
-        # continue recursive call on tree dir nodes
         dir_stat.set_event_queue(@event_queue)
-        dir_stat.load_instance(arr_of_paths, next_index+1, size, modification_time)
+        # continue recursive call on tree with next sub path index
+        dir_stat.load_instance(sub_paths, sub_paths_index+1, size, modification_time)
       end
     end
 

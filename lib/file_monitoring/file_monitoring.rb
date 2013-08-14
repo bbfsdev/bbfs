@@ -38,24 +38,37 @@ module FileMonitoring
       }
 
       #Look over loaded content data if not empty
-      # If file is in monitoring area - *Add to DirStat tree as stable with path,size,mod_time read from file
-      # If file is NOT in monitoring area - skip (not a valid usage!!)
+      # If file is under monitoring path - Add to DirStat tree as stable with path,size,mod_time read from file
+      # If file is NOT under monitoring path - skip (not a valid usage)
       unless $local_content_data.empty?
         Log.info("Start build data base from loaded file")
         $local_content_data.each_instance() {
             |_, size, _, mod_time, _, path|
-          #Log.info("Start build file stat for:#{path}")
+          # construct sub paths array from full file path:
+          # Example:
+          #   instance path = /dir1/dir2/file_name
+          #   Sub path 1: /dir1
+          #   Sub path 2: /dir1/dir2
+          #   Sub path 3: /dir1/dir2/file_name
+          # sub paths would create DirStat objs or FileStat(FileStat create using last sub path).
           split_path = path.split(File::SEPARATOR)
-          arr_of_paths = (0..split_path.size-1).inject([]) { |paths, i|
+          sub_paths = (0..split_path.size-1).inject([]) { |paths, i|
             paths.push(File.join(*split_path.values_at(0..i)))
           }
+          # sub_paths holds array => ["/dir1","/dir1/dir2","/dir1/dir2/file_name"]
 
-          #If file is in monitoring area - Add to tree as stable
+          # Loop over monitor paths to start build tree under each
           dir_stat_array.each { | dir_stat|
-            index = arr_of_paths.index(dir_stat.path)
-            next if index.nil?
+            # check if monitor path is one of the sub paths and find it's sub path index
+            # if index is found then it the monitor path
+            # the next index indicates the next sub path to insert to the tree
+            # the index will be raised at each recursive call down the tree
+            sub_paths_index = sub_paths.index(dir_stat.path)
+            next if sub_paths_index.nil?  # monitor path was not found. skip this instance.
+            # monitor path was found. Add to tree as stable.
             dir_stat.state = FileStatEnum::STABLE
-            dir_stat.load_instance(arr_of_paths, index+1, size, mod_time)
+            # start the recursive call with next sub path index
+            dir_stat.load_instance(sub_paths, sub_paths_index+1, size, mod_time)
           }
         }
         Log.info("End build data base from loaded file")
