@@ -96,9 +96,7 @@ module ContentServer
     all_threads << Thread.new do
       FileUtils.mkdir_p(Params['tmp_path']) unless File.directory?(Params['tmp_path'])
       loop{
-        #Log.info("before sleep:#{Params['data_flush_delay']}")
         sleep(Params['data_flush_delay'])
-        #Log.info("after sleep:#{Params['data_flush_delay']}")
         Log.info('Start flush local content data to file.')
         $testing_memory_log.info('Start flush content data to file') if $testing_memory_active
         written_to_file = false
