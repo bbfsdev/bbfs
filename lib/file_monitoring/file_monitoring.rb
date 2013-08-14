@@ -32,7 +32,6 @@ module FileMonitoring
       # create root dirs of monitoring
       dir_stat_array = []
       conf_array.each { |elem|
-        priority = (Time.now + elem['scan_period']).to_i
         dir_stat = DirStat.new(File.expand_path(elem['path']), elem['stable_state'])
         dir_stat.set_event_queue(@event_queue) if @event_queue
         dir_stat_array.push(dir_stat)
@@ -67,7 +66,7 @@ module FileMonitoring
       pq = Containers::PriorityQueue.new
       conf_array.each_with_index { |elem, index|
         priority = (Time.now + elem['scan_period']).to_i
-        Log.debug1("File monitoring started for: #{elem}")
+        Log.info("File monitoring started for: #{elem}")
         pq.push([priority, elem, dir_stat_array[index]], -priority)
       }
 
