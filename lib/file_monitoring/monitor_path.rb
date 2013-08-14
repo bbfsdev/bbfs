@@ -155,10 +155,12 @@ module FileMonitoring
         file_stat.size = size
         file_stat.modification_time = Time.at(modification_time)
         file_stat.state = FileStatEnum::STABLE
+        Log.info("Add file:#{arr_of_paths[next_index]}")
         add_file(file_stat)
       else
         # index points to next dir entry. Add new Dir to tree if not present
         dir_stat = @dirs[arr_of_paths[next_index]]
+        Log.info("Add Dir:#{arr_of_paths[next_index]}") unless dir_stat
         #create new dir if not exist
         dir_stat = add_dir(DirStat.new(arr_of_paths[next_index], @stable_state)) unless dir_stat
         # continue recursive call on tree dir nodes
