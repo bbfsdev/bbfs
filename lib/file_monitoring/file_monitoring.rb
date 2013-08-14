@@ -9,19 +9,6 @@ module FileMonitoring
   # Manages file monitoring of number of file system locations
   class FileMonitoring
 
-    def initialize ()
-      @content_data_cache = Set.new
-      $local_content_data_lock.synchronize {
-        $local_content_data.each_instance(){
-            |_, _, _, _, _, file_path|
-          # save files to cache
-          Log.info("File in cache: #{file_path.clone}")
-          @content_data_cache.add(file_path.clone)
-        }
-      }
-    end
-
-
     # Set event queue used for communication between different proceses.
     # @param queue [Queue]
     def set_event_queue(queue)
@@ -41,16 +28,46 @@ module FileMonitoring
     # that provides path and file monitoring configuration data
     def monitor_files
       conf_array = Params['monitoring_paths']
+
+      # create root dirs of monitoring
+      dir_stat_array = []
+      conf_array.each { |elem|
+        priority = (Time.now + elem['scan_period']).to_i
+        dir_stat = DirStat.new(File.expand_path(elem['path']), elem['stable_state'])
+        dir_stat.set_event_queue(@event_queue) if @event_queue
+        dir_stat_array.push(dir_stat)
+      }
+
+      #Look over loaded content data if not empty
+      # If file is in monitoring area - *Add to DirStat tree as stable with path,size,mod_time read from file
+      # If file is NOT in monitoring area - skip (not a valid usage!!)
+      unless $local_content_data.empty?
+        Log.info("Start build data base from loaded file")
+        $local_content_data.each_instance() {
+            |_, size, _, mod_time, _, path|
+          split_path = path.split(File::SEPARATOR)
+          arr_of_paths = (0..split_path.size-1).inject([]) { |paths, i|
+            paths.push(File.join(*split_path.values_at(0..i)))
+          }
+
+          #If file is in monitoring area - Add to tree as stable
+          dir_stat_array.each { | dir_stat|
+            index = arr_of_paths.index(dir_stat.path)
+            next if index.nil?
+            dir_stat.add_instance(arr_of_paths, index+1, size, mod_time)
+          }
+        }
+        Log.info("End build data base from loaded file")
+      end
+
       # Directories states stored in the priority queue,
       # where the key (priority) is a time when it should be checked next time.
       # Priority queue means that all entries arranged by key (time to check) in increasing order.
       pq = Containers::PriorityQueue.new
-      conf_array.each { |elem|
+      conf_array.each_with_index { |elem, index|
         priority = (Time.now + elem['scan_period']).to_i
-        dir_stat = DirStat.new(File.expand_path(elem['path']), elem['stable_state'], @content_data_cache, FileStatEnum::NON_EXISTING)
-        dir_stat.set_event_queue(@event_queue) if @event_queue
         Log.debug1("File monitoring started for: #{elem}")
-        pq.push([priority, elem, dir_stat], -priority)
+        pq.push([priority, elem, dir_stat_array[index]], -priority)
       }
 
       #init log4r
