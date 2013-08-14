@@ -59,7 +59,7 @@ module FileMonitoring
     # Checks whether file was changed from the last iteration.
     # For files, size and modification time are checked.
     def monitor
-      Log.info("Start file monitor")
+      #Log.info("Start file monitor")
       file_stats = File.lstat(@path) rescue nil
       new_state = nil
       if file_stats == nil
@@ -89,7 +89,7 @@ module FileMonitoring
       end
 
       # The assignment
-      self.state= new_state
+      set_state(new_state)
     end
 
     #  Checks that stored file attributes are the same as file attributes taken from file system.
@@ -104,8 +104,7 @@ module FileMonitoring
     end
 
     #  Sets and writes to the log a new state.
-    def state= (new_state)
-      Log.info("state=")
+    def set_state(new_state)
       if (@state != new_state or @state == FileStatEnum::CHANGED)
         @state = new_state
         if (@@log)
@@ -157,12 +156,12 @@ module FileMonitoring
         file_stat.size = size
         file_stat.modification_time = Time.at(modification_time)
         file_stat.state = FileStatEnum::STABLE
-        Log.info("Add file:#{arr_of_paths[next_index]}")
+        #Log.info("Add file:#{arr_of_paths[next_index]}")
         add_file(file_stat)
       else
         # index points to next dir entry. Add new Dir to tree if not present
         dir_stat = @dirs[arr_of_paths[next_index]]
-        Log.info("Add Dir:#{arr_of_paths[next_index]}") unless dir_stat
+        #Log.info("Add Dir:#{arr_of_paths[next_index]}") unless dir_stat
         #create new dir if not exist
         dir_stat = add_dir(DirStat.new(arr_of_paths[next_index], @stable_state)) unless dir_stat
         # continue recursive call on tree dir nodes
@@ -218,7 +217,7 @@ module FileMonitoring
     # Checks that directory structure (i.e. files and directories located directly under this directory)
     # wasn't changed since the last iteration.
     def monitor
-      Log.info("Start dir monitor")
+      #Log.info("Start dir monitor")
       was_changed = false
       new_state = nil
       self_stat = File.lstat(@path) rescue nil
@@ -245,7 +244,7 @@ module FileMonitoring
       end
 
       # The assignment
-      self.state= new_state
+      set_state(new_state)
     end
 
     # Updates the files and directories hashes and globs the directory for changes.

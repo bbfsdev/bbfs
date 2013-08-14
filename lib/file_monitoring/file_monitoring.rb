@@ -44,7 +44,7 @@ module FileMonitoring
         Log.info("Start build data base from loaded file")
         $local_content_data.each_instance() {
             |_, size, _, mod_time, _, path|
-          Log.info("Start build file stat for:#{path}")
+          #Log.info("Start build file stat for:#{path}")
           split_path = path.split(File::SEPARATOR)
           arr_of_paths = (0..split_path.size-1).inject([]) { |paths, i|
             paths.push(File.join(*split_path.values_at(0..i)))
@@ -66,7 +66,7 @@ module FileMonitoring
       pq = Containers::PriorityQueue.new
       conf_array.each_with_index { |elem, index|
         priority = (Time.now + elem['scan_period']).to_i
-        Log.info("File monitoring started for: #{elem}")
+        #Log.info("File monitoring started for: #{elem}")
         pq.push([priority, elem, dir_stat_array[index]], -priority)
       }
 
@@ -102,9 +102,9 @@ module FileMonitoring
         end
 
         unless $testing_memory_active
-          Log.info("Start monitor path:#{dir_stat.path}")
+          Log.info("Start monitor for dir:#{dir_stat.path}")
           dir_stat.monitor
-          Log.info("End monitor path:#{dir_stat.path}")
+          Log.info("End monitor for dir:#{dir_stat.path}")
         else
           $testing_memory_log.info("Start monitor at :#{Time.now}")
           puts "Start monitor at :#{Time.now}"
