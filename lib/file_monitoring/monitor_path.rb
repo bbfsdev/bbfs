@@ -72,13 +72,13 @@ module FileMonitoring
         new_state = FileStatEnum::NEW
         @size = file_stats.size
         #@creation_time = file_stats.ctime.utc
-        @modification_time = file_stats.mtime.utc
+        @modification_time = file_stats.mtime.to_i
         @cycles = 0
       elsif changed?(file_stats)
         new_state = FileStatEnum::CHANGED
         @size = file_stats.size
         #@creation_time = file_stats.ctime.utc
-        @modification_time = file_stats.mtime.utc
+        @modification_time = file_stats.mtime.to_i
         @cycles = 0
       else
         new_state = FileStatEnum::UNCHANGED
@@ -94,12 +94,8 @@ module FileMonitoring
 
     #  Checks that stored file attributes are the same as file attributes taken from file system.
     def changed?(file_stats)
-      Log.info("size:#{file_stats.size}  size:#{@size}")
-      Log.info("time:#{file_stats.mtime.utc}  time:#{@modification_time.utc}")
-      Log.info("true?=time:#{file_stats.mtime.utc == @modification_time.utc}")
-      value = !((file_stats.size == @size) && (file_stats.mtime.utc == @modification_time.utc))
-      Log.info("changed?=#{value}")
-      value
+      !((file_stats.size == @size) &&
+        (file_stats.mtime.to_i == @modification_time))
     end
 
     def set_event_queue(queue)
@@ -157,7 +153,7 @@ module FileMonitoring
         file_stat = FileStat.new(arr_of_paths[next_index], @stable_state)
         file_stat.set_event_queue(@event_queue)
         file_stat.size = size
-        file_stat.modification_time = Time.at(modification_time)
+        file_stat.modification_time = modification_time
         file_stat.state = FileStatEnum::STABLE
         #Log.info("Add file:#{arr_of_paths[next_index]}")
         add_file(file_stat)
