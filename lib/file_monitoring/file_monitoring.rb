@@ -54,6 +54,7 @@ module FileMonitoring
           dir_stat_array.each { | dir_stat|
             index = arr_of_paths.index(dir_stat.path)
             next if index.nil?
+            dir_stat.state = FileStatEnum::STABLE
             dir_stat.load_instance(arr_of_paths, index+1, size, mod_time)
           }
         }

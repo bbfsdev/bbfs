@@ -96,6 +96,7 @@ module FileMonitoring
     def changed?(file_stats)
       Log.info("size:#{file_stats.size}  size:#{@size}")
       Log.info("time:#{file_stats.mtime.utc}  time:#{@modification_time.utc}")
+      Log.info("true?=time:#{file_stats.mtime.utc == @modification_time.utc}")
       value = !((file_stats.size == @size) && (file_stats.mtime.utc == @modification_time.utc))
       Log.info("changed?=#{value}")
       value
