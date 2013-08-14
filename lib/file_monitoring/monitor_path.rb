@@ -59,6 +59,7 @@ module FileMonitoring
     # Checks whether file was changed from the last iteration.
     # For files, size and modification time are checked.
     def monitor
+      Log.info("Start file monitor")
       file_stats = File.lstat(@path) rescue nil
       new_state = nil
       if file_stats == nil
@@ -104,6 +105,7 @@ module FileMonitoring
 
     #  Sets and writes to the log a new state.
     def state= (new_state)
+      Log.info("state=")
       if (@state != new_state or @state == FileStatEnum::CHANGED)
         @state = new_state
         if (@@log)
@@ -216,6 +218,7 @@ module FileMonitoring
     # Checks that directory structure (i.e. files and directories located directly under this directory)
     # wasn't changed since the last iteration.
     def monitor
+      Log.info("Start dir monitor")
       was_changed = false
       new_state = nil
       self_stat = File.lstat(@path) rescue nil

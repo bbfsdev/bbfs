@@ -45,6 +45,7 @@ module FileMonitoring
         Log.info("Start build data base from loaded file")
         $local_content_data.each_instance() {
             |_, size, _, mod_time, _, path|
+          Log.info("Start build file stat for:#{path}")
           split_path = path.split(File::SEPARATOR)
           arr_of_paths = (0..split_path.size-1).inject([]) { |paths, i|
             paths.push(File.join(*split_path.values_at(0..i)))
