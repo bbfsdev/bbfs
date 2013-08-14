@@ -96,9 +96,7 @@ module FileMonitoring
     def changed?(file_stats)
       Log.info("size:#{file_stats.size}  size:#{@size}")
       Log.info("time:#{file_stats.mtime.utc}  time:#{@modification_time.utc}")
-      value = ! (file_stats.size == @size &&
-          #file_stats.ctime.utc == @creation_time.utc &&
-          file_stats.mtime.utc == @modification_time.utc)
+      value = !((file_stats.size == @size) && (file_stats.mtime.utc == @modification_time.utc))
       Log.info("changed?=#{value}")
       value
     end
@@ -150,7 +148,7 @@ module FileMonitoring
     end
 
     # add instance while initializing tree using content data from file
-    def add_instance(arr_of_paths, next_index, size, modification_time)
+    def load_instance(arr_of_paths, next_index, size, modification_time)
       @files = {} unless @files
       @dirs = {} unless @dirs
       if arr_of_paths.size-1 == next_index  # last index
@@ -168,9 +166,10 @@ module FileMonitoring
         #Log.info("Add Dir:#{arr_of_paths[next_index]}") unless dir_stat
         #create new dir if not exist
         dir_stat = add_dir(DirStat.new(arr_of_paths[next_index], @stable_state)) unless dir_stat
+        dir_stat.state = FileStatEnum::STABLE
         # continue recursive call on tree dir nodes
         dir_stat.set_event_queue(@event_queue)
-        dir_stat.add_instance(arr_of_paths, next_index+1, size, modification_time)
+        dir_stat.load_instance(arr_of_paths, next_index+1, size, modification_time)
       end
     end
 

@@ -54,7 +54,7 @@ module FileMonitoring
           dir_stat_array.each { | dir_stat|
             index = arr_of_paths.index(dir_stat.path)
             next if index.nil?
-            dir_stat.add_instance(arr_of_paths, index+1, size, mod_time)
+            dir_stat.load_instance(arr_of_paths, index+1, size, mod_time)
           }
         }
         Log.info("End build data base from loaded file")
