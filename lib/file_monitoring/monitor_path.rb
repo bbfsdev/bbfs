@@ -94,6 +94,8 @@ module FileMonitoring
 
     #  Checks that stored file attributes are the same as file attributes taken from file system.
     def changed?(file_stats)
+      Log.info("size:#{file_stats.size}  size:#{@size}")
+      Log.info("time:#{file_stats.mtime.utc}  time:#{@modification_time.utc}")
       not (file_stats.size == @size &&
           #file_stats.ctime.utc == @creation_time.utc &&
           file_stats.mtime.utc == @modification_time.utc)
