@@ -23,7 +23,8 @@ module FileMonitoring
 
   #  This class holds current state of file and methods to control and report changes
   class FileStat
-    attr_reader :cycles, :path, :stable_state, :state, :size, :modification_time
+    attr_reader :cycles, :path, :stable_state
+    attr_accessor :state, :size, :modification_time
 
     DEFAULT_STABLE_STATE = 10
 
@@ -33,15 +34,16 @@ module FileMonitoring
     # ==== Arguments:
     #
     # * <tt>path</tt> - File location
+    # * <tt>size</tt> - File size [Byte]
+    # * <tt>modification_time</tt> - file mod time [seconds]
+    # * <tt>cycles</tt> - # number of iterations from the last state change.
     # * <tt>stable_state</tt> - Number of iterations to move unchanged file to stable state
-    def initialize(path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
+    def initialize(path, stable_state = DEFAULT_STABLE_STATE)
       @path ||= path
       @size = nil
-      @creation_time = nil
       @modification_time = nil
-      @cycles = 0  # number of iterations from the last file modification
-      @state = state
-      @stable_state = stable_state  # number of iteration to move unchanged file to stable state
+      @cycles = 0
+      @stable_state = stable_state
     end
 
     def set_output_queue(event_queue)
@@ -59,25 +61,26 @@ module FileMonitoring
     # Checks whether file was changed from the last iteration.
     # For files, size and modification time are checked.
     def monitor
+      #Log.info("Start file monitor")
       file_stats = File.lstat(@path) rescue nil
       new_state = nil
-      if file_stats == nil
+      if file_stats.nil?
         new_state = FileStatEnum::NON_EXISTING
         @size = nil
-        @creation_time = nil
+        #@creation_time = nil
         @modification_time = nil
         @cycles = 0
-      elsif @size == nil
+      elsif @size.nil?
         new_state = FileStatEnum::NEW
         @size = file_stats.size
-        @creation_time = file_stats.ctime.utc
-        @modification_time = file_stats.mtime.utc
+        #@creation_time = file_stats.ctime.utc
+        @modification_time = file_stats.mtime.to_i
         @cycles = 0
       elsif changed?(file_stats)
         new_state = FileStatEnum::CHANGED
         @size = file_stats.size
-        @creation_time = file_stats.ctime.utc
-        @modification_time = file_stats.mtime.utc
+        #@creation_time = file_stats.ctime.utc
+        @modification_time = file_stats.mtime.to_i
         @cycles = 0
       else
         new_state = FileStatEnum::UNCHANGED
@@ -88,14 +91,13 @@ module FileMonitoring
       end
 
       # The assignment
-      self.state= new_state
+      set_state(new_state)
     end
 
     #  Checks that stored file attributes are the same as file attributes taken from file system.
     def changed?(file_stats)
-      not (file_stats.size == @size &&
-          file_stats.ctime.utc == @creation_time.utc &&
-          file_stats.mtime.utc == @modification_time.utc)
+      !((file_stats.size == @size) &&
+        (file_stats.mtime.to_i == @modification_time))
     end
 
     def set_event_queue(queue)
@@ -103,7 +105,7 @@ module FileMonitoring
     end
 
     #  Sets and writes to the log a new state.
-    def state= (new_state)
+    def set_state(new_state)
       if (@state != new_state or @state == FileStatEnum::CHANGED)
         @state = new_state
         if (@@log)
@@ -137,12 +139,51 @@ module FileMonitoring
     #
     # * <tt>path</tt> - File location
     # * <tt>stable_state</tt> - Number of iterations to move unchanged directory to stable state
-    def initialize(path, stable_state = DEFAULT_STABLE_STATE, content_data_cache, state)
+    def initialize(path, stable_state = DEFAULT_STABLE_STATE)
       super
-      @dirs = nil
-      @files = nil
-      @non_utf8_paths = {}
-      @content_data_cache = content_data_cache
+      @dirs = nil  # Hash: ["path" -> DirStat]
+      @files = nil # Hash: ["path" -> FileStat]
+      @non_utf8_paths = {}  # Hash: ["path" -> true|false]
+    end
+
+    # add instance while initializing tree using content data from file
+    # Parameters:
+    #   sub_paths - Array of sub paths of the instance which is added to tree
+    #               Example:
+    #                 instance path = /dir1/dir2/file_name
+    #                   Sub path 1: /dir1
+    #                   Sub path 2: /dir1/dir2
+    #                   Sub path 3: /dir1/dir2/file_name
+    #               sub paths would create DirStat objs or FileStat(FileStat create using last sub path).
+    #   sub_paths_index - the index indicates the next sub path to insert to the tree
+    #                     the index will be raised at each recursive call down the tree
+    #   size - the instance size to insert to the tree
+    #   modification_time - the instance modification_time to insert to the tree
+    def load_instance(sub_paths, sub_paths_index, size, modification_time)
+      # initialize dirs and files. This will indicate that the current DirStat is not new.
+      @dirs = {} unless @dirs
+      @files = {} unless @files
+      if sub_paths.size-1 == sub_paths_index
+        # Add File case - index points to last entry - leaf case.
+        file_stat = FileStat.new(sub_paths[sub_paths_index], @stable_state)
+        file_stat.set_event_queue(@event_queue)
+        file_stat.size = size
+        file_stat.modification_time = modification_time
+        file_stat.state = FileStatEnum::STABLE
+        add_file(file_stat)
+      else
+        # Add Dir to tree if not present. index points to new dir path.
+        dir_stat = @dirs[sub_paths[sub_paths_index]]
+        #create new dir if not exist
+        unless dir_stat
+          dir_stat = DirStat.new(sub_paths[sub_paths_index], @stable_state)
+          dir_stat.state = FileStatEnum::STABLE
+          dir_stat.set_event_queue(@event_queue)
+          add_dir(dir_stat)
+        end
+        # continue recursive call on tree with next sub path index
+        dir_stat.load_instance(sub_paths, sub_paths_index+1, size, modification_time)
+      end
     end
 
     #  Adds directory for monitoring.
@@ -192,6 +233,7 @@ module FileMonitoring
     # Checks that directory structure (i.e. files and directories located directly under this directory)
     # wasn't changed since the last iteration.
     def monitor
+      #Log.info("Start dir monitor")
       was_changed = false
       new_state = nil
       self_stat = File.lstat(@path) rescue nil
@@ -218,7 +260,7 @@ module FileMonitoring
       end
 
       # The assignment
-      self.state= new_state
+      set_state(new_state)
     end
 
     # Updates the files and directories hashes and globs the directory for changes.
@@ -270,7 +312,7 @@ module FileMonitoring
                                   # change state only for existing directories
                                   # newly added directories have to remain with NEW state
             was_changed = true
-            ds = DirStat.new(file, self.stable_state, @content_data_cache, FileStatEnum::NON_EXISTING)
+            ds = DirStat.new(file, self.stable_state)
             ds.set_event_queue(@event_queue) unless @event_queue.nil?
             ds.monitor
             add_dir(ds)
@@ -282,11 +324,7 @@ module FileMonitoring
             was_changed = true
             # check if file exist in content data cache - set state to STABLE
             file_state = FileStatEnum::NON_EXISTING
-            if !@content_data_cache.nil? && @content_data_cache.include?(file)
-              file_state = FileStatEnum::STABLE
-            end
-            fs = FileStat.new(file, self.stable_state, @content_data_cache, file_state)
-
+            fs = FileStat.new(file, self.stable_state)
             fs.set_event_queue(@event_queue) unless @event_queue.nil?
             fs.monitor
             add_file(fs)

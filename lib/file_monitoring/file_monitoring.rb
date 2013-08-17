@@ -9,19 +9,6 @@ module FileMonitoring
   # Manages file monitoring of number of file system locations
   class FileMonitoring
 
-    def initialize ()
-      @content_data_cache = Set.new
-      $local_content_data_lock.synchronize {
-        $local_content_data.each_instance(){
-            |_, _, _, _, _, file_path|
-          # save files to cache
-          Log.info("File in cache: #{file_path.clone}")
-          @content_data_cache.add(file_path.clone)
-        }
-      }
-    end
-
-
     # Set event queue used for communication between different proceses.
     # @param queue [Queue]
     def set_event_queue(queue)
@@ -41,16 +28,60 @@ module FileMonitoring
     # that provides path and file monitoring configuration data
     def monitor_files
       conf_array = Params['monitoring_paths']
+
+      # create root dirs of monitoring
+      dir_stat_array = []
+      conf_array.each { |elem|
+        dir_stat = DirStat.new(File.expand_path(elem['path']), elem['stable_state'])
+        dir_stat.set_event_queue(@event_queue) if @event_queue
+        dir_stat_array.push(dir_stat)
+      }
+
+      #Look over loaded content data if not empty
+      # If file is under monitoring path - Add to DirStat tree as stable with path,size,mod_time read from file
+      # If file is NOT under monitoring path - skip (not a valid usage)
+      unless $local_content_data.empty?
+        Log.info("Start build data base from loaded file")
+        $local_content_data.each_instance {
+            |_, size, _, mod_time, _, path|
+          # construct sub paths array from full file path:
+          # Example:
+          #   instance path = /dir1/dir2/file_name
+          #   Sub path 1: /dir1
+          #   Sub path 2: /dir1/dir2
+          #   Sub path 3: /dir1/dir2/file_name
+          # sub paths would create DirStat objs or FileStat(FileStat create using last sub path).
+          split_path = path.split(File::SEPARATOR)
+          sub_paths = (0..split_path.size-1).inject([]) { |paths, i|
+            paths.push(File.join(*split_path.values_at(0..i)))
+          }
+          # sub_paths holds array => ["/dir1","/dir1/dir2","/dir1/dir2/file_name"]
+
+          # Loop over monitor paths to start build tree under each
+          dir_stat_array.each { | dir_stat|
+            # check if monitor path is one of the sub paths and find it's sub path index
+            # if index is found then it the monitor path
+            # the next index indicates the next sub path to insert to the tree
+            # the index will be raised at each recursive call down the tree
+            sub_paths_index = sub_paths.index(dir_stat.path)
+            next if sub_paths_index.nil?  # monitor path was not found. skip this instance.
+            # monitor path was found. Add to tree as stable.
+            dir_stat.state = FileStatEnum::STABLE
+            # start the recursive call with next sub path index
+            dir_stat.load_instance(sub_paths, sub_paths_index+1, size, mod_time)
+          }
+        }
+        Log.info("End build data base from loaded file")
+      end
+
       # Directories states stored in the priority queue,
       # where the key (priority) is a time when it should be checked next time.
       # Priority queue means that all entries arranged by key (time to check) in increasing order.
       pq = Containers::PriorityQueue.new
-      conf_array.each { |elem|
+      conf_array.each_with_index { |elem, index|
         priority = (Time.now + elem['scan_period']).to_i
-        dir_stat = DirStat.new(File.expand_path(elem['path']), elem['stable_state'], @content_data_cache, FileStatEnum::NON_EXISTING)
-        dir_stat.set_event_queue(@event_queue) if @event_queue
-        Log.debug1("File monitoring started for: #{elem}")
-        pq.push([priority, elem, dir_stat], -priority)
+        #Log.info("File monitoring started for: #{elem}")
+        pq.push([priority, elem, dir_stat_array[index]], -priority)
       }
 
       #init log4r
@@ -85,7 +116,9 @@ module FileMonitoring
         end
 
         unless $testing_memory_active
+          Log.info("Start monitor for dir:#{dir_stat.path}")
           dir_stat.monitor
+          Log.info("End monitor for dir:#{dir_stat.path}")
         else
           $testing_memory_log.info("Start monitor at :#{Time.now}")
           puts "Start monitor at :#{Time.now}"
