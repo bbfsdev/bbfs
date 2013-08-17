@@ -42,7 +42,7 @@ module FileMonitoring
       # If file is NOT under monitoring path - skip (not a valid usage)
       unless $local_content_data.empty?
         Log.info("Start build data base from loaded file")
-        $local_content_data.each_instance() {
+        $local_content_data.each_instance {
             |_, size, _, mod_time, _, path|
           # construct sub paths array from full file path:
           # Example:

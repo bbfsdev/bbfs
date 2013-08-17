@@ -34,14 +34,16 @@ module FileMonitoring
     # ==== Arguments:
     #
     # * <tt>path</tt> - File location
+    # * <tt>size</tt> - File size [Byte]
+    # * <tt>modification_time</tt> - file mod time [seconds]
+    # * <tt>cycles</tt> - # number of iterations from the last state change.
     # * <tt>stable_state</tt> - Number of iterations to move unchanged file to stable state
     def initialize(path, stable_state = DEFAULT_STABLE_STATE)
       @path ||= path
       @size = nil
-      #@creation_time = nil
       @modification_time = nil
-      @cycles = 0  # number of iterations from the last file modification
-      @stable_state = stable_state  # number of iteration to move unchanged file to stable state
+      @cycles = 0
+      @stable_state = stable_state
     end
 
     def set_output_queue(event_queue)
@@ -62,13 +64,13 @@ module FileMonitoring
       #Log.info("Start file monitor")
       file_stats = File.lstat(@path) rescue nil
       new_state = nil
-      if file_stats == nil
+      if file_stats.nil?
         new_state = FileStatEnum::NON_EXISTING
         @size = nil
         #@creation_time = nil
         @modification_time = nil
         @cycles = 0
-      elsif @size == nil
+      elsif @size.nil?
         new_state = FileStatEnum::NEW
         @size = file_stats.size
         #@creation_time = file_stats.ctime.utc
@@ -139,9 +141,9 @@ module FileMonitoring
     # * <tt>stable_state</tt> - Number of iterations to move unchanged directory to stable state
     def initialize(path, stable_state = DEFAULT_STABLE_STATE)
       super
-      @dirs = nil
-      @files = nil
-      @non_utf8_paths = {}
+      @dirs = nil  # Hash: ["path" -> DirStat]
+      @files = nil # Hash: ["path" -> FileStat]
+      @non_utf8_paths = {}  # Hash: ["path" -> true|false]
     end
 
     # add instance while initializing tree using content data from file
@@ -173,9 +175,12 @@ module FileMonitoring
         # Add Dir to tree if not present. index points to new dir path.
         dir_stat = @dirs[sub_paths[sub_paths_index]]
         #create new dir if not exist
-        dir_stat = add_dir(DirStat.new(sub_paths[sub_paths_index], @stable_state)) unless dir_stat
-        dir_stat.state = FileStatEnum::STABLE
-        dir_stat.set_event_queue(@event_queue)
+        unless dir_stat
+          dir_stat = DirStat.new(sub_paths[sub_paths_index], @stable_state)
+          dir_stat.state = FileStatEnum::STABLE
+          dir_stat.set_event_queue(@event_queue)
+          add_dir(dir_stat)
+        end
         # continue recursive call on tree with next sub path index
         dir_stat.load_instance(sub_paths, sub_paths_index+1, size, modification_time)
       end
