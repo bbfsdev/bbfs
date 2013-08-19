@@ -14,15 +14,15 @@ module ContentServer
       Socket.tcp_server_loop(@port) do |sock, client_addrinfo|
         while size_of_data = sock.read(4)
           size_of_data = size_of_data.unpack("l")[0]
-          Log.debug2("Size of data: #{size_of_data}")
+          Log.debug2("Size of data: %s", size_of_data)
           data = sock.read(size_of_data)
           unmarshaled_data = Marshal.load(data)
           @queue.push unmarshaled_data
-          Log.debug2("Socket closed? #{sock.closed?}.")
+          Log.debug2("Socket closed? %s.", sock.closed?)
           break if sock.closed?
-          Log.debug2 'Waiting on sock.read'
+          Log.debug2('Waiting on sock.read')
         end
-        Log.debug2 'Exited, socket closed or read returned nil.'
+        Log.debug2('Exited, socket closed or read returned nil.')
       end
     end
   end
@@ -36,14 +36,14 @@ module ContentServer
     end
 
     def open_socket
-      Log.debug1("Connecting to content server #{@host}:#{@port}.")
+      Log.debug1("Connecting to content server %s:%s.", @host, @port)
       @tcp_socket = TCPSocket.new(@host, @port)
     end
 
     def send_content_data content_data
       open_socket if @tcp_socket.closed?
       marshal_data = Marshal.dump(content_data)
-      Log.debug2("Marshaled size: #{marshal_data.length}.")
+      Log.debug2("Marshaled size: %s.", marshal_data.length)
       data_size = [marshal_data.length].pack("l")
       if data_size.nil? || marshal_data.nil?
         Log.debug2('Send data is nil!!!!!!!!')

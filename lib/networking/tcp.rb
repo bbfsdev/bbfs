@@ -10,10 +10,10 @@ module Networking
   def Networking.write_to_stream(stream, obj)
     Log.debug3('Writing to stream.')
     marshal_data = Marshal.dump(obj)
-    Log.debug2("Writing data size: #{marshal_data.length}")
+    Log.debug2("Writing data size: %s", marshal_data.length)
     data_size = [marshal_data.length].pack("l")
     if data_size.nil? || marshal_data.nil?
-      Log.debug2 'Send data size is nil!'
+      Log.debug2('Send data size is nil!')
     end
     begin
       bytes_written = stream.write data_size
@@ -36,7 +36,7 @@ module Networking
     begin
       return [false, nil] unless size_of_data = stream.read(4)
       size_of_data = size_of_data.unpack("l")[0]
-      Log.debug2("Reading data size:#{size_of_data}")
+      Log.debug2("Reading data size:%s", size_of_data)
       data = stream.read(size_of_data)
     rescue Exception => e
       Log.warning("Could not read tcp/ip stream, #{e.to_s}.")
@@ -71,7 +71,7 @@ module Networking
     end
 
     def send_obj(obj, addr_info=nil)
-      Log.debug3("send_obj with addr_info:#{addr_info}")
+      Log.debug3("send_obj with addr_info:%s", addr_info)
       unless addr_info.nil?
         if @sockets.key?(addr_info)
           Networking.write_to_stream(@sockets[addr_info], obj)
@@ -94,15 +94,14 @@ module Networking
         loop {
           begin
             Socket.tcp_server_loop(@port) do |sock, addr_info|
-              Log.debug2("----- #{@port} -----")
-              Log.debug2("tcp_server_loop... #{sock} #{addr_info.inspect}")
+              Log.debug2("tcp_server_loop:\nport:%s\nsock:%s\naddr info:%s", @port, sock, addr_info)
               @sockets[addr_info] = sock
               @new_clb.call(addr_info) if @new_clb != nil
               loop do
                 # Blocking read.
                 Log.debug2('read_from_stream')
                 stream_ok, obj = Networking.read_from_stream(sock)
-                Log.debug2("Server returned from read: #{stream_ok}")
+                Log.debug2("Server returned from read: %s", stream_ok)
                 @obj_clb.call(addr_info, obj) if @obj_clb != nil && stream_ok
                 break if !stream_ok
               end
@@ -136,7 +135,7 @@ module Networking
       @tcp_socket = nil
       @obj_clb = obj_clb
       @reconnected_clb = reconnected_clb
-      Log.debug3("Start TCPClient initialize  with @obj_clb: #{@obj_clb}")
+      Log.debug3("Start TCPClient initialize  with @obj_clb: %s", @obj_clb)
       if @obj_clb != nil
         @tcp_thread = start_reading
         @tcp_thread.abort_on_exception = true
@@ -156,7 +155,7 @@ module Networking
         Log.warning('Socket not opened for writing, skipping send.')
         return false
       end
-      Log.debug2("writing... socket port: #{@tcp_socket.peeraddr}")
+      Log.debug2("writing... socket port: %s", @tcp_socket.peeraddr)
       bytes_written = Networking.write_to_stream(@tcp_socket, obj)
       return bytes_written
     end
@@ -164,13 +163,13 @@ module Networking
     # This function may be executed only from one thread!!! or in synchronized manner.
     # private
     def open_socket
-      Log.debug1("Connecting to content server #{@host}:#{@port}.")
+      Log.debug1("Connecting to content server %s:%s", @host, @port)
       begin
         @tcp_socket = TCPSocket.new(@host, @port)
       rescue Errno::ECONNREFUSED
         Log.warning('Connection refused')
       end
-      Log.debug3("Reconnect clb: '#{@reconnected_clb.nil? ? 'nil' : @reconnected_clb}'")
+      Log.debug3("Reconnect clb: %s", @reconnected_clb)
       if socket_good?
         @remote_server_available_mutex.synchronize {
           @remote_server_available.signal
@@ -181,8 +180,9 @@ module Networking
 
     private
     def socket_good?
-      Log.debug3("socket_good? #{@tcp_socket != nil && !@tcp_socket.closed?}")
-      return @tcp_socket != nil && !@tcp_socket.closed?
+      closed = @tcp_socket != nil && !@tcp_socket.closed?
+      Log.debug3("socket_good? %s", closed)
+      return closed
     end
 
     private
@@ -193,14 +193,14 @@ module Networking
           # Blocking read.
           if !socket_good?
             Log.warning("Socket not good, waiting for reconnection with " \
-                          "#{Params['client_retry_delay']} seconds timeout.")
+                          "#{Params['client_retry_delay']}[S] timeout.")
             @remote_server_available_mutex.synchronize {
               @remote_server_available.wait(@remote_server_available_mutex,
                                             Params['client_retry_delay'])
             }
           else
             read_ok, obj = Networking.read_from_stream(@tcp_socket)
-            Log.debug3("Client returned from read: #{read_ok}")
+            Log.debug3("Client returned from read: %s", read_ok)
             # Handle case when socket is closed in middle.
             # In that case we should not call obj_clb.
             @obj_clb.call(obj) if (read_ok && @obj_clb != nil)

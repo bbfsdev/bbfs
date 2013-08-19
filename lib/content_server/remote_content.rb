@@ -27,7 +27,8 @@ module ContentServer
       @last_content_data_id = nil
       @content_server_content_data_path = File.join(local_backup_folder, 'remote',
                                                     host + '_' + port.to_s)
-      Log.debug3("Initialized RemoteContentClient: host:#{host}   port:#{port}  local_backup_folder:#{local_backup_folder}")
+      Log.debug3("Initialized RemoteContentClient: host:%s   port:%s  local_backup_folder:%s",
+                 host, port, local_backup_folder)
     end
 
     # Receives content data,  and writes it to file
@@ -47,7 +48,7 @@ module ContentServer
           $remote_content_data.to_file(path)
           @last_content_data_id = message.unique_id   # save last content data ID
         }
-        Log.debug1("Written content data to file:#{path}.")
+        Log.debug1("Written content data to file:%s.", path)
       else
         Log.debug1("No need to write remote content data, it has not changed.")
       end
@@ -59,14 +60,13 @@ module ContentServer
       threads = []
       threads << @remote_tcp.tcp_thread if @remote_tcp != nil
       threads << Thread.new do
-        Log.debug1("New thread.")
         loop do
           # if need content data
           sleep_time_span = Params['remote_content_save_timeout']
           if @last_fetch_timestamp
             sleep_time_span = Time.now.to_i - @last_fetch_timestamp
           end
-          Log.debug1("sleep_time_span: #{sleep_time_span}")
+          Log.debug1("sleep_time_span: %s", sleep_time_span)
           if sleep_time_span >= Params['remote_content_save_timeout']
             # Send ping!
             @remote_tcp.send_obj(nil)
@@ -85,7 +85,7 @@ module ContentServer
     # initializes class variables
     def initialize(port)
       @tcp_server = Networking::TCPServer.new(port, method(:content_requested))
-      Log.debug3("initialize RemoteContentServer on port:#{port}")
+      Log.debug3("initialize RemoteContentServer on port:%s", port)
     end
 
     # content_requested
@@ -95,7 +95,7 @@ module ContentServer
       # Send response.
       Log.info("Content server received content data request")
       $local_content_data_lock.synchronize{
-        Log.debug1("Sending content data:#{$local_content_data}")
+        Log.debug1("Sending content data:%s", $local_content_data)
         @tcp_server.send_obj($local_content_data)
       }
       Log.info('Content server sent content data')

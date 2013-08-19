@@ -36,7 +36,7 @@ module ContentServer
     # Add content to copy process. If already in copy process or waiting for copy then skip.
     # If no open places for copy then put in waiting list
     def add_content(checksum, path)
-      Log.debug2("Try to add content:#{checksum} to copy waiting list")
+      Log.debug2("Try to add content:%s to copy waiting list", checksum)
       @keeper.synchronize{
         # if content is being copied or waiting then skip it
         if !@contents_under_copy[checksum]
@@ -48,16 +48,16 @@ module ContentServer
               $process_vars.set('Copy File Queue Size', @copy_input_queue.size)
             else
               # no place in copy streams. Add to waiting list
-              Log.debug2("add content:#{checksum} to copy waiting list")
+              Log.debug2("add content:%s to copy waiting list", checksum)
               @contents_to_copy[checksum] = true  # replace with a set
               @contents_to_copy_queue.push([checksum, path])
               $process_vars.set('contents to copy queue', @contents_to_copy_queue.size)
             end
           else
-            Log.debug2("content:#{checksum} already in waiting list. skipping.")
+            Log.debug2("content:%s already in waiting list. skipping.", checksum)
           end
         else
-          Log.debug2("content:#{checksum} is being copied. skipping.")
+          Log.debug2("content:%s is being copied. skipping.", checksum)
         end
       }
     end
@@ -68,22 +68,22 @@ module ContentServer
         if content_record
           if !content_record[1]
             path = content_record[0]
-            Log.debug1("Streaming to backup server. content: #{checksum} path:#{path}.")
+            Log.debug1("Streaming to backup server. content: %s path:%s.", checksum, path)
             @file_streamer.start_streaming(checksum, path)
             # updating Ack
             content_record[1] = true
           else
-            Log.warning("File already received ack: #{checksum}")
+            Log.warning("File already received ack: %s", checksum)
           end
         else
-          Log.warning("File was aborted or copied: #{checksum}")
+          Log.warning("File was aborted or copied: %s", checksum)
         end
       }
     end
 
     def remove_content(checksum)
       @keeper.synchronize{
-        Log.debug3("removing checksum:#{checksum} from contents under copy")
+        Log.debug3("removing checksum:%s from contents under copy", checksum)
         @contents_under_copy.delete(checksum)
         $process_vars.set('contents under copy', @contents_under_copy.size)
         #1 place is became available. Put another file in copy process if waiting
@@ -146,7 +146,7 @@ module ContentServer
       # resend the ack request.
       @copy_prepare = {}
       @file_streamer = FileStreamer.new(method(:send_chunk))
-      Log.debug3("initialize FileCopyServer on port:#{port}")
+      Log.debug3("initialize FileCopyServer on port:%s", port)
       @file_copy_manager = FileCopyManager.new(@copy_input_queue, @file_streamer)
     end
 
@@ -157,7 +157,7 @@ module ContentServer
 
     def receive_message(addr_info, message)
       # Add ack message to copy queue.
-      Log.debug2("Content server Copy message received: #{message}")
+      Log.debug2("Content server Copy message received: %s", message)
       @copy_input_queue.push(message)
       $process_vars.set('Copy File Queue Size', @copy_input_queue.size)
     end
@@ -170,10 +170,10 @@ module ContentServer
           Log.debug1 'Waiting on copy files events.'
           (message_type, message_content) = @copy_input_queue.pop
           $process_vars.set('Copy File Queue Size', @copy_input_queue.size)
-          Log.debug1("Content copy message:#{[message_type, message_content]}")
+          Log.debug1("Content copy message:Type:%s  content:%s", message_type, message_content)
 
           if message_type == :SEND_ACK_MESSAGE
-            Log.debug1("Sending ack for: #{message_content}")
+            Log.debug1("Sending ack for: %s", message_content)
             @backup_tcp.send_obj([:ACK_MESSAGE, [message_content, Time.now.to_i]])
           elsif message_type == :COPY_MESSAGE
             message_content.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
@@ -184,7 +184,7 @@ module ContentServer
             # The timestamp is of local content server! not backup server!
             timestamp, ack, checksum = message_content
             Log.debug1("Ack (#{ack}) received for content: #{checksum}, timestamp: #{timestamp} " \
-                       "now: #{Time.now.to_i}")
+                       "now: #{Time.now.to_i}") if Params['log_debug_level'] >= 1  # adding to avoid Time.now
 
             # Copy file if ack (does not exists on backup and not too much time passed)
             if ack
@@ -192,7 +192,7 @@ module ContentServer
                 @file_copy_manager.receive_ack(checksum)
               else
                 Log.debug1("Ack timed out span: #{Time.now.to_i - timestamp} > " \
-                           "timeout: #{Params['ack_timeout']}")
+                  "timeout: #{Params['ack_timeout']}") if Params['log_debug_level'] >= 1  # adding to avoid Time.now
                 # remove only content under copy
                 @file_copy_manager.remove_content(checksum)
               end
@@ -207,8 +207,9 @@ module ContentServer
           elsif message_type == :COPY_CHUNK
             # We open the message here for printing info and deleting copy_prepare!
             file_checksum, offset, file_size, content, content_checksum = message_content
-            Log.debug1("Send chunk for file #{file_checksum}, offset: #{offset} " \
-                         "filesize: #{file_size}, checksum:#{content_checksum}")
+            Log.debug1("Send chunk for file %s, offset: %s " \
+                         "filesize: %s, checksum: %s",
+                       file_checksum, offset, file_size, content_checksum)
             # Blocking send.
             @backup_tcp.send_obj([:COPY_CHUNK, message_content])
             if content.nil? and content_checksum.nil?
@@ -216,13 +217,14 @@ module ContentServer
               @file_copy_manager.remove_content(file_checksum)
             end
           elsif message_type == :ABORT_COPY
-            Log.debug1("Aborting file copy: #{message_content}")
+            Log.debug1("Aborting file copy: %s", message_content)
             @file_streamer.abort_streaming(message_content)
             # remove only content under copy
             @file_copy_manager.remove_content(message_content)
           elsif message_type == :RESET_RESUME_COPY
             (file_checksum, new_offset) = message_content
-            Log.debug1("Resetting/Resuming file (#{file_checksum}) copy to #{new_offset}")
+            Log.debug1("Resetting/Resuming file (%s) copy to %s",
+                       file_checksum, new_offset)
             @file_streamer.reset_streaming(file_checksum, new_offset)
           else
             Log.error("Copy event not supported: #{message_type}")
@@ -248,7 +250,7 @@ module ContentServer
         end
       end
       @local_thread.abort_on_exception = true
-      Log.debug3("initialize FileCopyClient  host:#{host}  port:#{port}")
+      Log.debug3("initialize FileCopyClient  host:%s  port:%s", host, port)
     end
 
     def threads
@@ -271,7 +273,7 @@ module ContentServer
 
     def done_copy(local_file_checksum, local_path)
       $process_vars.inc('num_files_received')
-      Log.debug1("Done copy file: #{local_path}, #{local_file_checksum}")
+      Log.debug1("Done copy file: path %s, checksum %s", local_path, local_file_checksum)
     end
 
     def handle_message(message)
@@ -284,24 +286,24 @@ module ContentServer
     # of ack. Note that it is being executed from the class thread only!
     def handle(message)
       message_type, message_content = message
-      Log.debug1("backup copy message: Type #{message_type}.  message: #{message_content}")
+      Log.debug1("backup copy message: Type %s. message: %s", message_type, message_content)
       if message_type == :SEND_COPY_MESSAGE
         bytes_written = @tcp_client.send_obj([:COPY_MESSAGE, message_content])
-        Log.debug2("Sending copy message succeeded? bytes_written: #{bytes_written}.")
+        Log.debug2("Sending copy message succeeded? bytes_written: %s.", bytes_written)
       elsif message_type == :COPY_CHUNK
         if @file_receiver.receive_chunk(*message_content)
           file_checksum, offset, file_size, content, content_checksum = message_content
           @tcp_client.send_obj([:COPY_CHUNK_FROM_REMOTE, file_checksum])
         else
           file_checksum, offset, file_size, content, content_checksum = message_content
-          Log.error("receive_chunk failed for chunk checksum:#{content_checksum}")
+          Log.error("receive_chunk failed for chunk checksum:%s", content_checksum)
         end
       elsif message_type == :ACK_MESSAGE
         checksum, timestamp = message_content
         # check if checksum exists in final destination
         dest_path = FileReceiver.destination_filename(Params['backup_destination_folder'][0]['path'], checksum)
         need_to_copy = !File.exists?(dest_path)
-        Log.debug1("Returning ack for content:'#{checksum}' timestamp:'#{timestamp}' Ack:'#{need_to_copy}'")
+        Log.debug1("Returning ack for content:'%s' timestamp:'%s' Ack:'%s'", checksum, timestamp, need_to_copy)
         @tcp_client.send_obj([:ACK_MESSAGE, [timestamp,
                                              need_to_copy,
                                              checksum]])

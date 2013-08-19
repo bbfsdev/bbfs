@@ -141,34 +141,38 @@ module Log
   end
 
   # Log info massages
-  def Log.info(msg)
+  def Log.info(msg, *args)
     Log.init if @log4r.nil?
+    msg = msg % args
     @log4r.info(msg_with_caller(msg))
     Log.flush if Params['log_flush_each_message']
   end
 
   # Log debug level 1 massages
-  def Log.debug1(msg)
+  def Log.debug1(msg, *args)
     if Params['log_debug_level'] >= 1
       Log.init if @log4r.nil?
+      msg = msg % args
       @log4r.debug(msg_with_caller(msg))
       Log.flush if Params['log_flush_each_message']
     end
   end
 
   # Log debug level 2 massages
-  def Log.debug2(msg)
+  def Log.debug2(msg, *args)
     if Params['log_debug_level'] >= 2
       Log.init if @log4r.nil?
+      msg = msg % args
       @log4r.debug(msg_with_caller(msg))
       Log.flush if Params['log_flush_each_message']
     end
   end
 
   # Log debug level 3 massages
-  def Log.debug3(msg)
+  def Log.debug3(msg, *args)
     if Params['log_debug_level'] >= 3
       Log.init if @log4r.nil?
+      msg = msg % args
       @log4r.debug(msg_with_caller(msg))
       Log.flush if Params['log_flush_each_message']
     end
