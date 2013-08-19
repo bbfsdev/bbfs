@@ -253,8 +253,8 @@ module Params
   # Precedence is: Defined params, file and command line is highest.
   def Params.init(args)
     #define default configuration file
-    Params['conf_file'] = "~/.bbfs/etc/config_#{executable_name}.yml"
-    
+    Params['conf_file'] = "~/.bbfs/etc/config_#{File.basename($PROGRAM_NAME)}.yml"
+
     @init_info_messages = []
     @init_warning_messages = []
 
@@ -403,17 +403,11 @@ paths:
     }
   end
 
-  #Auxiliary method to retrieve the executable name
-  def Params.executable_name
-    /([a-zA-Z0-9\-_\.]+):\d+/ =~ caller[caller.size-1]
-    return $1
-  end
-  
   Params.path('conf_file', nil, 'Configuration file path.')
   Params.boolean('print_params_to_stdout', false, 'print_params_to_stdout or not during Params.init')
 
   private_class_method :parse_command_line_arguments, \
                        :raise_error_if_param_exists, :raise_error_if_param_does_not_exist, \
-                       :read_yml_params, :override_param, :executable_name
+                       :read_yml_params, :override_param
 end
 
