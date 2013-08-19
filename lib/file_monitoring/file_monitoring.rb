@@ -86,10 +86,12 @@ module FileMonitoring
 
         unless $testing_memory_active
           dir_stat.monitor
+          dir_stat.index
         else
           $testing_memory_log.info("Start monitor at :#{Time.now}")
           puts "Start monitor at :#{Time.now}"
           dir_stat.monitor
+          dir_stat.index
           $testing_memory_log.info("End monitor at :#{Time.now}")
           puts "End monitor at :#{Time.now}"
         end

@@ -56,31 +56,65 @@ module FileMonitoring
       @@log = log
     end
 
+    def index
+      if (FileStatEnum::STABLE == @state)
+        digest = Digest::SHA1.new
+        begin
+          File.open(@path, 'rb') { |f|
+            while buffer = f.read(65536) do
+              digest << buffer
+            end
+          }
+          $local_content_data_lock.synchronize{
+            $local_content_data.add_instance(digest.hexdigest.downcase, @size, Params['local_server_name'],
+                                             @path, @modification_time)
+          }
+          $process_vars.inc('indexed_files')
+          $indexed_file_count += 1
+        rescue
+          Log.warning("Monitored path'#{path}' does not exist. Probably file changed")
+        end
+      end
+    end
+
     # Checks whether file was changed from the last iteration.
     # For files, size and modification time are checked.
     def monitor
       file_stats = File.lstat(@path) rescue nil
-      new_state = nil
       if file_stats == nil
-        new_state = FileStatEnum::NON_EXISTING
         @size = nil
         @creation_time = nil
         @modification_time = nil
         @cycles = 0
-        set_state(new_state)
+        if FileStatEnum::NON_EXISTING != @state
+          Log.debug1("Non Existing file: #{@path}")
+          # remove file with changed checksum
+          $local_content_data_lock.synchronize{
+            $local_content_data.remove_instance(Params['local_server_name'], @path)
+          }
+          set_state(FileStatEnum::NON_EXISTING)
+        end
       elsif @size == nil
-        new_state = FileStatEnum::NEW
         @size = file_stats.size
         @creation_time = file_stats.ctime.utc
         @modification_time = file_stats.mtime.utc
         @cycles = 0
+        if FileStatEnum::NEW != @state
+          set_state(FileStatEnum::NEW)
+        end
       elsif changed?(file_stats)
-        new_state = FileStatEnum::CHANGED
         @size = file_stats.size
         @creation_time = file_stats.ctime.utc
         @modification_time = file_stats.mtime.utc
         @cycles = 0
-        set_state(new_state)
+        if FileStatEnum::CHANGED != @state
+          Log.debug1("CHANGED file: #{@path}")
+          # remove file with changed checksum
+          $local_content_data_lock.synchronize{
+            $local_content_data.remove_instance(Params['local_server_name'], @path)
+          }
+          set_state(FileStatEnum::CHANGED)
+        end
       else
         return if FileStatEnum::STABLE == @state
         new_state = FileStatEnum::UNCHANGED
@@ -88,7 +122,9 @@ module FileMonitoring
         if @cycles >= @stable_state
           new_state = FileStatEnum::STABLE
         end
-        set_state(new_state)
+        if new_state != @state
+          set_state(new_state)
+        end
       end
     end
 
@@ -110,31 +146,6 @@ module FileMonitoring
       if (@@log)
         @@log.info(state + ": " + path)
         @@log.outputters[0].flush if Params['log_flush_each_message']
-      end
-
-      if (FileStatEnum::STABLE == @state)
-        digest = Digest::SHA1.new
-        begin
-          File.open(@path, 'rb') { |f|
-            while buffer = f.read(65536) do
-              digest << buffer
-            end
-          }
-          $local_content_data_lock.synchronize{
-            $local_content_data.add_instance(digest.hexdigest.downcase, @size, Params['local_server_name'],
-                                             @path, @modification_time)
-          }
-          $process_vars.inc('indexed_files')
-          $indexed_file_count += 1
-        rescue
-          Log.warning("Monitored path'#{path}' does not exist. Probably file changed")
-        end
-      elsif (FileStatEnum::NON_EXISTING == @state || FileStatEnum::CHANGED == @state)
-        Log.debug1("NonExisting/Changed (file): #{@path}")
-        # remove file with changed checksum
-        $local_content_data_lock.synchronize{
-          $local_content_data.remove_instance(Params['local_server_name'], @path)
-        }
       end
     end
 
@@ -164,6 +175,14 @@ module FileMonitoring
       @content_data_cache = content_data_cache
     end
 
+    def index
+      @files.each_value { |file_stat|
+        file_stat.index
+      }
+      @dirs.each_value { |dir_stat|
+        dir_stat.index
+      }
+    end
     #  Adds directory for monitoring.
     def add_dir (dir)
       @dirs[dir.path] = dir
