@@ -67,6 +67,7 @@ module FileMonitoring
         @creation_time = nil
         @modification_time = nil
         @cycles = 0
+        set_state(new_state)
       elsif @size == nil
         new_state = FileStatEnum::NEW
         @size = file_stats.size
@@ -79,16 +80,16 @@ module FileMonitoring
         @creation_time = file_stats.ctime.utc
         @modification_time = file_stats.mtime.utc
         @cycles = 0
+        set_state(new_state)
       else
+        return if FileStatEnum::STABLE == @state
         new_state = FileStatEnum::UNCHANGED
         @cycles += 1
         if @cycles >= @stable_state
           new_state = FileStatEnum::STABLE
         end
+        set_state(new_state)
       end
-
-      # The assignment
-      self.state= new_state
     end
 
     #  Checks that stored file attributes are the same as file attributes taken from file system.
@@ -103,19 +104,35 @@ module FileMonitoring
     end
 
     #  Sets and writes to the log a new state.
-    def state= (new_state)
-      if (@state != new_state or @state == FileStatEnum::CHANGED)
-        @state = new_state
-        if (@@log)
-          @@log.info(state + ": " + path)
-          @@log.outputters[0].flush if Params['log_flush_each_message']
+    def set_state(new_state)
+      @state = new_state
+
+      if (@@log)
+        @@log.info(state + ": " + path)
+        @@log.outputters[0].flush if Params['log_flush_each_message']
+      end
+
+      if (FileStatEnum::STABLE == @state)
+        digest = Digest::SHA1.new
+        begin
+          File.open(@path, 'rb') { |f|
+            while buffer = f.read(65536) do
+              digest << buffer
+            end
+          }
+          $local_content_data_lock.synchronize{
+            $local_content_data.add_instance(digest.hexdigest.downcase, @size, Params['local_server_name'],
+                                             @path, @modification_time)
+          }
+        rescue
+          Log.warning("Monitored path'#{path}' does not exist. Probably file changed")
         end
-        if @event_queue and FileStatEnum::NEW != @state  # NEW state is ignored in indexer
-          Log.debug1 "Writing to event queue [#{self.state}, #{self.path}]"
-          @event_queue.push([self.state, self.instance_of?(DirStat), self.path,
-                             self.modification_time, self.size])
-          $process_vars.set('monitor to index queue size', @event_queue.size)
-        end
+      elsif (FileStatEnum::NON_EXISTING == @state || FileStatEnum::CHANGED == @state)
+        Log.debug1("NonExisting/Changed (file): #{@path}")
+        # remove file with changed checksum
+        $local_content_data_lock.synchronize{
+          $local_content_data.remove_instance(Params['local_server_name'], @path)
+        }
       end
     end
 
@@ -195,30 +212,46 @@ module FileMonitoring
       was_changed = false
       new_state = nil
       self_stat = File.lstat(@path) rescue nil
-      if self_stat == nil
-        new_state = FileStatEnum::NON_EXISTING
+      if self_stat.nil?
+        set_state(FileStatEnum::NON_EXISTING)
         @files = nil
         @dirs = nil
         @cycles = 0
+        Log.debug1("NonExisting/Changed (dir): #{@path}")
+        # remove file with changed checksum
+        $local_content_data_lock.synchronize{
+          $local_content_data.remove_directory(Params['local_server_name'], @path)
+        }
       elsif @files == nil
-        new_state = FileStatEnum::NEW
+        set_state(FileStatEnum::NEW)
         @files = Hash.new
         @dirs = Hash.new
         @cycles = 0
         update_dir
+        return
       elsif update_dir
-        new_state = FileStatEnum::CHANGED
+        set_state(FileStatEnum::CHANGED)
         @cycles = 0
       else
+        return if FileStatEnum::STABLE == @state
         new_state = FileStatEnum::UNCHANGED
         @cycles += 1
         if @cycles >= @stable_state
           new_state = FileStatEnum::STABLE
         end
+        set_state(new_state)
       end
+    end
 
-      # The assignment
-      self.state= new_state
+    #  Sets and writes to the log a new state.
+    def set_state(new_state)
+      if (new_state != @state)
+        @state = new_state
+        if (@@log)
+          @@log.info(@state + ": " + @path)
+          @@log.outputters[0].flush if Params['log_flush_each_message']
+        end
+      end
     end
 
     # Updates the files and directories hashes and globs the directory for changes.
