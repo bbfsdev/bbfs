@@ -27,24 +27,15 @@ module ContentServer
           Log.debug1 "index event: state:#{state}, dir?#{is_dir}, path:#{path}, mtime:#{mtime}, size:#{size}."
           if state == FileMonitoring::FileStatEnum::STABLE && !is_dir
             # Calculating checksum
-            instance_stats = nil  # definition
+            Log.debug1 "Indexing file:'#{path}'."
+            checksum = calc_SHA1(path)
+            $process_vars.inc('indexed_files')
+            $indexed_file_count += 1
+            Log.debug1("Index info:checksum:#{checksum} size:#{size} time:#{mtime.to_i}")
+            Log.debug1('Adding index to content data. put in queue for dynamic update.')
             $local_content_data_lock.synchronize{
-              instance_stats = $local_content_data.stats_by_location([Params['local_server_name'], path])
+              $local_content_data.add_instance(checksum, size, Params['local_server_name'], path, mtime)
             }
-            Log.debug1("instance !#{instance_stats}! mtime: #{mtime.to_i}, size: #{size}")
-            if instance_stats.nil? || mtime.to_i != instance_stats[1] || size != instance_stats[0]
-              Log.debug1 "Indexing file:'#{path}'."
-              checksum = calc_SHA1(path)
-              $process_vars.inc('indexed_files')
-              $indexed_file_count += 1
-              Log.debug1("Index info:checksum:#{checksum} size:#{size} time:#{mtime.to_i}")
-              Log.debug1('Adding index to content data. put in queue for dynamic update.')
-              $local_content_data_lock.synchronize{
-                $local_content_data.add_instance(checksum, size, Params['local_server_name'], path, mtime.to_i)
-              }
-            else
-              Log.info("Skip file #{path} indexing (shallow check passed)")
-            end
           elsif ((state == FileMonitoring::FileStatEnum::NON_EXISTING ||
               state == FileMonitoring::FileStatEnum::CHANGED) && !is_dir)
             Log.debug2("NonExisting/Changed (file): #{path}")

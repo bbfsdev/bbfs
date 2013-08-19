@@ -168,13 +168,6 @@ module ContentData
       @instances_info.has_key?([server, path])
     end
 
-    def stats_by_location(location)
-      checksum = @instances_info[location]
-      content_info = @contents_info[checksum]
-      return nil if content_info.nil?
-      return [content_info[0], content_info[1][location]]
-    end
-
     # removes an instance record both in @instances_info and @instances_info.
     # input params: server & path - are the instance unique key (called location)
     # removes also the content, if content becomes empty after removing the instance
