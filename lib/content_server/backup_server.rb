@@ -60,9 +60,11 @@ module ContentServer
 
     # Read here for initial content data that exist from previous system run
     content_data_path = Params['local_content_data_path']
+    last_content_data_id = nil
     if File.exists?(content_data_path) and !File.directory?(content_data_path)
       Log.info("reading initial content data that exist from previous system run from file:#{content_data_path}")
       $local_content_data.from_file(content_data_path)
+      last_content_data_id = $local_content_data.unique_id
     else
       if File.directory?(content_data_path)
         raise("Param:'local_content_data_path':'#{Params['local_content_data_path']}'cannot be a directory name")
@@ -93,7 +95,6 @@ module ContentServer
     Log.debug1('Init thread: flush local content data to file')
     all_threads << Thread.new do
       FileUtils.mkdir_p(Params['tmp_path']) unless File.directory?(Params['tmp_path'])
-      last_content_data_id = nil
       loop{
         sleep(Params['data_flush_delay'])
         Log.info('Start flush local content data to file.')
