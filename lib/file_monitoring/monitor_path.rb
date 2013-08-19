@@ -124,6 +124,8 @@ module FileMonitoring
             $local_content_data.add_instance(digest.hexdigest.downcase, @size, Params['local_server_name'],
                                              @path, @modification_time)
           }
+          $process_vars.inc('indexed_files')
+          $indexed_file_count += 1
         rescue
           Log.warning("Monitored path'#{path}' does not exist. Probably file changed")
         end
