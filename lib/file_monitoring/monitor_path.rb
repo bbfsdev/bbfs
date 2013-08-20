@@ -42,6 +42,7 @@ module FileMonitoring
       @cycles = 0  # number of iterations from the last file modification
       @state = state
       @stable_state = stable_state  # number of iteration to move unchanged file to stable state
+      @indexed = false
     end
 
     def set_output_queue(event_queue)
@@ -57,21 +58,30 @@ module FileMonitoring
     end
 
     def index
-      if (FileStatEnum::STABLE == @state)
-        digest = Digest::SHA1.new
+      if (FileStatEnum::STABLE == @state) && !@indexed
+        #digest = Digest::SHA1.new
         begin
           sleep(0.05)
-          File.open(@path, 'rb') { |f|
-            while buffer = f.read(16384) do
-              digest << buffer
-            end
+          #File.open(@path, 'rb') { |f|
+          #  while buffer = f.read(16384) do
+          #    digest << buffer
+          # end
+          #}
+          str = "a" * 40
+          i=0
+          40.times {
+            str[i] = (rand(122-97) + 97).chr
+            i=i+1
           }
           $local_content_data_lock.synchronize{
-            $local_content_data.add_instance(digest.hexdigest.downcase, @size, Params['local_server_name'],
+            #$local_content_data.add_instance(digest.hexdigest.downcase, @size, Params['local_server_name'],
+            #                                 @path, @modification_time)
+            $local_content_data.add_instance(str, @size, Params['local_server_name'],
                                              @path, @modification_time)
           }
           $process_vars.inc('indexed_files')
           $indexed_file_count += 1
+          @indexed = true
         rescue
           Log.warning("Monitored path'#{path}' does not exist. Probably file changed")
         end
