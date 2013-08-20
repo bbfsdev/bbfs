@@ -86,7 +86,7 @@ module FileMonitoring
 
         unless $testing_memory_active
           dir_stat.monitor
-          dir_stat.index
+          #dir_stat.index
         else
           $testing_memory_log.info("Start monitor at :#{Time.now}")
           puts "Start monitor at :#{Time.now}"
@@ -97,8 +97,8 @@ module FileMonitoring
         end
 
         # push entry with new a next time it should be checked as a priority key
-        #priority = (Time.now + conf['scan_period']).to_i
-        #pq.push([priority, conf, dir_stat], -priority)
+        priority = (Time.now + conf['scan_period']).to_i
+        pq.push([priority, conf, dir_stat], -priority)
       end
     end
   end
