@@ -97,8 +97,8 @@ module FileMonitoring
         end
 
         # push entry with new a next time it should be checked as a priority key
-        priority = (Time.now + conf['scan_period']).to_i
-        pq.push([priority, conf, dir_stat], -priority)
+        #priority = (Time.now + conf['scan_period']).to_i
+        #pq.push([priority, conf, dir_stat], -priority)
       end
     end
   end
