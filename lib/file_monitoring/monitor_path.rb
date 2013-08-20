@@ -62,7 +62,7 @@ module FileMonitoring
         begin
           sleep(0.05)
           File.open(@path, 'rb') { |f|
-            while buffer = f.read(65536) do
+            while buffer = f.read(16384) do
               digest << buffer
             end
           }
@@ -179,11 +179,12 @@ module FileMonitoring
     def index
       @files.each_value { |file_stat|
         file_stat.index
-      }
+      } if @files
       @dirs.each_value { |dir_stat|
         dir_stat.index
-      }
+      } if @dirs
     end
+
     #  Adds directory for monitoring.
     def add_dir (dir)
       @dirs[dir.path] = dir
