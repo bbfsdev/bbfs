@@ -42,12 +42,13 @@ module ContentServer
       "Backtrace:\n#{exception.backtrace.join("\n")}"
     puts(message)
 
+    # Block force write to file resolving Issue 217 https://github.com/bbfsdev/bbfs/issues/217
     # force write content data to file
-    if $local_content_data
-      puts("\nForce writing local content data to #{Params['local_content_data_path']}.")
-      $local_content_data.to_file($tmp_content_data_file)
-      File.rename($tmp_content_data_file, Params['local_content_data_path'])
-    end
+    #if $local_content_data
+     # puts("\nForce writing local content data to #{Params['local_content_data_path']}.")
+      #$local_content_data.to_file($tmp_content_data_file)
+      #File.rename($tmp_content_data_file, Params['local_content_data_path'])
+    #end
 
     #Write exception message to log and mail(if enabled)
     Log.error(message)
