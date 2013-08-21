@@ -23,7 +23,7 @@ module FileMonitoring
 
   #  This class holds current state of file and methods to control and report changes
   class FileStat
-    attr_accessor :marked, :cycles, :path, :stable_state, :state, :size, :modification_time
+    attr_accessor :event_queue, :marked, :cycles, :path, :stable_state, :state, :size, :modification_time
 
     DEFAULT_STABLE_STATE = 10
 
@@ -240,11 +240,7 @@ module FileMonitoring
       res
     end
 
-    def monitor_remove
-      # Recursive call for ALL child dirs\files to remove in case they are not marked
-
-    end
-
+    # Recursive call for ALL child dirs\files to remove in case they are not marked
     def removed_unmarked_paths
       #remove dirs
       @dirs.each_value { |dir_stat|
@@ -254,6 +250,13 @@ module FileMonitoring
           dir_stat.removed_unmarked_paths
         else
          # dir not marked meaning it is no longer exist. Remove.
+          Log.debug1("Non Existing dir: #{dir_stat.path}")
+          @@log.info("NON_EXISTING: " + dir_stat.path)
+          @@log.outputters[0].flush if Params['log_flush_each_message']
+          # remove file with changed checksum
+          $local_content_data_lock.synchronize{
+            $local_content_data.remove_directory(Params['local_server_name'], dir_stat.path)
+          }
           rm_dir(dir_stat)
         end
       }
@@ -264,6 +267,13 @@ module FileMonitoring
           file_stat.marked = false  # unset flag for next iteration
         else
          # file not marked meaning it is no longer exist. Remove.
+          Log.debug1("Non Existing file: #{file_stat.path}")
+          @@log.info("NON_EXISTING: " + file_stat.path)
+          @@log.outputters[0].flush if Params['log_flush_each_message']
+          # remove file with changed checksum
+          $local_content_data_lock.synchronize{
+            $local_content_data.remove_instance(Params['local_server_name'], file_stat.path)
+          }
           rm_file(file_stat)
         end
       }
