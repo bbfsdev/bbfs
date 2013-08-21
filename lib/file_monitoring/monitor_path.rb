@@ -314,15 +314,25 @@ module FileMonitoring
             # status changed
             child_stat.state = FileStatEnum::CHANGED
             child_stat.cycles = 0
+            child_stat.size = globed_path_stat.size
+            child_stat.creation_time = globed_path_stat.ctime.utc
+            child_stat.modification_time = globed_path_stat.mtime.utc
             @@log.info("CHANGED: " + globed_path)
             @@log.outputters[0].flush if Params['log_flush_each_message']
+            Log.debug1("CHANGED file: #{globed_path}")
+            # remove file with changed checksum
+            $local_content_data_lock.synchronize{
+              $local_content_data.remove_instance(Params['local_server_name'], globed_path)
+            }
+            end
           else
             # status is the same
             if child_stat.state != FileStatEnum::STABLE
-              child_stat.new_state = FileStatEnum::UNCHANGED
+              child_stat.state = FileStatEnum::UNCHANGED
               child_stat.cycles += 1
               if child_stat.cycles >= child_stat.stable_state
                 child_stat.state = FileStatEnum::STABLE
+
               end
             end
           end
@@ -330,8 +340,12 @@ module FileMonitoring
           child_stat.monitor_add_new if globed_path_stat.directory?
         else
           # new child:
+
           if globed_path_stat.directory?
             new_child = DirStat.new(globed_path, @stable_state, @content_data_cache, FileStatEnum::NEW)
+            new_child.size = globed_path_stat.size
+            new_child.creation_time = globed_path_stat.ctime.utc
+            new_child.modification_time = globed_path_stat.mtime.utc
             new_child.event_queue = @event_queue
             @@log.info("NEW: " + globed_path)
             @@log.outputters[0].flush if Params['log_flush_each_message']
@@ -341,6 +355,9 @@ module FileMonitoring
             new_child.monitor_add_new
           else
             new_child = FileStat.new(globed_path, @stable_state, @content_data_cache, FileStatEnum::NEW)
+            new_child.size = globed_path_stat.size
+            new_child.creation_time = globed_path_stat.ctime.utc
+            new_child.modification_time = globed_path_stat.mtime.utc
             new_child.event_queue = @event_queue
             @@log.info("NEW: " + globed_path)
             @@log.outputters[0].flush if Params['log_flush_each_message']
