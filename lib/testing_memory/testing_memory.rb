@@ -153,6 +153,10 @@ module TestingMemory
     current_objects_counters['File::Stat'] = count
     count = ObjectSpace.each_object(Integer).count
     current_objects_counters['Integer'] = count
+    count = ObjectSpace.each_object(Hash).count
+    current_objects_counters['Hash'] = count
+    count = ObjectSpace.each_object(Array).count
+    current_objects_counters['Array'] = count
     current_objects_counters['DirStat'] = dir_count
     file_count = ObjectSpace.each_object(FileMonitoring::FileStat).count
     current_objects_counters['FileStat'] = file_count-dir_count
