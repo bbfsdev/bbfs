@@ -88,12 +88,19 @@ module FileMonitoring
           dir_stat.monitor
           dir_stat.index
         else
-          $testing_memory_log.info("Start monitor at :#{Time.now}")
-          puts "Start monitor at :#{Time.now}"
-          dir_stat.monitor
+          1000.times {
+            $testing_memory_log.info("Start monitor")
+            puts "Start monitor at :#{Time.now}"
+            dir_stat.monitor
+            $testing_memory_log.info("Start monitor")
+            puts "Start monitor at :#{Time.now}"
+            sleep(1)
+          }
+          $testing_memory_log.info("Start Index")
+          puts "Start Index at :#{Time.now}"
           dir_stat.index
-          $testing_memory_log.info("End monitor at :#{Time.now}")
-          puts "End monitor at :#{Time.now}"
+          $testing_memory_log.info("End Index & Monitor")
+          puts "End Index & Monitor at :#{Time.now}"
         end
 
         # push entry with new a next time it should be checked as a priority key

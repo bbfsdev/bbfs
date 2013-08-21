@@ -133,6 +133,7 @@ module TestingMemory
         loop {
           sleep(Params['memory_count_delay'])
           email_report += generate_mem_report
+          $testing_memory_log.info("indexed files:#{$indexed_file_count}")
           puts("indexed files:#{$indexed_file_count}")
         }
         #send_email("Final report:#{email_report}\nprocess memory:#{memory_of_process}\n")
@@ -152,6 +153,8 @@ module TestingMemory
     count = ObjectSpace.each_object(File::Stat).count
     current_objects_counters['File::Stat'] = count
     count = ObjectSpace.each_object(Integer).count
+    current_objects_counters['File'] = count
+    count = ObjectSpace.each_object(File).count
     current_objects_counters['Integer'] = count
     count = ObjectSpace.each_object(Hash).count
     current_objects_counters['Hash'] = count
