@@ -17,8 +17,6 @@ ContentServer.init_globals
 
 Thread.abort_on_exception = true  # TODO (genadyp) should be treated globally? by param for example.
 
-retries = 0  # number of retries to run a server
-
 begin
   RunInBackground.run { ContentServer.run_content_server }
 rescue SystemExit, SignalException => exception
@@ -28,11 +26,6 @@ rescue SystemExit, SignalException => exception
   exit
 rescue Exception => exception
   ContentServer.handle_program_termination(exception)
-  if retries > 0
-    Log.debug1("Restarting (retries:#{retries}).")
-  else
-    Log.debug1("Exiting...")
-    Log.flush
-  end
-  retries -= 1
-end while retries >= 0
+  Log.flush
+  exit
+end
