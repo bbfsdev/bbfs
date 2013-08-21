@@ -62,7 +62,7 @@ module FileMonitoring
       #if (FileStatEnum::STABLE == @state) && !@indexed
         digest = Digest::SHA1.new
         begin
-          sleep(0.01)
+          #sleep(0.01)
           File.open(@path, 'rb') { |f|
             while buffer = f.read(16384) do
               digest << buffer
@@ -331,7 +331,8 @@ module FileMonitoring
               child_stat.cycles += 1
               if child_stat.cycles >= child_stat.stable_state
                 child_stat.state = FileStatEnum::STABLE
-
+                @@log.info("STABLE: " + globed_path)
+                @@log.outputters[0].flush if Params['log_flush_each_message']
               end
             end
           end

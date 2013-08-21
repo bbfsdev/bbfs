@@ -88,15 +88,17 @@ module FileMonitoring
           dir_stat.monitor
           dir_stat.index
         else
-          1000.times {
+          #1000.times {
             $testing_memory_log.info("Start monitor")
             puts "Start monitor at :#{Time.now}"
             dir_stat.monitor_add_new
+            $testing_memory_log.info("Start remove unmarked paths")
+            puts "Start remove unmarked paths at :#{Time.now}"
             dir_stat.removed_unmarked_paths
-            $testing_memory_log.info("End monitor")
-            puts "End monitor at :#{Time.now}"
-            sleep(1)
-          }
+            #$testing_memory_log.info("End monitor")
+            #puts "End monitor at :#{Time.now}"
+          #  sleep(1)
+          #}
           $testing_memory_log.info("Start Index")
           puts "Start Index at :#{Time.now}"
           dir_stat.index
