@@ -24,8 +24,6 @@ ContentServer.init_globals
 
 Thread.abort_on_exception = true
 
-retries = 0  # number of retries to run a server
-
 begin
   case Params['server_to_test']
     when 'content'
@@ -35,7 +33,6 @@ begin
     else
       raise ArgumentError.new "Incorrect server_to_test parameter value: #{Params['server_to_test']}"
   end
-  retries -=1
 
 rescue SystemExit, SignalException => exc
   # TODO (genadyp) do we need to trap signals by types?
@@ -50,11 +47,6 @@ rescue Exception => exc
                 "#{exc.backtrace.join("\n")}")
   Log.error("Exception happened in #{Params['service_name']} server: #{exc.class}:#{exc.message}\nBacktrace:\n" +
                 "#{exc.backtrace.join("\n")}")
-  if retries > 0
-    Log.debug1("Restarting (retries:#{retries}).")
-  else
-    Log.debug1("Exiting...")
-    Log.flush
-  end
-  retries -= 1
-end while retries >= 0
+  Log.flush
+  exit
+end
