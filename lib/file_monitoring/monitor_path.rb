@@ -292,7 +292,7 @@ module FileMonitoring
           next
         end
         globed_path_stat = File.lstat(globed_path)
-        if (file_stat.directory?)
+        if (globed_path_stat.directory?)
           child_stat = @dirs[globed_path]
         else
           child_stat = @files[globed_path]
@@ -316,15 +316,18 @@ module FileMonitoring
               end
             end
           end
+          #recursive call
+          child_stat.monitor_add_new
         else
           # new child:
-          if (file_stat.directory?)
+          if (globed_path_stat.directory?)
             new_child = DirStat.new(globed_path, @stable_state, @content_data_cache, FileStatEnum::NEW)
             new_child.event_queue = @event_queue
             @@log.info("NEW: " + globed_path)
             @@log.outputters[0].flush if Params['log_flush_each_message']
             new_child.marked = true
             add_dir(new_child)
+            # recursive call
             new_child.monitor_add_new
           else
             new_child = FileStat.new(globed_path, @stable_state, @content_data_cache, FileStatEnum::NEW)
