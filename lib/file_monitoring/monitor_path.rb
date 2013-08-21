@@ -61,7 +61,7 @@ module FileMonitoring
       #if (FileStatEnum::STABLE == @state) && !@indexed
         digest = Digest::SHA1.new
         begin
-          #sleep(0.05)
+          sleep(0.01)
           File.open(@path, 'rb') { |f|
             while buffer = f.read(16384) do
               digest << buffer

@@ -133,6 +133,7 @@ module TestingMemory
         loop {
           sleep(Params['memory_count_delay'])
           email_report += generate_mem_report
+          puts("indexed files:#{$indexed_file_count}")
         }
         #send_email("Final report:#{email_report}\nprocess memory:#{memory_of_process}\n")
       end
