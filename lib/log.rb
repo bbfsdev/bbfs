@@ -141,34 +141,70 @@ module Log
   end
 
   # Log info massages
-  def Log.info(msg)
+  # params:
+  #  msg, *args - Works to construct a string using: msg % args
+  #  Examples:
+  #   "hello"  # no args provided
+  #   "Time is %s. have a good day %s", Time.now, "Sir"
+  #  Note: Use ONLY %s in msg. Since %d will crush for nil objects, while %s will print empty string.
+  #        Implicit to_s is used to convert arg to %s.
+  #        If no to_s exists then ruby uses inspection.
+  def Log.info(msg, *args)
     Log.init if @log4r.nil?
+    msg = msg % args
     @log4r.info(msg_with_caller(msg))
     Log.flush if Params['log_flush_each_message']
   end
 
   # Log debug level 1 massages
-  def Log.debug1(msg)
+  # params:
+  #  msg, *args - Works to construct a string using: msg % args
+  #  Examples:
+  #   "hello"  # no args provided
+  #   "Time is %s. have a good day %s", Time.now, "Sir"
+  #  Note: Use ONLY %s in msg. Since %d will crush for nil objects, while %s will print empty string.
+  #        Implicit to_s is used to convert arg to %s.
+  #        If no to_s exists then ruby uses inspection.
+  def Log.debug1(msg, *args)
     if Params['log_debug_level'] >= 1
       Log.init if @log4r.nil?
+      msg = msg % args
       @log4r.debug(msg_with_caller(msg))
       Log.flush if Params['log_flush_each_message']
     end
   end
 
   # Log debug level 2 massages
-  def Log.debug2(msg)
+  # params:
+  #  msg, *args - Works to construct a string using: msg % args
+  #  Examples:
+  #   "hello"  # no args provided
+  #   "Time is %s. have a good day %s", Time.now, "Sir"
+  #  Note: Use ONLY %s in msg. Since %d will crush for nil objects, while %s will print empty string.
+  #        Implicit to_s is used to convert arg to %s.
+  #        If no to_s exists then ruby uses inspection.
+  def Log.debug2(msg, *args)
     if Params['log_debug_level'] >= 2
       Log.init if @log4r.nil?
+      msg = msg % args
       @log4r.debug(msg_with_caller(msg))
       Log.flush if Params['log_flush_each_message']
     end
   end
 
   # Log debug level 3 massages
-  def Log.debug3(msg)
+  # params:
+  #  msg, *args - Works to construct a string using: msg % args
+  #  Examples:
+  #   "hello"  # no args provided
+  #   "Time is %s. have a good day %s", Time.now, "Sir"
+  #  Note: Use ONLY %s in msg. Since %d will crush for nil objects, while %s will print empty string.
+  #        Implicit to_s is used to convert arg to %s.
+  #        If no to_s exists then ruby uses inspection.
+  def Log.debug3(msg, *args)
     if Params['log_debug_level'] >= 3
       Log.init if @log4r.nil?
+      msg = msg % args
       @log4r.debug(msg_with_caller(msg))
       Log.flush if Params['log_flush_each_message']
     end

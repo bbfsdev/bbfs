@@ -84,7 +84,7 @@ module ContentServer
         report += "Type:#{type} raised in:#{diff}   \n"
         objects_counters[type] = current_objects_counters[type]
       }
-      Log.info("MEM REPORT at:#{time}:\n#{report}\n")
+      Log.info("MEM REPORT:\n%s\n", report)
     end
   end
 

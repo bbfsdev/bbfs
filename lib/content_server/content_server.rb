@@ -32,7 +32,7 @@ module ContentServer
     $tmp_content_data_file = File.join(Params['tmp_path'], 'content.data')
 
     if Params['enable_monitoring']
-      Log.info("Initializing monitoring of process params on port:#{Params['process_monitoring_web_port']}")
+      Log.info("Initializing monitoring of process params on port:%s", Params['process_monitoring_web_port'])
       $process_vars.set('server_name', 'content_server')
     end
 
@@ -40,7 +40,7 @@ module ContentServer
     # Initialize/Start monitoring
     Log.info('Start monitoring following directories:')
     Params['monitoring_paths'].each {|path|
-      Log.info("  Path:'#{path['path']}'")
+      Log.info("  Path:'%s'", path['path'])
     }
 
     # initial global local content data object
@@ -51,19 +51,19 @@ module ContentServer
     content_data_path = Params['local_content_data_path']
     last_content_data_id = nil
     if File.exists?(content_data_path) and !File.directory?(content_data_path)
-      Log.info("reading initial content data that exist from previous system run from file:#{content_data_path}")
+      Log.info("reading initial content data that exist from previous system run from file:%s", content_data_path)
       $local_content_data.from_file(content_data_path)
       last_content_data_id = $local_content_data.unique_id
     else
       if File.directory?(content_data_path)
-        raise("Param:'local_content_data_path':'#{Params['local_content_data_path']}'cannot be a directory name")
+        raise("Param:'local_content_data_path':'%s'cannot be a directory name", Params['local_content_data_path'])
       end
       # create directory if needed
       dir = File.dirname(Params['local_content_data_path'])
       FileUtils.mkdir_p(dir) unless File.exists?(dir)
     end
 
-    Log.info("Init monitoring")
+    Log.info('Init monitoring')
     monitoring_events = Queue.new
     fm = FileMonitoring::FileMonitoring.new()
     fm.set_event_queue(monitoring_events)

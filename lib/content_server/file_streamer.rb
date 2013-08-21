@@ -24,12 +24,12 @@ module ContentServer
 
     def self.close_delete_stream(checksum, streams_hash)
       if streams_hash.key?(checksum)
-        Log.debug1("close_delete_stream #{streams_hash[checksum].file}")
+        Log.debug1("close_delete_stream %s", streams_hash[checksum].path)
         begin
           streams_hash[checksum].file.close()
         rescue IOError => e
           Log.warning("While closing stream, could not close file #{streams_hash[checksum].path}." \
-                        " #{e.to_s}")
+                        " IOError msg:#{e.to_s}")
         end
         streams_hash.delete(checksum)
         $process_vars.set('Streams size', streams_hash.size)
@@ -105,7 +105,7 @@ module ContentServer
         checksum = content
         if @streams.key?(checksum)
           offset = @streams[checksum].file.pos
-          Log.debug1("Sending chunk for #{checksum}, offset #{offset}.")
+          Log.debug1("Sending chunk for %s, offset %s.",checksum, offset)
           chunk = @streams[checksum].file.read(Params['streaming_chunk_size'])
           if chunk.nil?
             # No more to read, send end of file.
@@ -116,7 +116,7 @@ module ContentServer
             @send_chunk_clb.call(checksum, offset, @streams[checksum].size, chunk, chunk_checksum)
           end
         else
-          Log.debug1("No checksum found to copy chunk. #{checksum}.")
+          Log.debug1("No stream found for copy chunk checksum %s.", checksum)
         end
       end
 
@@ -129,7 +129,7 @@ module ContentServer
           if offset > 0
             file.seek(offset)
           end
-          Log.debug1("File streamer: #{file.to_s}.")
+          Log.debug1("File streamer: %s.", file)
           @streams[checksum] = Stream.new(checksum, path, file, file.size)
           $process_vars.set('Streams size', @streams.size)
         rescue IOError, Errno::ENOENT => e
@@ -223,13 +223,15 @@ module ContentServer
     def handle_new_chunk(file_checksum, offset, content)
       if offset == @streams[file_checksum].file.pos
         FileReceiver.write_string_to_file(content, @streams[file_checksum].file)
-        Log.debug1("Written already #{@streams[file_checksum].file.pos} bytes, " \
-                 "out of #{@streams[file_checksum].size} " \
-                 "(#{100.0*@streams[file_checksum].file.size/@streams[file_checksum].size}%)")
+        if Params['log_debug_level'] >= 1  # added the condition here to avoid calculations
+          Log.debug1("Written already %s bytes, out of %s (%s%%)",
+                     @streams[file_checksum].file.pos, @streams[file_checksum].size,
+                    100.0*@streams[file_checksum].file.size/@streams[file_checksum].size)
+        end
         return true
       else
         # Offset is wrong, send reset/resume copy from correct offset.
-        Log.warning("Received chunk with incorrect offset #{offset}, should " \
+        Log.warning("Received chunk with incorrect offset #{offset}, should " + \
                       "be #{@streams[file_checksum].file.pos}, file_checksum:#{file_checksum}")
         @reset_copy.call(file_checksum, @streams[file_checksum].file.pos) unless @reset_copy.nil?
         return false
@@ -246,7 +248,7 @@ module ContentServer
         # Make the directory if does not exists.
         path = FileReceiver.destination_filename(Params['backup_destination_folder'][0]['path'],
                                                  file_checksum)
-        Log.debug1("Moving tmp file #{@streams[file_checksum].path} to #{path}")
+        Log.debug1("Moving tmp file %s to %s", @streams[file_checksum].path, path)
         file_dir = File.dirname(path)
         FileUtils.makedirs(file_dir) unless File.directory?(file_dir)
         # Move tmp file to permanent location.
@@ -259,7 +261,7 @@ module ContentServer
           Log.debug1(message)
           begin
             File.rename(tmp_file_path, path)
-            Log.debug1("End move tmp file to permanent location #{path}.")
+            Log.debug1("End move tmp file to permanent location %s.", path)
             @file_done_clb.call(local_file_checksum, path) unless @file_done_clb.nil?
           rescue Exception => e
             Log.warning("Could not move tmp file to permanent path #{path}." +
@@ -268,7 +270,7 @@ module ContentServer
         else
           begin
             Log.error(message)
-            Log.debug1("Deleting tmp file: #{tmp_file_path}")
+            Log.debug1("Deleting tmp file: %s", tmp_file_path)
             File.delete(tmp_file_path)
           rescue Exception => e
             Log.warning("Could not delete tmp file from tmp path #{tmp_file_path}." +
@@ -282,7 +284,7 @@ module ContentServer
 
     def self.write_string_to_file(str, file)
       bytes_to_write = str.bytesize
-      Log.debug1("writing to file: #{file.to_s}, #{bytes_to_write} bytes.")
+      Log.debug1("writing to file: %s, %s bytes.", file, bytes_to_write)
       while bytes_to_write > 0
         bytes_to_write -= file.write(str)
       end

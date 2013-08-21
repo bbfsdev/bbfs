@@ -144,7 +144,7 @@ module ContentData
                                     modification_time]
       else
         if size != content_info[0]
-          Log.warning 'File size different from content size while same checksum'
+          Log.warning('File size different from content size while same checksum')
           Log.warning("instance location:server:'#{location[0]}'  path:'#{location[1]}'")
           Log.warning("instance mod time:'#{modification_time}'")
         end
@@ -271,7 +271,7 @@ module ContentData
       i += 1
       number_of_instances.times {
         if lines[i].nil?
-          Log.warning "line ##{i} is nil !!!, Backing filename: #{filename} to #{filename}.bad"
+          Log.warning("line ##{i} is nil !!!, Backing filename: #{filename} to #{filename}.bad")
           FileUtils.cp(filename, "#{filename}.bad")
           Log.warning("Lines:\n#{lines[i].join("\n")}")
         else
@@ -390,19 +390,19 @@ module ContentData
         if File.size(path) != size
           is_valid = false
           err_msg = "#{path} size #{File.size(path)} differs from indexed size #{size}"
-          Log.warning err_msg
+          Log.warning(err_msg)
         end
         #if ContentData.format_time(File.mtime(path)) != instance.modification_time
         if File.mtime(path).to_i != instance_mtime
           is_valid = false
           err_msg = "#{path} modification time #{File.mtime(path).to_i} differs from " \
             + "indexed #{instance_mtime}"
-          Log.warning err_msg
+          Log.warning(err_msg)
         end
       else
         is_valid = false
         err_msg = "Indexed file #{path} doesn't exist"
-        Log.warning err_msg
+        Log.warning(err_msg)
       end
       is_valid
     end
@@ -423,7 +423,7 @@ module ContentData
           true
         else
           err_msg = "#{path} checksum #{current_checksum} differs from indexed #{instance_checksum}"
-          Log.warning err_msg
+          Log.warning(err_msg)
           false
         end
       else
