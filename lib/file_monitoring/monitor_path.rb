@@ -85,7 +85,7 @@ module FileMonitoring
         rescue
           Log.warning("Monitored path'#{path}' does not exist. Probably file changed")
         end
-      end
+      #end
     end
 
     # Checks whether file was changed from the last iteration.
