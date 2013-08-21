@@ -116,9 +116,9 @@ module FileMonitoring
         end
 
         unless $testing_memory_active
-          Log.info("Start monitor for dir:#{dir_stat.path}")
+          Log.info("Start monitor for dir:%s", dir_stat.path)
           dir_stat.monitor
-          Log.info("End monitor for dir:#{dir_stat.path}")
+          Log.info("End monitor for dir:%s", dir_stat.path)
         else
           $testing_memory_log.info("Start monitor at :#{Time.now}")
           puts "Start monitor at :#{Time.now}"

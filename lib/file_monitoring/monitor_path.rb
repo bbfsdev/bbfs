@@ -61,7 +61,6 @@ module FileMonitoring
     # Checks whether file was changed from the last iteration.
     # For files, size and modification time are checked.
     def monitor
-      #Log.info("Start file monitor")
       file_stats = File.lstat(@path) rescue nil
       new_state = nil
       if file_stats.nil?
@@ -113,9 +112,8 @@ module FileMonitoring
           @@log.outputters[0].flush if Params['log_flush_each_message']
         end
         if @event_queue and FileStatEnum::NEW != @state  # NEW state is ignored in indexer
-          Log.debug1 "Writing to event queue [#{self.state}, #{self.path}]"
-          @event_queue.push([self.state, self.instance_of?(DirStat), self.path,
-                             self.modification_time, self.size])
+          Log.debug1("Writing to event queue [%s, %s]", @state, @path)
+          @event_queue.push([@state, self.instance_of?(DirStat), @path, @modification_time, @size])
           $process_vars.set('monitor to index queue size', @event_queue.size)
         end
       end
@@ -233,7 +231,6 @@ module FileMonitoring
     # Checks that directory structure (i.e. files and directories located directly under this directory)
     # wasn't changed since the last iteration.
     def monitor
-      #Log.info("Start dir monitor")
       was_changed = false
       new_state = nil
       self_stat = File.lstat(@path) rescue nil

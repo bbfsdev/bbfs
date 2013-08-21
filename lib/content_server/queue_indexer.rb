@@ -21,38 +21,35 @@ module ContentServer
       # Start indexing on demand and write changes to queue
       thread = Thread.new do
         while true do
-          Log.debug1 'Waiting on index input queue.'
           (state, is_dir, path, mtime, size) = @input_queue.pop
           $process_vars.set('monitor to index queue size', @input_queue.size)
-          Log.debug1 "index event: state:#{state}, dir?#{is_dir}, path:#{path}, mtime:#{mtime}, size:#{size}."
+          Log.debug1("index event: state:%s  dir?%s  path:%s  time:%s  size:%s ",
+                     state, is_dir, path, mtime, size)
           if state == FileMonitoring::FileStatEnum::STABLE && !is_dir
             # Calculating checksum
-            Log.debug1 "Indexing file:'#{path}'."
             checksum = calc_SHA1(path)
             $process_vars.inc('indexed_files')
             $indexed_file_count += 1
-            Log.debug1("Index info:checksum:#{checksum} size:#{size} time:#{mtime.to_i}")
-            Log.debug1('Adding index to content data. put in queue for dynamic update.')
+            Log.debug1("Index checksum:%s Adding index to content data. put in queue for dynamic update.",
+                       checksum)
             $local_content_data_lock.synchronize{
               $local_content_data.add_instance(checksum, size, Params['local_server_name'], path, mtime)
             }
           elsif ((state == FileMonitoring::FileStatEnum::NON_EXISTING ||
               state == FileMonitoring::FileStatEnum::CHANGED) && !is_dir)
-            Log.debug2("NonExisting/Changed (file): #{path}")
             # Remove file but only when non-existing.
-            Log.debug1("File to remove: #{path}")
+            Log.debug1("File to remove: %s", path)
             $local_content_data_lock.synchronize{
               $local_content_data.remove_instance(Params['local_server_name'], path)
             }
           elsif state == FileMonitoring::FileStatEnum::NON_EXISTING && is_dir
-            Log.debug2("NonExisting/Changed (dir): #{path}")
             # Remove directory but only when non-existing.
-            Log.debug1("Directory to remove: #{path}")
+            Log.debug1("Directory to remove: %s", path)
             $local_content_data_lock.synchronize{
               $local_content_data.remove_directory(Params['local_server_name'], path)
             }
           else
-            Log.debug1("This case should not be handled: #{state}, #{is_dir}, #{path}.")
+            Log.debug1("This case should not be handled: %s, %s, %s", state, is_dir, path)
           end
         end  # while true do
       end  # Thread.new do
