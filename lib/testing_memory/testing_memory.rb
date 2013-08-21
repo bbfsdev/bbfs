@@ -116,7 +116,7 @@ module TestingMemory
       $testing_memory_log.info(msg)
     }
     email_report = generate_mem_report
-
+    $objects_counters = {}
     # memory loop
     loop {
       sleep(Params['memory_count_delay'])
@@ -144,31 +144,47 @@ module TestingMemory
   def generate_mem_report
     # Generate memory report
     current_objects_counters = {}
-
+=begin
     count = ObjectSpace.each_object(String).count
-    current_objects_counters['String'] = count
+    current_objects_counters[String] = count
     count = ObjectSpace.each_object(ContentData::ContentData).count
-    current_objects_counters['ContentData'] = count
+    current_objects_counters[ContentData] = count
     dir_count = ObjectSpace.each_object(FileMonitoring::DirStat).count
     count = ObjectSpace.each_object(File::Stat).count
-    current_objects_counters['File::Stat'] = count
+    current_objects_counters[File::Stat] = count
     count = ObjectSpace.each_object(Integer).count
-    current_objects_counters['File'] = count
+    current_objects_counters[File] = count
     count = ObjectSpace.each_object(File).count
-    current_objects_counters['Integer'] = count
+    current_objects_counters[Integer] = count
     count = ObjectSpace.each_object(Hash).count
-    current_objects_counters['Hash'] = count
+    current_objects_counters[Hash] = count
     count = ObjectSpace.each_object(Array).count
-    current_objects_counters['Array'] = count
-    current_objects_counters['DirStat'] = dir_count
+    current_objects_counters[Array] = count
+    current_objects_counters[DirStat] = dir_count
     file_count = ObjectSpace.each_object(FileMonitoring::FileStat).count
-    current_objects_counters['FileStat'] = file_count-dir_count
+    current_objects_counters[FileStat] = file_count-dir_count
+=end
+
+    ObjectSpace.each_object(Class) { |t|
+      current_objects_counters[t] = ObjectSpace.each_object(t).count
+    }
+    report = ""
+    current_objects_counters.each_key { |key|
+      current_val = current_objects_counters[key]
+      val = $objects_counters[key]
+      if val
+        if  val < current_val
+          report += "Type:#{key} raised by:#{current_val - val}  \n"
+        end
+      end
+      $objects_counters[key] = current_val
+    }
 
     # Generate report and update global counters
-    report = ""
-    current_objects_counters.each_key { |type|
-      report += "Type:#{type} count:#{current_objects_counters[type]}   \n"
-    }
+    #report = ""
+    #current_objects_counters.each_key { |type|
+    #  report += "Type:#{type} count:#{current_objects_counters[type]}   \n"
+    #}
     unless Gem::win_platform?
       memory_of_process = `ps -o rss= -p #{Process.pid}`.to_i / 1000
     else
