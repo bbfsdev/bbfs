@@ -320,7 +320,7 @@ module FileMonitoring
           # new child:
           if (file_stat.directory?)
             new_child = DirStat.new(globed_path, @stable_state, @content_data_cache, FileStatEnum::NEW)
-            new_child.event_queue = @event_queue)
+            new_child.event_queue = @event_queue
             @@log.info("NEW: " + globed_path)
             @@log.outputters[0].flush if Params['log_flush_each_message']
             new_child.marked = true
@@ -328,7 +328,7 @@ module FileMonitoring
             new_child.monitor_add_new
           else
             new_child = FileStat.new(globed_path, @stable_state, @content_data_cache, FileStatEnum::NEW)
-            new_child.event_queue = @event_queue)
+            new_child.event_queue = @event_queue
             @@log.info("NEW: " + globed_path)
             @@log.outputters[0].flush if Params['log_flush_each_message']
             new_child.marked = true
