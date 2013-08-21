@@ -1,61 +1,43 @@
 # Author: Yaron Dror (yaron.dror.bb@gmail.com)
 # Run from bbfs> ruby -Ilib examples/log_example.rb
 
-# The problem: log project data
-# Solution: use: 'log module' to log info\warning\error\debug messages to
-#           file\console\other consumers.
+# 1. Log configuration through params:
+#
+# 1.1 Logging level param:
+# Param name: log_debug_level
+# value 0 = Info User friendly notifications.
+# value 1 = Debug 1 -Info and debug 1 messages debug logic basic data.
+# value 2 = Debug 2 -info, debug 1 and debug 2 messages - debug logic extensive data.
+# value 3 = Debug 3 - info, debug 1 , debug 2 and debug 3 messages - debug logic extensive  data plus code wise data
+#                                                                   (enter methods etc..).
+# 
+# 1.2 Logging streams parameters:
+# File stream (enabled by default):
+# Parameter: 'log_write_to_file'. Default is true. If false, than log is not written to log file.
+# Parameter: 'log_file_name' - Path to file. Default path is: ~.bbfs/log/<executable name> <rotation counter>.log4
+# Parameter: 'log_rotation_size'. Default is 1M. max log file size. When reaching this size, a new file is created for
+#                                 rest of log. Note that rotation counter is added to the file name right before the '.'
+# 
+# Console stream (disabled by default):
+# Parameter: 'log_write_to_console'. Default is false. If true, than log is written to console.
+# 
+# email stream (disabled by default. sent on system crush)
+# Parameter: 'log_write_to_email'. Default is false. If true, than log is written to email on system crush..
+# Parameter: 'from_email'. From who to send the mail.
+# Parameter: 'from_email_password'. Mail password of sender.
+# Parameter: 'to_email'. To who to send the mail.
+# 
+# 1.3 Flush to stream
+# Flush each message parameter (enabled by default):
+# Parameter: 'log_flush_each_message'. Default is true. If false than log messages will be written to file and console
+#                                      each several messages.
 
-###############################################################################################
-# HOW TO READ THIS DOCUMENT ?
-# Read sections 1 till 10 carefully.
-# The document will actually setup a configuration for the logger and
-# also will issue few log messages (see the uncommented lines).
-# Note: The configuration used in this document is the recommended configuration for tests.
-#       The default configuration is used for the BBFS production execution.
-#       Read more about configuration in section 2.
-# This document will elaborate on the following log setup and usage phases:
-#   1. require - This will setup default configuration
-#   2. change configuration if needed.
-#   3. call the init method - MUST call init or else an exception is raised.
-#   4. call log messages methods
-# The document will also discuss debug levels and log expected format.
-##################################################################################################
 
-# 1. require phase
+# 2. require phase
 # Add the following requires:
 require 'params'
 require 'log'
-# Note: after those lines execute, the log default parameters are defined (see section 2 ahead)
 
-# 2. Log configuration.
-#    The default configuration is used for the BBFS production execution.
-#    The default configuration is set automatically after require 'log' has been called
-#    The parameters and their default values:
-#    2.1 Enable\disable the stdout destination:
-#        Params.log_write_to_console = 'false'
-#    2.2 Enable\disable the file destination:
-#        Params.log_write_to_file = 'true'
-#    2.3 Default log file path
-#        Params.log_file_name = '~/.bbfs/log/<executable_name>.log'
-#        More file related parameters:
-#        2.3.1 Log data can be accumulated in a buffer before
-#              it is written (flushed) to the file.
-#              2 parameters control the buffer size and time limits.
-#        2.3.2 Buffer size limit in mega bytes.
-#              Params.log_param_number_of_mega_bytes_stored_before_flush = 1
-#        2.3.3 Buffer time limit in seconds between 2 flushes.
-#              Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 1
-#
-#   The default configuration will flush the log messages only to the file and not to the console.
-#   Also, size limit is 1 megabyte and time limit is 1 second.
-#   When either the size limit or time limits are exceeded, the data will be flushed to the file.
-#   If your messages size is less then 1 mega byte and\or your execution time is less then 1 second
-#   Then you are recommended to set those values to 0 as in the following setup:
-Params.log_write_to_console = 'true' # We will also enable the console for this example run.
-Params.log_param_number_of_mega_bytes_stored_before_flush = 0
-Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 0
-#   Also, if your execution time is less then 1 second it is recommended to add a sleep 0.1
-#   to avoid loosing the flush action due to program termination.
 
 # 3. Log.init
 # User *MUST* Call init or else an exception will be raised.
@@ -65,13 +47,17 @@ Params.log_param_max_elapsed_time_in_seconds_from_last_flush = 0
 Log.init
 
 # 4. use one of the following log messages methods.
-# Log.info 'this is an info msg example'
-# Log.warning 'this is a warning msg example'
-# Log.error 'this is a error msg example'
-# Log.debug1 'this is a debug1 msg example'  # depends on debug level (see ahead)
-# Log.debug2 'this is a debug2 msg example'  # depends on debug level (see ahead)
-# Log.debug3 'this is a debug3 msg example'  # depends on debug level (see ahead)
-Log.info 'this is an info msg example'
+# Log.warning('this is a warning msg example')
+# Log.error('this is a error msg example')
+# Log.info('this is an info msg example')
+# Log.info('I love to %s with %s', 'work', 'friends')  # first param is format with %s. Rest are args.
+# Log.debug1('this is a debug1 msg example')  # depends on debug level (see ahead)
+# Log.debug1('%s become %s', 2, 1)  # first param is format with %s. Rest are args.
+# Log.debug2('this is a debug2 msg example')  # depends on debug level (see ahead)
+# Log.debug3('this is a debug3 msg example')  # depends on debug level (see ahead)
+# Notes: optional use of %s provided only for info, debug1, debug2, debug3. Not for warning nor for error.
+#        ony %s can be used. %d or others can not be used.
+Log.info('info msg %s', 'example')
 
 # 5. log debug levels.
 # Will Log.debug1 , Log.debug2 and Log.debug3 methods will actual log ?
@@ -79,15 +65,11 @@ Log.info 'this is an info msg example'
 # if Params.log_debug_level is set to 1 then only Log.debug1 will log.
 # if Params.log_debug_level is set to 2 then Log.debug1 and Log.debug2 will log.
 # if Params.log_debug_level is set to 3 or greater then all debug methods will log.
-Log.debug1 'this debug1 msg will not be logged since debug level default is 0'
-Params.log_debug_level = 1  # set new debug level from now on.
-Log.debug1 'this debug1 msg will be logged since debug level is 1'
-Log.debug2 'this debug2 msg will not be logged since debug level is 1'
+Log.debug1('this debug1 msg will not be logged since debug level default is 0')
+Params['log_debug_level'] = 1 # set new debug level from now on.
+Log.debug1('this debug1 msg will be logged since debug level is 1')
+Log.debug2('this debug2 msg will not be logged since debug level is 1')
 
-# 6. When to use Sleep ?
-# When your execution time is less then 1 second it is recommended to add a sleep 0.1
-# to avoid loosing the flush action due to quick program termination.
-sleep 0.1
 
 # 7. Log expected format.
 #   [BBFS LOG] [TIME] [INFO] [File:Line] [log message]  # for INFO messages.
@@ -104,14 +86,10 @@ sleep 0.1
 #
 #     [BBFS LOG] [2012-06-08 10:06:14 +0300] [INFO] [log.rb:56] [BBFS Log initialized. Log file
 #       path:'C:/Users/ydror1/.bbfs/log/log_example.rb.log']
+#
 #     [BBFS LOG] [2012-06-08 10:06:14 +0300] [INFO] [log_example.rb:59] [this is
 #       an info msg example]
+#
 #     [BBFS LOG] [2012-06-08 10:06:14 +0300] [DEBUG-1] [log_example.rb:70] [this debug1
 #       msg will be logged since debug level is 1]
 
-# 9. Extensibility
-#    Log can easily be extended to flush the log messages to more consumers such as files,
-#    remote computers, archives, mail etc. For more info regarding this pls contact Yaron (Author).
-
-# 10. General limitations of Log that user should be informed
-#     pls see sections 3 and 6.
