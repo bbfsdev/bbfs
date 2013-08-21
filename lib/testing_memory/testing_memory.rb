@@ -175,10 +175,10 @@ module TestingMemory
       val = $objects_counters[key]
       if val
         if  val < current_val
-          report += "Type:#{key} raised by:#{current_val - val}  \n"
+          report += "Type:#{key} raised by:#{current_val - val}. Max Count:#{current_val}  \n"
+          $objects_counters[key] = current_val
         end
       end
-      $objects_counters[key] = current_val
     }
 
     # Generate report and update global counters
