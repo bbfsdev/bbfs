@@ -23,8 +23,8 @@ module FileMonitoring
 
   #  This class holds current state of file and methods to control and report changes
   class FileStat
-    attr_accessor :event_queue, :marked, :cycles, :path, :stable_state, :state, :size, :modification_time
-
+    attr_accessor :event_queue, :marked, :cycles, :path, :stable_state, :state
+    attr_accessor :size, :creation_time, :modification_time
     DEFAULT_STABLE_STATE = 10
 
     @@log = nil
