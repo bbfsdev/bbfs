@@ -115,8 +115,9 @@ module TestingMemory
     Params.get_init_info_messages.each { |msg|
       $testing_memory_log.info(msg)
     }
-    email_report = generate_mem_report
     $objects_counters = {}
+    email_report = generate_mem_report
+
     # memory loop
     loop {
       sleep(Params['memory_count_delay'])
