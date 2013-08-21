@@ -324,7 +324,6 @@ module FileMonitoring
             $local_content_data_lock.synchronize{
               $local_content_data.remove_instance(Params['local_server_name'], globed_path)
             }
-            end
           else
             # status is the same
             if child_stat.state != FileStatEnum::STABLE
@@ -340,7 +339,6 @@ module FileMonitoring
           child_stat.monitor_add_new if globed_path_stat.directory?
         else
           # new child:
-
           if globed_path_stat.directory?
             new_child = DirStat.new(globed_path, @stable_state, @content_data_cache, FileStatEnum::NEW)
             new_child.size = globed_path_stat.size
