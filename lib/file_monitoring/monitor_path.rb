@@ -76,8 +76,8 @@ module FileMonitoring
           $local_content_data_lock.synchronize{
             #$local_content_data.add_instance(digest.hexdigest.downcase, @size, Params['local_server_name'],
             #                                 @path, @modification_time)
-            $local_content_data.add_instance(str, @size, Params['local_server_name'],
-                                             @path, @modification_time)
+            #$local_content_data.add_instance(str, @size, Params['local_server_name'],
+            #                                 @path, @modification_time)
           }
           $process_vars.inc('indexed_files')
           $indexed_file_count += 1
