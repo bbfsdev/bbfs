@@ -178,6 +178,8 @@ module TestingMemory
           report += "Type:#{key} raised by:#{current_val - val}. Max Count:#{current_val}  \n"
           $objects_counters[key] = current_val
         end
+      else
+        $objects_counters[key] = current_val
       end
     }
 
