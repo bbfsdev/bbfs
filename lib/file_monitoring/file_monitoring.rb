@@ -91,9 +91,10 @@ module FileMonitoring
           1000.times {
             $testing_memory_log.info("Start monitor")
             puts "Start monitor at :#{Time.now}"
-            dir_stat.monitor
-            $testing_memory_log.info("Start monitor")
-            puts "Start monitor at :#{Time.now}"
+            dir_stat.monitor_add_new
+            dir_stat.removed_unmarked_paths
+            $testing_memory_log.info("End monitor")
+            puts "End monitor at :#{Time.now}"
             sleep(1)
           }
           $testing_memory_log.info("Start Index")
