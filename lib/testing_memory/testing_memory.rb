@@ -116,6 +116,7 @@ module TestingMemory
       $testing_memory_log.info(msg)
     }
     $objects_max_counters = {}
+    $objects_max_count = {}
     email_report = generate_mem_report
 
     # memory loop
@@ -193,7 +194,24 @@ module TestingMemory
         report += "Type:#{key} Initial Count:#{current_val}  \n"
       end
     }
-    report += "objects hash:#{ObjectSpace.count_objects}  \n"
+    current_objects_count = ObjectSpace.count_objects.dup
+    current_objects_count.each_key { |key|
+      current_val = current_objects_count[key]
+      val = $objects_max_count[key]
+      if val
+        if  val < current_val
+          report += "Type:#{key} raised by:#{current_val - val}. Max Count:#{current_val}  \n"
+          $objects_max_count[key] = current_val
+        else
+          report += "Type:#{key} Count:#{current_val} Max: #{$objects_max_count[key]}  \n"
+        end
+      else
+        $objects_max_count[key] = current_val
+        report += "Type:#{key} Initial Count:#{current_val}  \n"
+      end
+    }
+
+    #report += "objects hash:#{ObjectSpace.count_objects}  \n"
 
     # Generate report and update global counters
     #report = ""
