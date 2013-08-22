@@ -145,7 +145,7 @@ module TestingMemory
   def generate_mem_report
     # Generate memory report
     current_objects_counters = {}
-
+    #set_trace_func proc
     count = ObjectSpace.each_object(String).count
     current_objects_counters[String] = count
     count = ObjectSpace.each_object(Integer).count
@@ -193,6 +193,7 @@ module TestingMemory
         report += "Type:#{key} Initial Count:#{current_val}  \n"
       end
     }
+    report += "objects hash:#{ObjectSpace.count_objects}  \n"
 
     # Generate report and update global counters
     #report = ""
