@@ -115,7 +115,7 @@ module TestingMemory
     Params.get_init_info_messages.each { |msg|
       $testing_memory_log.info(msg)
     }
-    $objects_counters = {}
+    $objects_max_counters = {}
     email_report = generate_mem_report
 
     # memory loop
@@ -145,41 +145,52 @@ module TestingMemory
   def generate_mem_report
     # Generate memory report
     current_objects_counters = {}
-=begin
+
     count = ObjectSpace.each_object(String).count
     current_objects_counters[String] = count
-    count = ObjectSpace.each_object(ContentData::ContentData).count
-    current_objects_counters[ContentData] = count
-    dir_count = ObjectSpace.each_object(FileMonitoring::DirStat).count
-    count = ObjectSpace.each_object(File::Stat).count
-    current_objects_counters[File::Stat] = count
     count = ObjectSpace.each_object(Integer).count
-    current_objects_counters[File] = count
-    count = ObjectSpace.each_object(File).count
     current_objects_counters[Integer] = count
     count = ObjectSpace.each_object(Hash).count
     current_objects_counters[Hash] = count
     count = ObjectSpace.each_object(Array).count
     current_objects_counters[Array] = count
+
+
+    count = ObjectSpace.each_object(ContentData::ContentData).count
+    current_objects_counters[ContentData] = count
+    dir_count = ObjectSpace.each_object(FileMonitoring::DirStat).count
     current_objects_counters[DirStat] = dir_count
     file_count = ObjectSpace.each_object(FileMonitoring::FileStat).count
     current_objects_counters[FileStat] = file_count-dir_count
-=end
 
-    ObjectSpace.each_object(Class) { |t|
-      current_objects_counters[t] = ObjectSpace.each_object(t).count
-    }
+
+    current_objects_counters[IO] = count
+    count = ObjectSpace.each_object(IO).count
+    current_objects_counters[File] = count
+    count = ObjectSpace.each_object(File).count
+    count = ObjectSpace.each_object(File::Stat).count
+    current_objects_counters[File::Stat] = count
+    count = ObjectSpace.each_object(Digest::SHA1).count
+    current_objects_counters[Digest::SHA1] = count
+
+
+    #ObjectSpace.each_object(Class) { |t|
+    #  current_objects_counters[t] = ObjectSpace.each_object(t).count
+    #}
     report = ""
     current_objects_counters.each_key { |key|
       current_val = current_objects_counters[key]
-      val = $objects_counters[key]
+      val = $objects_max_counters[key]
       if val
         if  val < current_val
           report += "Type:#{key} raised by:#{current_val - val}. Max Count:#{current_val}  \n"
-          $objects_counters[key] = current_val
+          $objects_max_counters[key] = current_val
+        else
+          report += "Type:#{key} Count:#{current_val}  \n"
         end
       else
-        $objects_counters[key] = current_val
+        $objects_max_counters[key] = current_val
+        report += "Type:#{key} Initial Count:#{current_val}  \n"
       end
     }
 

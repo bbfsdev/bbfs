@@ -35,8 +35,8 @@ module TestingServer
   Params.path('testing_log_path', nil, 'Testing server log path.')
 
   # init process vars
-  $objects_counters = {}
-  $objects_counters["Time"] = Time.now.to_i
+  $objects_max_counters = {}
+  $objects_max_counters["Time"] = Time.now.to_i
 
   def init_log4r
     #init log4r
@@ -204,10 +204,10 @@ module TestingServer
     # Generate report and update global counters
     report = ""
     current_objects_counters.each_key { |type|
-      $objects_counters[type] = 0 unless $objects_counters[type]
-      diff =  current_objects_counters[type] - $objects_counters[type]
+      $objects_max_counters[type] = 0 unless $objects_max_counters[type]
+      diff =  current_objects_counters[type] - $objects_max_counters[type]
       report += "Type:#{type} raised in:#{diff}   \n"
-      $objects_counters[type] = current_objects_counters[type]
+      $objects_max_counters[type] = current_objects_counters[type]
     }
     final_report = "Memory report at Time:#{time}:\n#{report}\n"
     $log4r.info(final_report)
