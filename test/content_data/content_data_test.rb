@@ -5,10 +5,6 @@ require_relative '../../lib/content_data/content_data.rb'
 
 class TestContentData < Test::Unit::TestCase
 
-
-  Params.boolean('enable_monitoring', false, 'Whether to enable process monitoring or not.')
-  ContentServer.init_globals
-
   def test_cloning_db_1
     content_data = ContentData::ContentData.new
     content_data.add_instance("A1", 1242, "server_1",
