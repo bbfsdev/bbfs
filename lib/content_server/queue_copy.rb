@@ -296,7 +296,7 @@ module ContentServer
           @tcp_client.send_obj([:COPY_CHUNK_FROM_REMOTE, file_checksum])
         else
           file_checksum, offset, file_size, content, content_checksum = message_content
-          Log.error("receive_chunk failed for chunk checksum:%s", content_checksum)
+          Log.error("receive_chunk failed for chunk checksum:#{content_checksum}")
         end
       elsif message_type == :ACK_MESSAGE
         checksum, timestamp = message_content
