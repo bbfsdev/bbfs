@@ -6,8 +6,7 @@
 # index those new files too and send the content data (their SHA1 to the original server).
 
 # NOTE this file mainly is a copy of content_server
-puts RUBY_ENGINE RUBY_PLATFORM
-exit
+
 require 'content_server'  #todo: yarondbb need it?
 require 'content_server/backup_server' # specific backup server impl
 require 'content_server/server' # shared file between content\backup
