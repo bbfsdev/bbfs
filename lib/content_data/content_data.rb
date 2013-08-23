@@ -253,11 +253,11 @@ module ContentData
       file = File.open(filename, 'w')
       file.write("#{@contents_info.length}\n")
       each_content { |checksum, size, content_mod_time|
-        file.write("#{checksum},#{size},#{content_mod_time}\n")
+        file.write("#{checksum},#{size},#{Time.at(content_mod_time)}\n")
       }
       file.write("#{@instances_info.length}\n")
       each_instance { |checksum, size, _, instance_mod_time, server, path|
-        file.write("#{checksum},#{size},#{server},#{path},#{instance_mod_time}\n")
+        file.write("#{checksum},#{size},#{server},#{path},#{Time.at(instance_mod_time)}\n")
       }
       file.close
     end
@@ -290,7 +290,7 @@ module ContentData
                        parameters[1].to_i,
                        parameters[2],
                        parameters[3],
-                       parameters[4].to_i)
+                       DateTime.parse(parameters[4]).to_time.to_i)
         end
         i += 1
       }
