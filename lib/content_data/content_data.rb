@@ -136,7 +136,6 @@ module ContentData
     end
 
     def add_instance(checksum, size, server, path, modification_time)
-      puts "modification_time=#{modification_time}"
       location = [server, path]
       content_info = @contents_info[checksum]
       if content_info.nil?
