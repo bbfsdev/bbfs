@@ -146,7 +146,8 @@ module TestingMemory
   def generate_mem_report
     # Generate memory report
     current_objects_counters = {}
-    #set_trace_func proc
+
+
     count = ObjectSpace.each_object(String).count
     current_objects_counters[String] = count
     count = ObjectSpace.each_object(Integer).count
@@ -174,10 +175,6 @@ module TestingMemory
     count = ObjectSpace.each_object(Digest::SHA1).count
     current_objects_counters[Digest::SHA1] = count
 
-
-    #ObjectSpace.each_object(Class) { |t|
-    #  current_objects_counters[t] = ObjectSpace.each_object(t).count
-    #}
     report = ""
     current_objects_counters.each_key { |key|
       current_val = current_objects_counters[key]
@@ -187,13 +184,14 @@ module TestingMemory
           report += "Type:#{key} raised by:#{current_val - val}. Max Count:#{current_val}  \n"
           $objects_max_counters[key] = current_val
         else
-          report += "Type:#{key} Count:#{current_val}  \n"
+          report += "Type:#{key} Count:#{current_val}   Max: #{$objects_max_count[key]}  \n"
         end
       else
         $objects_max_counters[key] = current_val
         report += "Type:#{key} Initial Count:#{current_val}  \n"
       end
     }
+=begin
     current_objects_count = ObjectSpace.count_objects.dup
     current_objects_count.each_key { |key|
       current_val = current_objects_count[key]
@@ -210,7 +208,10 @@ module TestingMemory
         report += "Type:#{key} Initial Count:#{current_val}  \n"
       end
     }
-
+=end
+    #ObjectSpace.each_object(Class) { |t|
+    #  current_objects_counters[t] = ObjectSpace.each_object(t).count
+    #}
     #report += "objects hash:#{ObjectSpace.count_objects}  \n"
 
     # Generate report and update global counters
