@@ -65,7 +65,7 @@ module FileMonitoring
           #sleep(0.01)
           File.open(@path, 'rb') { |f|
             while buffer = f.read(16384) do
-              digest << buffer
+              @@digest << buffer
             end
           }
           #str = "a" * 40
