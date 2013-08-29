@@ -60,7 +60,7 @@ module FileMonitoring
 
     def index
       #if (FileStatEnum::STABLE == @state) && !@indexed
-        digest = Digest::SHA1.new
+        @@digest = Digest::SHA1.new
         begin
           #sleep(0.01)
           File.open(@path, 'rb') { |f|
@@ -75,7 +75,7 @@ module FileMonitoring
           #  i=i+1
           #}
           $local_content_data_lock.synchronize{
-            $local_content_data.add_instance(digest.hexdigest.downcase, @size, Params['local_server_name'],
+            $local_content_data.add_instance(@@digest.hexdigest.downcase, @size, Params['local_server_name'],
                                              @path, @modification_time)
             #$local_content_data.add_instance(str, @size, Params['local_server_name'],
             #                                 @path, @modification_time)
@@ -87,6 +87,7 @@ module FileMonitoring
           Log.warning("Monitored path'#{path}' does not exist. Probably file changed")
         end
       #end
+      @@digest = nil
     end
 
     # Checks whether file was changed from the last iteration.
