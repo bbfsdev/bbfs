@@ -192,14 +192,14 @@ module TestingMemory
         report += "Type:#{key} Initial Count:#{current_val}  \n"
       end
     }
-=begin
+
     current_objects_count = ObjectSpace.count_objects.dup
     current_objects_count.each_key { |key|
       current_val = current_objects_count[key]
       val = $objects_max_count[key]
       if val
         if  val < current_val
-          report += "Type:#{key} raised by:#{current_val - val}. Max Count:#{current_val}  \n"
+          report += "Type:#{key} raised by:#{current_val - val}. Max:#{current_val}  \n"
           $objects_max_count[key] = current_val
         else
           report += "Type:#{key} Count:#{current_val} Max: #{$objects_max_count[key]}  \n"
@@ -209,7 +209,7 @@ module TestingMemory
         report += "Type:#{key} Initial Count:#{current_val}  \n"
       end
     }
-=end
+
     #ObjectSpace.each_object(Class) { |t|
     #  current_objects_counters[t] = ObjectSpace.each_object(t).count
     #}
