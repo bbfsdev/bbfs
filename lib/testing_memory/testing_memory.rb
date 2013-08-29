@@ -178,13 +178,14 @@ module TestingMemory
     report = ""
     current_objects_counters.each_key { |key|
       current_val = current_objects_counters[key]
-      val = $objects_max_counters[key]
-      if val
-        if  val < current_val
-          report += "Type:#{key} raised by:#{current_val - val}. Max Count:#{current_val}  \n"
+      max_val = $objects_max_counters[key]
+      report += "Current val:#{current_val}  Max val:#{max_val}"
+      if max_val
+        if  max_val < current_val
+          report += "Type:#{key} raised by:#{current_val - max_val}. Max:#{current_val}  \n"
           $objects_max_counters[key] = current_val
         else
-          report += "Type:#{key} Count:#{current_val}   Max: #{$objects_max_count[key]}  \n"
+          report += "Type:#{key} Count:#{current_val}   Max: #{$objects_max_count[key]}  Max: #{max_val}  \n"
         end
       else
         $objects_max_counters[key] = current_val
