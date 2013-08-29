@@ -193,6 +193,7 @@ module TestingMemory
     }
 
     current_objects_count = ObjectSpace.count_objects.dup
+    current_objects_count[:REAL_TOTAL] = current_objects_count[:TOTAL] - current_objects_count[:FREE]
     current_objects_count.each_key { |key|
       current_val = current_objects_count[key]
       val = $objects_max_count[key]
