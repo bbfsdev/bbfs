@@ -80,6 +80,10 @@ module FileUtils
         @ref_db.add_instance(NOT_FOUND_CHECKSUM, 500, `hostname`.chomp, "/not/exist/path/file", Time.now.utc.to_i)
       end
 
+      def teardown
+        ::FileUtils.rm_rf(RESOURCES_DIR) if (File.exists?(RESOURCES_DIR))
+      end
+
       def test_create_symlink_structure
         not_found_db = nil
         begin
