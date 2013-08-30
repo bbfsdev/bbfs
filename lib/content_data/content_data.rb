@@ -137,6 +137,13 @@ module ContentData
 
     def add_instance(checksum, size, server, path, modification_time)
       location = [server, path]
+
+      # file was changed but remove_instance was not called
+      if (@instances_info.include?(location) && @instances_info[location] != checksum)
+        Log.warning("#{server}:#{path} file already exists with different checksum")
+        remove_instance server, path
+      end
+
       content_info = @contents_info[checksum]
       if content_info.nil?
         @contents_info[checksum] = [size,
