@@ -99,12 +99,22 @@ module FileMonitoring
             #puts "End monitor at :#{Time.now}"
           #  sleep(1)
           #}
+            unless Gem::win_platform?
+              memory_of_process = `ps -o rss= -p #{Process.pid}`.to_i / 1000
+            else
+              memory_of_process = `tasklist /FI \"PID eq #{Process.pid}\" /NH /FO \"CSV\"`.split(',')[4]
+            end
             puts "Memory:#{memory_of_process}"
             puts "Start GC collect at :#{Time.now}"
             10.times{ |i|
               ObjectSpace.garbage_collect
             }
             puts "End GC collect at :#{Time.now}"
+            unless Gem::win_platform?
+              memory_of_process = `ps -o rss= -p #{Process.pid}`.to_i / 1000
+            else
+              memory_of_process = `tasklist /FI \"PID eq #{Process.pid}\" /NH /FO \"CSV\"`.split(',')[4]
+            end
             puts "Memory:#{memory_of_process}"
           $testing_memory_log.info("Start Index")
           puts "Start Index at :#{Time.now}"
@@ -123,6 +133,11 @@ module FileMonitoring
           ObjectSpace.garbage_collect
         }
         puts "End GC collect at :#{Time.now}"
+        unless Gem::win_platform?
+          memory_of_process = `ps -o rss= -p #{Process.pid}`.to_i / 1000
+        else
+          memory_of_process = `tasklist /FI \"PID eq #{Process.pid}\" /NH /FO \"CSV\"`.split(',')[4]
+        end
         puts "Memory:#{memory_of_process}"
         # push entry with new a next time it should be checked as a priority key
         priority = (Time.now + conf['scan_period']).to_i
