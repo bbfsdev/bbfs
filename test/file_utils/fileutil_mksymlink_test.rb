@@ -18,6 +18,8 @@ module FileUtils
       @base_db
 
       def setup
+        Params.init Array.new
+        Log.init
         sizes = [500, 1000, 1500]
         numb_of_copies = 2
         test_file_name = "test_file"   # file name format: <test_file_name_prefix>.<size>[.serial_number_if_more_then_1]
