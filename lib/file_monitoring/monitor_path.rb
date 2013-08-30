@@ -88,7 +88,6 @@ module FileMonitoring
         end
       #end
       digest = nil
-      ObjectSpace.garbage_collect
     end
 
     # Checks whether file was changed from the last iteration.
@@ -282,7 +281,6 @@ module FileMonitoring
     end
 
     def monitor_add_new
-      ObjectSpace.garbage_collect
       # recursive call using Glob to create, mark and handle state
       #    of new\existing files\dir
       # assume that current dir is present (make sure that root dir created)
