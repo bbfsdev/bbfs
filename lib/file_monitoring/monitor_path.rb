@@ -194,7 +194,7 @@ module FileMonitoring
       } if @files
       @dirs.each_value { |dir_stat|
         dir_stat.index
-        GC.garbage_collect
+        ObjectSpace.garbage_collect
       } if @dirs
     end
 

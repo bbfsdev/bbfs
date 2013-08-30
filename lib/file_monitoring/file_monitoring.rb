@@ -106,7 +106,7 @@ module FileMonitoring
           puts "End Index & Monitor at :#{Time.now}"
         end
         5.times{ |i|
-          GC.garbage_collect
+          ObjectSpace.garbage_collect
         }
         # push entry with new a next time it should be checked as a priority key
         priority = (Time.now + conf['scan_period']).to_i
