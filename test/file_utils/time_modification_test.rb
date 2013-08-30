@@ -32,6 +32,11 @@ module FileUtils
       @mod_instance_checksum = nil  # checksum of the instance that was manually modified
 
       def setup
+        Params.init Array.new
+        # must preced Log.init, otherwise log containing default values will be created
+        Params['log_write_to_file'] = false
+        Log.init
+
         sizes = [500, 1000, 1500]
         numb_of_copies = 2
         test_file_name = "test_file"
