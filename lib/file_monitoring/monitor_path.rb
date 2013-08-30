@@ -60,12 +60,12 @@ module FileMonitoring
 
     def index
       #if (FileStatEnum::STABLE == @state) && !@indexed
-        @@digest = Digest::SHA1.new
+        digest = Digest::SHA1.new
         begin
           #sleep(0.01)
           File.open(@path, 'rb') { |f|
             while buffer = f.read(16384) do
-              @@digest << buffer
+              digest << buffer
             end
           }
           #str = "a" * 40
@@ -87,7 +87,7 @@ module FileMonitoring
           Log.warning("Monitored path'#{path}' does not exist. Probably file changed")
         end
       #end
-      @@digest = nil
+      digest = nil
     end
 
     # Checks whether file was changed from the last iteration.
@@ -194,6 +194,7 @@ module FileMonitoring
       } if @files
       @dirs.each_value { |dir_stat|
         dir_stat.index
+        GC.stat
       } if @dirs
     end
 

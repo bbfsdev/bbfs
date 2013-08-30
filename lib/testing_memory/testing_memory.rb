@@ -209,7 +209,7 @@ module TestingMemory
         report += "Type:#{key} Initial Count:#{current_val}  \n"
       end
     }
-
+    report += "HEAP:#{GC.stat.dup}\n"
     #ObjectSpace.each_object(Class) { |t|
     #  current_objects_counters[t] = ObjectSpace.each_object(t).count
     #}

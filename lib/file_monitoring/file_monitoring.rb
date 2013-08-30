@@ -105,7 +105,9 @@ module FileMonitoring
           $testing_memory_log.info("End Index & Monitor")
           puts "End Index & Monitor at :#{Time.now}"
         end
-
+        5.times{ |i|
+        GC.start
+        }
         # push entry with new a next time it should be checked as a priority key
         priority = (Time.now + conf['scan_period']).to_i
         pq.push([priority, conf, dir_stat], -priority)
