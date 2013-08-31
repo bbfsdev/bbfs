@@ -237,7 +237,7 @@ module FileUtils
 
         not_found = {}
         not_found_cd = ContentData::ContentData.new
-        warnings = []
+        warnings = ""
         dest.chop! if (dest.end_with?("/") or dest.end_with?("\\"))
 
         ref_cd.each_instance { |checksum, size, content_mod_time, inst_mod_time, server, path|
@@ -248,7 +248,7 @@ module FileUtils
           else
             # add instance to not_found cd
             not_found_cd.add_instance(checksum, size, server, path, inst_mod_time)
-            warnings << "Warning: base content does not contains:'%s'" % checksum
+            warnings << "Warning: base content does not contains:'%s'\n" % checksum
           end
         }
         Log.warning (warnings)

@@ -126,7 +126,7 @@ module FileIndexing
         # from further processing (save checksum calculation)
         file_match = false
         otherDB_updated.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
-          if otherDB_updated.instance_exists(file, local_server_name, checksum)
+          if otherDB_updated.instance_exists(file, local_server_name)
             if size == file_stats.size and instance_mod_time == file_mtime.to_i
               @indexed_content.add_instance(checksum, size, server, file, instance_mod_time)
               file_match = true
