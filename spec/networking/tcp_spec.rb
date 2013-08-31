@@ -5,9 +5,6 @@ require 'stringio'
 
 require_relative '../../lib/networking/tcp'
 
-# Uncomment to debug spec.
-Params['log_write_to_console'] = true
-Params['log_debug_level'] = 0
 Log.init
 
 module Networking
