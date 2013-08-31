@@ -67,8 +67,8 @@ module Validations
           failed.content_exists(@checksum2).should be_true
           failed.checksum_instances_size(absent_checksum).should eq(1)
           failed.checksum_instances_size(@checksum2).should eq(1)
-          failed.instance_exists(absent_path, @server, absent_checksum).should be_true
-          failed.instance_exists(@path4, @server, @checksum2).should be_true
+          failed.instance_exists(absent_path, @server).should be_true
+          failed.instance_exists(@path4, @server).should be_true
         end
       end
     end
