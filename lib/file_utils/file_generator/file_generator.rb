@@ -16,7 +16,7 @@ module FileGenerator
   Params.string('dir_name_prefix', 'test_dir_4_backup_server',
                 'Represents the directory name template for generated file')
   Params.integer('file_size_in_bytes', 500,
-                 'Represents the required file size in MB. Not relevant if random calculation is triggered')
+                 'Represents the required file size in bytes. Not relevant if random calculation is triggered')
   Params.integer('total_created_directories', -1,
                  'Represents the total created directories. Use any negative value or zero for Infinity.
                       Not relevant if random calculation is triggered')
