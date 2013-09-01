@@ -28,6 +28,7 @@ module Networking
         info = 'info'
         data = 'kuku!!!'
         stream = StringIO.new
+        stream.stub(:peeraddr).and_return(Array.new)
         ::Socket.stub(:tcp_server_loop).and_yield(stream, info)
         ::TCPSocket.stub(:new).and_return(stream)
 
