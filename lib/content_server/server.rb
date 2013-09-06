@@ -35,7 +35,7 @@ module ContentServer
 
   def handle_program_termination(exception)
     #Write exception message to console
-    message = "\nInterrupt or Exit happened in server:'#{Params['service_name']}'.\n" +
+    message = "\nInterrupt or Exit happened in server:''.\n" +
       "Exception type:'#{exception.class}'.\n" +
       "Exception message:'#{exception.message}'.\n" +
       "Stopping process.\n" +
