@@ -73,12 +73,11 @@ module ContentData
     # iterator over @contents_info data structure (not including instances)
     # block is provided with: checksum, size and content modification time
     def each_content(&block)
-      contents_info_enum = @contents_info.each_key
+      contents_info_enum = @contents_info.each
       loop do
-        checksum = contents_info_enum.next rescue break
-        content_val = @contents_info[checksum]
+        checksum, info = contents_info_enum.next rescue break
         # provide checksum, size and content modification time to the block
-        block.call(checksum,content_val[0], content_val[2])
+        block.call(checksum,info[0], info[2])
       end
     end
 
@@ -89,7 +88,6 @@ module ContentData
       contents_info_enum = @contents_info.each
       loop do
         checksum, info = contents_info_enum.next rescue break
-        instances_db = @contents_info[checksum]
         instances_enum = info[1].each
         loop do
           location, inst_mod_time = instances_enum.next rescue break

@@ -139,7 +139,6 @@ module TestingMemory
       # send mail if enabled and time threshold passed
       if Params['send_memory_mail']
         time_passed += Params['memory_count_delay']
-        puts "time passed:#{time_passed}  send_mail_threshold=#{send_mail_threshold}"
         if time_passed >= send_mail_threshold
           send_email(email_report)
           time_passed=0
