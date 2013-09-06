@@ -262,6 +262,7 @@ module ContentData
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
       file = File.open(filename, 'w')
       file.write("#{@contents_info.length}\n")
+=begin
       each_content { |checksum, size, content_mod_time|
         file.write("#{checksum},#{size},#{content_mod_time}\n")
       }
@@ -269,6 +270,25 @@ module ContentData
       each_instance { |checksum, size, _, instance_mod_time, server, path|
         file.write("#{checksum},#{size},#{server},#{path},#{instance_mod_time}\n")
       }
+=end
+      contents_info_enum = @contents_info.each
+      loop do
+        checksum, info = contents_info_enum.next rescue break
+        # provide checksum, size and content modification time to the block
+        file.write("#{checksum},#{info[0]},#{info[2]}\n")
+      end
+      file.write("#{@instances_info.length}\n")
+      contents_info_enum = @contents_info.each
+      loop do
+        checksum, info = contents_info_enum.next rescue break
+        instances_enum = info[1].each
+        loop do
+          location, inst_mod_time = instances_enum.next rescue break
+          # provide the block with: checksum, size, content modification time,instance modification time,
+          #   server and path.
+          file.write("#{checksum},#{info[0]},#{location[0]},#{location[1]},#{inst_mod_time}\n")
+        end
+      end
       file.close
     end
 
