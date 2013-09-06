@@ -89,6 +89,8 @@ module FileMonitoring
           dir_stat.monitor_add_new
           Log.info('Start remove non existing paths')
           dir_stat.removed_unmarked_paths
+          Log.info("$indexed_file_count=#{$indexed_file_count}")
+          puts("$indexed_file_count=#{$indexed_file_count}")
           #Log.info('Start index')
           #dir_stat.index
           Log.info('End monitor path')

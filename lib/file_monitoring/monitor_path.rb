@@ -369,7 +369,7 @@ module FileMonitoring
                 $indexed_file_count += 1
                 @indexed = true
               rescue
-                Log.warning("Monitored path'#{path}' does not exist. Probably file changed")
+                Log.warning("Indexed path'#{globed_path}' does not exist. Probably file changed")
               end
             end
           end
