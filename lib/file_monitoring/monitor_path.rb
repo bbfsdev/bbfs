@@ -28,7 +28,7 @@ module FileMonitoring
     DEFAULT_STABLE_STATE = 10
 
     @@log = nil
-
+    @@digest = Digest::SHA1.new
     #  Initializes new file monitoring object
     # ==== Arguments:
     #
@@ -60,16 +60,16 @@ module FileMonitoring
 
     def index
       #if (FileStatEnum::STABLE == @state) && !@indexed
-        digest = Digest::SHA1.new
+        @@digest.reset
         begin
           File.open(@path, 'rb') { |f|
             while buffer = f.read(16384) do
-              digest << buffer
+              @@digest << buffer
             end
           }
 
           $local_content_data_lock.synchronize{
-            $local_content_data.add_instance(digest.hexdigest.downcase, @size, Params['local_server_name'],
+            $local_content_data.add_instance(@@digest.hexdigest.downcase, @size, Params['local_server_name'],
                                              @path, @modification_time)
             #$local_content_data.add_instance(str, @size, Params['local_server_name'],
             #                                 @path, @modification_time)
@@ -352,18 +352,16 @@ module FileMonitoring
 
             #index file
             unless globed_path_stat.directory?
-
-              digest = Digest::SHA1.new
+              @@digest.reset
               begin
                 File.open(globed_path, 'rb') { |f|
                   while buffer = f.read(16384) do
-                    digest << buffer
+                    @@digest << buffer
                   end
                 }
-
                 $local_content_data_lock.synchronize{
-                  $local_content_data.add_instance(digest.hexdigest.downcase, @size, Params['local_server_name'],
-                                                   @path, @modification_time)
+                  $local_content_data.add_instance(@@digest.hexdigest.downcase, @size, Params['local_server_name'],
+                                                   globed_path, @modification_time)
                 }
                 $process_vars.inc('indexed_files')
                 $indexed_file_count += 1
