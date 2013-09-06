@@ -134,6 +134,7 @@ module TestingMemory
         str = "All files are indexed\nTotal indexing time = #{stop_time.to_i - start_time.to_i}[S]"
         email_report += "\n#{str}"
         $testing_memory_log.info(str)
+        total_files = -1  # this will prevent from entering the block again
       end
 
       # send mail if enabled and time threshold passed

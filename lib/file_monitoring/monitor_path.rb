@@ -190,22 +190,16 @@ module FileMonitoring
     end
 
     def index
-      files_size = @files.size
       files_enum = @files.each_value
-      files_counter = 0
       loop do
-        break if files_counter==files_size
-        files_counter += 1
-        files_enum.next.index
+        file_stat = files_enum.next rescue break
+        file_stat.index
       end
 
-      dirs_size = @dirs.size
       dirs_enum = @dirs.each_value
-      dirs_counter = 0
       loop do
-        break if dirs_counter==dirs_size
-        dirs_counter += 1
-        dir_stat = dirs_enum.next.index
+        dir_stat = dirs_enum.next rescue break
+        dir_stat = dirs_enum.index
       end
     end
 

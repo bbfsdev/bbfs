@@ -38,13 +38,10 @@ require 'log'
 #    <br>One of the suggested methods can be before starting a daemon to check with <tt>exists?</tt>
 #    method whether daemon already exists and with <tt>running?</tt> method does it running.
 module RunInBackground
-  puts "\nHER"
-  puts "#{caller}"
 
   Params.string('bg_command', nil, 'Server\'s command. Commands are: start, delete and nil for' \
                   ' not running in background.')
   Params.string('service_name', File.basename($0), 'Background service name.')
-  puts "\nHER2"
 
   # Maximal time in seconds to wait until OS will finish a requested operation,
   # e.g. daemon start/delete.
