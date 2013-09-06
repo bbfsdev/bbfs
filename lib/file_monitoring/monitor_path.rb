@@ -68,13 +68,6 @@ module FileMonitoring
             end
           }
 
-
-          #str = "a" * 40
-          #i=0
-          #40.times {
-          # str[i] = (rand(122-97) + 97).chr
-          #  i=i+1
-          #}
           $local_content_data_lock.synchronize{
             $local_content_data.add_instance(digest.hexdigest.downcase, @size, Params['local_server_name'],
                                              @path, @modification_time)
@@ -88,7 +81,6 @@ module FileMonitoring
           Log.warning("Monitored path'#{path}' does not exist. Probably file changed")
         end
       #end
-      digest = nil
     end
 
     # Checks whether file was changed from the last iteration.
@@ -355,6 +347,29 @@ module FileMonitoring
                 child_stat.state = FileStatEnum::STABLE
                 @@log.info("STABLE: " + globed_path)
                 @@log.outputters[0].flush if Params['log_flush_each_message']
+              end
+            end
+
+            #index file
+            unless globed_path_stat.directory?
+
+              digest = Digest::SHA1.new
+              begin
+                File.open(globed_path, 'rb') { |f|
+                  while buffer = f.read(16384) do
+                    digest << buffer
+                  end
+                }
+
+                $local_content_data_lock.synchronize{
+                  $local_content_data.add_instance(digest.hexdigest.downcase, @size, Params['local_server_name'],
+                                                   @path, @modification_time)
+                }
+                $process_vars.inc('indexed_files')
+                $indexed_file_count += 1
+                @indexed = true
+              rescue
+                Log.warning("Monitored path'#{path}' does not exist. Probably file changed")
               end
             end
           end

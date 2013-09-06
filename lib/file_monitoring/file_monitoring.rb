@@ -89,8 +89,8 @@ module FileMonitoring
           dir_stat.monitor_add_new
           Log.info('Start remove non existing paths')
           dir_stat.removed_unmarked_paths
-          Log.info('Start index')
-          dir_stat.index
+          #Log.info('Start index')
+          #dir_stat.index
           Log.info('End monitor path')
         else
           $testing_memory_log.info("Start monitor")
