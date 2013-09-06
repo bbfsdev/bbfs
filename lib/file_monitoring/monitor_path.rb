@@ -199,7 +199,7 @@ module FileMonitoring
       dirs_enum = @dirs.each_value
       loop do
         dir_stat = dirs_enum.next rescue break
-        dir_stat = dirs_enum.index
+        dir_stat.index
       end
     end
 
