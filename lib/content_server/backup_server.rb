@@ -13,8 +13,8 @@ require 'file_monitoring'
 require 'log'
 require 'networking/tcp'
 require 'params'
-require 'process_monitoring/monitoring'
-require 'process_monitoring/monitoring_info'
+#require 'process_monitoring/monitoring'
+#require 'process_monitoring/monitoring_info'
 
 # Content server. Monitors files, index local files, listen to backup server content,
 # copy changes and new files to backup server.
@@ -76,6 +76,7 @@ module ContentServer
     monitoring_events = Queue.new
     fm = FileMonitoring::FileMonitoring.new()
     fm.set_event_queue(monitoring_events)
+
     # Start monitoring and writing changes to queue
     all_threads << Thread.new do
       fm.monitor_files

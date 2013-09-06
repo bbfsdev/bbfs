@@ -61,7 +61,8 @@ memory_count_delay: 15
 testing_log_path: '~/.bbfs/log/backup_testing.log'  # memory server - log file
 testing_title: 'Backup server - Memory report'  # memory server - report title
 generate_files: true  # memory server - Enables file generator part
-
+send_memory_mail: false
+memory_mail_period: 60  # time period [minutes] to send mail with memory reports
 ############# File Generator Config ##################
 # Represents the root path where directories and files will be
 # generated.

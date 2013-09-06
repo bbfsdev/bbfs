@@ -24,6 +24,8 @@ module TestingMemory
   Params.integer('memory_count_delay', 10, 'Memory report cycles in sec.')
   Params.string('testing_title', 'Memory report', 'title to memory report')
   Params.boolean('generate_files', true, 'if true, files will be generated.')
+  Params.boolean('send_memory_mail', false, 'if true, email is sent at each memory check cycle')
+  Params.integer('memory_mail_period', 5, 'time period [minutes] to send mail with memory reports')
 
   def init_log4r
     #init log4r
@@ -67,7 +69,7 @@ module TestingMemory
     end
 
 
-    # run backup
+    # run content
     Thread.new do
       ContentServer.run_content_server
     end
@@ -115,119 +117,76 @@ module TestingMemory
     Params.get_init_info_messages.each { |msg|
       $testing_memory_log.info(msg)
     }
-    $objects_max_counters = {}
-    $objects_max_count = {}
-    email_report = generate_mem_report
+
+    $objects_counters = {}
+    email_report = "Memory report: (Title: #{Params['testing_title']})"
 
     # memory loop
-    loop {
+    time_passed = 0
+    send_mail_threshold = Params['memory_mail_period']*60
+    loop do
       sleep(Params['memory_count_delay'])
-      email_report += generate_mem_report
-      email_report += "indexed files:#{$indexed_file_count}\n"
-      $testing_memory_log.info("indexed files:#{$indexed_file_count}")
-      puts("indexed files:#{$indexed_file_count}")
-      #puts("symobles size:#{Symbol.all_symbols.size}")
+      email_report += "\nAt time #{Time.now}\n#{generate_mem_report}"
+
+      #report indexing total time
       if total_files == $indexed_file_count
         stop_time = Time.now
-        email_report += "\nAt this point all files are indexed. No mem changes should occur\n"
-        $testing_memory_log.info("Total indexing time = #{stop_time.to_i - start_time.to_i}[S]")
-        $testing_memory_log.info("\nAt this point all files are indexed. No mem changes should occur\n")
-        loop {
-          sleep(Params['memory_count_delay'])
-          email_report += generate_mem_report
-          $testing_memory_log.info("indexed files:#{$indexed_file_count}")
-          puts("indexed files:#{$indexed_file_count}")
-        }
-        #send_email("Final report:#{email_report}\nprocess memory:#{memory_of_process}\n")
+        str = "All files are indexed\nTotal indexing time = #{stop_time.to_i - start_time.to_i}[S]"
+        email_report += "\n#{str}"
+        $testing_memory_log.info(str)
       end
-    }
+
+      # send mail if enabled and time threshold passed
+      if Params['send_memory_mail']
+        time_passed += Params['memory_count_delay']
+        puts "time passed:#{time_passed}  send_mail_threshold=#{send_mail_threshold}"
+        if time_passed >= send_mail_threshold
+          send_email(email_report)
+          time_passed=0
+          $testing_memory_log.info("Email report sent to #{Params['to_email']}")
+        end
+      end
+
+    end
   end
 
   def generate_mem_report
-    # Generate memory report
-    current_objects_counters = {}
-
-
-    count = ObjectSpace.each_object(String).count
-    current_objects_counters[String] = count
-    count = ObjectSpace.each_object(Integer).count
-    current_objects_counters[Integer] = count
-    count = ObjectSpace.each_object(Hash).count
-    current_objects_counters[Hash] = count
-    count = ObjectSpace.each_object(Array).count
-    current_objects_counters[Array] = count
-
-
-    count = ObjectSpace.each_object(ContentData::ContentData).count
-    current_objects_counters[ContentData::ContentData] = count
-    dir_count = ObjectSpace.each_object(FileMonitoring::DirStat).count
-    current_objects_counters[FileMonitoring::DirStat] = dir_count
-    file_count = ObjectSpace.each_object(FileMonitoring::FileStat).count
-    current_objects_counters[FileMonitoring::FileStat] = file_count-dir_count
-
-
-    current_objects_counters[IO] = count
-    count = ObjectSpace.each_object(IO).count
-    current_objects_counters[File] = count
-    count = ObjectSpace.each_object(File).count
-    count = ObjectSpace.each_object(File::Stat).count
-    current_objects_counters[File::Stat] = count
-    count = ObjectSpace.each_object(Digest::SHA1).count
-    current_objects_counters[Digest::SHA1] = count
-
     report = ""
-    current_objects_counters.each_key { |key|
-      current_val = current_objects_counters[key]
-      max_val = $objects_max_counters[key]
-      if max_val
-        if  max_val < current_val
-          report += "Type:#{key} raised by:#{current_val - max_val}. Max:#{current_val}  \n"
-          $objects_max_counters[key] = current_val
-        else
-          report += "Type:#{key} Count:#{current_val}. Max: #{max_val}  \n"
-        end
-      else
-        $objects_max_counters[key] = current_val
-        report += "Type:#{key} Initial Count:#{current_val}  \n"
-      end
-    }
-
-    current_objects_count = ObjectSpace.count_objects.dup
-    current_objects_count[:REAL_TOTAL] = current_objects_count[:TOTAL] - current_objects_count[:FREE]
-    current_objects_count.each_key { |key|
-      current_val = current_objects_count[key]
-      val = $objects_max_count[key]
-      if val
-        if  val < current_val
-          report += "Type:#{key} raised by:#{current_val - val}. Max:#{current_val}  \n"
-          $objects_max_count[key] = current_val
-        else
-          report += "Type:#{key} Count:#{current_val} Max: #{$objects_max_count[key]}  \n"
-        end
-      else
-        $objects_max_count[key] = current_val
-        report += "Type:#{key} Initial Count:#{current_val}  \n"
-      end
-    }
-    #ObjectSpace.each_object(Class) { |t|
-    #  current_objects_counters[t] = ObjectSpace.each_object(t).count
-    #}
-    #report += "objects hash:#{ObjectSpace.count_objects}  \n"
-
-    # Generate report and update global counters
-    #report = ""
-    #current_objects_counters.each_key { |type|
-    #  report += "Type:#{type} count:#{current_objects_counters[type]}   \n"
-    #}
     unless Gem::win_platform?
       memory_of_process = `ps -o rss= -p #{Process.pid}`.to_i / 1000
+      heap_stat = ''
     else
+
       memory_of_process = `tasklist /FI \"PID eq #{Process.pid}\" /NH /FO \"CSV\"`.split(',')[4]
+      heap_stat = "#{GC.stat.dup}\n"
     end
-    final_report = "Time:#{Time.now}.  Process memory:#{memory_of_process}[M]\nCount report:\n#{report}"
-    puts "Process memory:#{memory_of_process}[M]"
-    $testing_memory_log.info(final_report)
-    final_report
+    report += "Process memory:#{memory_of_process}\n"
+    report += heap_stat
+    report += "indexed files:#{$indexed_file_count}\n"
+
+    current_objects_counters = {}
+    # produce all types
+    class_enum = ObjectSpace.each_object(Class)
+    loop do
+      type = class_enum.next rescue break
+      current_objects_counters[type] = ObjectSpace.each_object(type).count
+    end
+
+    # count each type
+    keys_enum = current_objects_counters.each_key
+    loop do
+      key = keys_enum.next rescue break
+      current_val = current_objects_counters[key]
+      $objects_counters[key] = 0 unless $objects_counters[key]
+      val = $objects_counters[key]
+      if  current_val != val
+        report += "Type:#{key} count: #{current_val} changed by:#{current_val - val}\n"
+      end
+      $objects_counters[key] = current_val
+    end
+
+    $testing_memory_log.info(report)
+    report
   end
 
   def send_email(report)
@@ -243,7 +202,7 @@ EOF
   end
 
   module_function :run_content_memory_server, :run_backup_memory_server, :init_log4r, :send_email
-  module_function :check_memory_loop, :generate_mem_report
+  module_function :check_memory_loop , :generate_mem_report
 
 end # module TestingServer
 

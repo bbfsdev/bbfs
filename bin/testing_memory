@@ -13,7 +13,6 @@
 # TODO add command line help/usage
 
 require 'params'
-require 'run_in_background'
 require 'testing_memory/testing_memory'
 
 Params.string('server_to_test', nil, 'Server that will be run under test_server. Values are: content, backup')
@@ -29,9 +28,9 @@ retries = 0  # number of retries to run a server
 begin
   case Params['server_to_test']
     when 'content'
-      RunInBackground.run { TestingMemory.run_content_memory_server }
+      TestingMemory.run_content_memory_server
     when 'backup'
-      RunInBackground.run { TestingMemory.run_backup_memory_server }
+      TestingMemory.run_backup_memory_server
     else
       raise ArgumentError.new "Incorrect server_to_test parameter value: #{Params['server_to_test']}"
   end
@@ -46,9 +45,9 @@ rescue SystemExit, SignalException => exc
   Log.flush
   exit
 rescue Exception => exc
-  puts("Exception happened in #{Params['service_name']} server: #{exc.class}:#{exc.message}\nBacktrace:\n" +
+  puts("Exception happened  server: #{exc.class}:#{exc.message}\nBacktrace:\n" +
                 "#{exc.backtrace.join("\n")}")
-  Log.error("Exception happened in #{Params['service_name']} server: #{exc.class}:#{exc.message}\nBacktrace:\n" +
+  Log.error("Exception happened server: #{exc.class}:#{exc.message}\nBacktrace:\n" +
                 "#{exc.backtrace.join("\n")}")
   if retries > 0
     Log.debug1("Restarting (retries:#{retries}).")

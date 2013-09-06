@@ -85,61 +85,18 @@ module FileMonitoring
         end
 
         unless $testing_memory_active
-          dir_stat.monitor
+          dir_stat.monitor_add_new
+          dir_stat.removed_unmarked_paths
           dir_stat.index
         else
-          #1000.times {
-            $testing_memory_log.info("Start monitor")
-            puts "Start monitor at :#{Time.now}"
-            dir_stat.monitor_add_new
-            $testing_memory_log.info("Start remove unmarked paths")
-            puts "Start remove unmarked paths at :#{Time.now}"
-            dir_stat.removed_unmarked_paths
-            #$testing_memory_log.info("End monitor")
-            #puts "End monitor at :#{Time.now}"
-          #  sleep(1)
-          #}
-            unless Gem::win_platform?
-              memory_of_process = `ps -o rss= -p #{Process.pid}`.to_i / 1000
-            else
-              memory_of_process = `tasklist /FI \"PID eq #{Process.pid}\" /NH /FO \"CSV\"`.split(',')[4]
-            end
-            puts "Memory:#{memory_of_process}"
-            puts "Start GC collect at :#{Time.now}"
-            10.times{ |i|
-              ObjectSpace.garbage_collect
-            }
-            puts "End GC collect at :#{Time.now}"
-            unless Gem::win_platform?
-              memory_of_process = `ps -o rss= -p #{Process.pid}`.to_i / 1000
-            else
-              memory_of_process = `tasklist /FI \"PID eq #{Process.pid}\" /NH /FO \"CSV\"`.split(',')[4]
-            end
-            puts "Memory:#{memory_of_process}"
+          $testing_memory_log.info("Start monitor")
+          dir_stat.monitor_add_new
+          $testing_memory_log.info("Start remove unmarked paths")
+          dir_stat.removed_unmarked_paths
           $testing_memory_log.info("Start Index")
-          puts "Start Index at :#{Time.now}"
           dir_stat.index
           $testing_memory_log.info("End Index & Monitor")
-          puts "End Index & Monitor at :#{Time.now}"
         end
-        unless Gem::win_platform?
-          memory_of_process = `ps -o rss= -p #{Process.pid}`.to_i / 1000
-        else
-          memory_of_process = `tasklist /FI \"PID eq #{Process.pid}\" /NH /FO \"CSV\"`.split(',')[4]
-        end
-        puts "Memory:#{memory_of_process}"
-        puts "Start GC collect at :#{Time.now}"
-        10.times{ |i|
-          ObjectSpace.garbage_collect
-        }
-        puts "End GC collect at :#{Time.now}"
-        unless Gem::win_platform?
-          memory_of_process = `ps -o rss= -p #{Process.pid}`.to_i / 1000
-        else
-          memory_of_process = `tasklist /FI \"PID eq #{Process.pid}\" /NH /FO \"CSV\"`.split(',')[4]
-        end
-        puts "Memory:#{memory_of_process}"
-        # push entry with new a next time it should be checked as a priority key
         priority = (Time.now + conf['scan_period']).to_i
         pq.push([priority, conf, dir_stat], -priority)
       end
