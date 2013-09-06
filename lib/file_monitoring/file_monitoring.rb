@@ -99,8 +99,8 @@ module FileMonitoring
           dir_stat.monitor_add_new
           $testing_memory_log.info("Start remove unmarked paths")
           dir_stat.removed_unmarked_paths
-          $testing_memory_log.info("Start Index")
-          dir_stat.index
+          #$testing_memory_log.info("Start Index")
+          #dir_stat.index
           $testing_memory_log.info("End Index & Monitor")
         end
         priority = (Time.now + conf['scan_period']).to_i

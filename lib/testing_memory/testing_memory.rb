@@ -171,7 +171,9 @@ module TestingMemory
       type = class_enum.next rescue break
       current_objects_counters[type] = ObjectSpace.each_object(type).count
     end
-
+    ObjectSpace.count_objects.dup.each { |key,val|
+      current_objects_counters[key] = val
+    }
     # count each type
     keys_enum = current_objects_counters.each_key
     loop do
