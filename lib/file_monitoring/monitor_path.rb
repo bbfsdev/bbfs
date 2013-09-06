@@ -347,27 +347,26 @@ module FileMonitoring
                 child_stat.state = FileStatEnum::STABLE
                 @@log.info("STABLE: " + globed_path)
                 @@log.outputters[0].flush if Params['log_flush_each_message']
-              end
-            end
-
-            #index file
-            unless globed_path_stat.directory?
-              @@digest.reset
-              begin
-                File.open(globed_path, 'rb') { |f|
-                  while buffer = f.read(16384) do
-                    @@digest << buffer
+                #index file
+                unless globed_path_stat.directory?
+                  @@digest.reset
+                  begin
+                    File.open(globed_path, 'rb') { |f|
+                      while buffer = f.read(16384) do
+                        @@digest << buffer
+                      end
+                    }
+                    $local_content_data_lock.synchronize{
+                      $local_content_data.add_instance(@@digest.hexdigest.downcase, @size, Params['local_server_name'],
+                                                       globed_path, @modification_time)
+                    }
+                    $process_vars.inc('indexed_files')
+                    $indexed_file_count += 1
+                    @indexed = true
+                  rescue
+                    Log.warning("Indexed path'#{globed_path}' does not exist. Probably file changed")
                   end
-                }
-                $local_content_data_lock.synchronize{
-                  $local_content_data.add_instance(@@digest.hexdigest.downcase, @size, Params['local_server_name'],
-                                                   globed_path, @modification_time)
-                }
-                $process_vars.inc('indexed_files')
-                $indexed_file_count += 1
-                @indexed = true
-              rescue
-                Log.warning("Indexed path'#{globed_path}' does not exist. Probably file changed")
+                end
               end
             end
           end
