@@ -107,7 +107,7 @@ module FileMonitoring
             #Log.info('no need to flush. content data has not changed')
             #end
           }
-          File.rename($tmp_content_data_file, Params['local_content_data_path']) if written_to_file
+          File.rename($tmp_content_data_file, Params['local_content_data_path'])
           $testing_memory_log.info("End flush content data to file") if $testing_memory_active
         else
           $testing_memory_log.info("Start monitor")
@@ -130,7 +130,7 @@ module FileMonitoring
             #Log.info('no need to flush. content data has not changed')
             #end
           }
-          File.rename($tmp_content_data_file, Params['local_content_data_path']) if written_to_file
+          File.rename($tmp_content_data_file, Params['local_content_data_path'])
           $testing_memory_log.info("End flush content data to file") if $testing_memory_active
         end
         priority = (Time.now + conf['scan_period']).to_i
