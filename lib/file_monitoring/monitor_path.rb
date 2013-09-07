@@ -344,7 +344,7 @@ module FileMonitoring
               child_stat.state = FileStatEnum::UNCHANGED
               child_stat.cycles += 1
               if child_stat.cycles >= child_stat.stable_state
-                child_stat.state = FileStatEnum::STABLE
+                #child_stat.state = FileStatEnum::STABLE
                 @@log.info("STABLE: " + globed_path)
                 @@log.outputters[0].flush if Params['log_flush_each_message']
                 #index file
