@@ -86,7 +86,9 @@ module ContentData
     # block is provided with: checksum, size, content modification time,
     #   instance modification time, server and file path
     def each_instance(&block)
-      @contents_info.keys.each { |checksum|
+      contents_enum = @contents_info.keys
+      loop {
+        checksum = contents_enum.next rescue break
         content_info = @contents_info[checksum]
         content_info[1].keys.each {|location|
           # provide the block with: checksum, size, content modification time,instance modification time,
