@@ -73,7 +73,9 @@ module ContentData
     # iterator over @contents_info data structure (not including instances)
     # block is provided with: checksum, size and content modification time
     def each_content(&block)
-      @contents_info.keys.each { |checksum|
+      contents_enum = @contents_info.keys
+      loop {
+        checksum = contents_enum.next rescue break
         content_val = @contents_info[checksum]
         # provide checksum, size and content modification time to the block
         block.call(checksum,content_val[0], content_val[2])
@@ -84,7 +86,9 @@ module ContentData
     # block is provided with: checksum, size, content modification time,
     #   instance modification time, server and file path
     def each_instance(&block)
-      @contents_info.keys.each { |checksum|
+      contents_enum = @contents_info.keys
+      loop {
+        checksum = contents_enum.next rescue break
         content_info = @contents_info[checksum]
         content_info[1].keys.each {|location|
           # provide the block with: checksum, size, content modification time,instance modification time,
@@ -250,15 +254,17 @@ module ContentData
     def to_file(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
+      str_instances = ''
+      str_contents = ''
+      each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
+        str_contents += "#{checksum},#{size},#{content_mod_time}\n"
+        str_instances += "#{checksum},#{size},#{server},#{path},#{instance_mod_time}\n"
+      }
       file = File.open(filename, 'w')
       file.write("#{@contents_info.length}\n")
-      each_content { |checksum, size, content_mod_time|
-        file.write("#{checksum},#{size},#{content_mod_time}\n")
-      }
+      file.write(str_contents)
       file.write("#{@instances_info.length}\n")
-      each_instance { |checksum, size, _, instance_mod_time, server, path|
-        file.write("#{checksum},#{size},#{server},#{path},#{instance_mod_time}\n")
-      }
+      file.write(str_instances)
       file.close
     end
 

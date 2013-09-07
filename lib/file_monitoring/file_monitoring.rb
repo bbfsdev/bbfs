@@ -116,18 +116,23 @@ module FileMonitoring
         end
 
         unless $testing_memory_active
-          Log.info("Start monitor for dir:%s", dir_stat.path)
-          dir_stat.monitor
-          Log.info("End monitor for dir:%s", dir_stat.path)
+          Log.info("Start monitor path:%s and index", dir_stat.path)
+          dir_stat.monitor_add_new
+          Log.info("indexed file count:%s", $indexed_file_count)
+          Log.info('Start remove non existing paths')
+          dir_stat.removed_unmarked_paths
+          Log.info('End monitor path and index')
         else
-          $testing_memory_log.info("Start monitor at :#{Time.now}")
-          puts "Start monitor at :#{Time.now}"
-          dir_stat.monitor
-          $testing_memory_log.info("End monitor at :#{Time.now}")
-          puts "End monitor at :#{Time.now}"
+          $testing_memory_log.info("Start monitor path:%s and index", dir_stat.path)
+          dir_stat.monitor_add_new
+          $testing_memory_log.info("indexed file count:%s", $indexed_file_count)
+          $testing_memory_log.info('Start remove non existing paths')
+          dir_stat.removed_unmarked_paths
+          $testing_memory_log.info('End monitor path and index')
         end
 
-        # push entry with new a next time it should be checked as a priority key
+        #flush content data if changed
+        ContentServer.flush_content_data
         priority = (Time.now + conf['scan_period']).to_i
         pq.push([priority, conf, dir_stat], -priority)
       end
