@@ -88,7 +88,7 @@ module ContentServer
     queue_indexer = QueueIndexer.new(monitoring_events)
     # Start indexing on demand and write changes to queue
     all_threads << queue_indexer.run
-=begin
+#=begin
     # # # # # # # # # # # # # # # # # # # # # # # #
     # thread: Start dump local content data to file
     Log.debug1('Init thread: flush local content data to file')
@@ -115,7 +115,7 @@ module ContentServer
         $testing_memory_log.info("End flush content data to file") if $testing_memory_active
       }
     end
-=end
+#=end
     #initialize global - remote content data
     $remote_content_data_lock = Mutex.new
     $remote_content_data = ContentData::ContentData.new

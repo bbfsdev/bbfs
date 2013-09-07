@@ -94,7 +94,7 @@ module FileMonitoring
           #Log.info('Start index')
           #dir_stat.index
           Log.info('End monitor path')
-
+=begin
           Log.info('Start flush local content data to file.')
           $testing_memory_log.info('Start flush content data to file') if $testing_memory_active
           $local_content_data_lock.synchronize{
@@ -109,6 +109,7 @@ module FileMonitoring
           }
           File.rename($tmp_content_data_file, Params['local_content_data_path'])
           $testing_memory_log.info("End flush content data to file") if $testing_memory_active
+=end
         else
           $testing_memory_log.info("Start monitor")
           dir_stat.monitor_add_new
@@ -117,21 +118,6 @@ module FileMonitoring
           #$testing_memory_log.info("Start Index")
           #dir_stat.index
           $testing_memory_log.info("End Index & Monitor")
-
-          Log.info('Start flush local content data to file.')
-          $testing_memory_log.info('Start flush content data to file') if $testing_memory_active
-          $local_content_data_lock.synchronize{
-            local_content_data_unique_id = $local_content_data.unique_id
-            #if (local_content_data_unique_id != last_content_data_id)
-            last_content_data_id = local_content_data_unique_id
-            $local_content_data.to_file($tmp_content_data_file)
-            Log.info('End flush local content data to file.')
-            #else
-            #Log.info('no need to flush. content data has not changed')
-            #end
-          }
-          File.rename($tmp_content_data_file, Params['local_content_data_path'])
-          $testing_memory_log.info("End flush content data to file") if $testing_memory_active
         end
         priority = (Time.now + conf['scan_period']).to_i
         pq.push([priority, conf, dir_stat], -priority)
