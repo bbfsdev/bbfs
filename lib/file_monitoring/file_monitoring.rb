@@ -21,13 +21,6 @@ module FileMonitoring
       }
     end
 
-
-    # Set event queue used for communication between different proceses.
-    # @param queue [Queue]
-    def set_event_queue(queue)
-      @event_queue = queue
-    end
-
     # The main method. Loops on all paths, each time span and monitors them.
     #
     # =Algorithm:
@@ -48,7 +41,6 @@ module FileMonitoring
       conf_array.each { |elem|
         priority = (Time.now + elem['scan_period']).to_i
         dir_stat = DirStat.new(File.expand_path(elem['path']), elem['stable_state'], @content_data_cache, FileStatEnum::NON_EXISTING)
-        dir_stat.set_event_queue(@event_queue) if @event_queue
         Log.debug1("File monitoring started for: #{elem}")
         pq.push([priority, elem, dir_stat], -priority)
       }

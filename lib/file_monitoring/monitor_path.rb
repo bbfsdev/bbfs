@@ -46,10 +46,6 @@ module FileMonitoring
       @marked = false
     end
 
-    def set_output_queue(event_queue)
-      @event_queue = event_queue
-    end
-
     #  Sets a log file to report changes
     # ==== Arguments:
     #
@@ -139,10 +135,6 @@ module FileMonitoring
       not (file_stats.size == @size &&
           file_stats.ctime.utc == @creation_time.utc &&
           file_stats.mtime.utc == @modification_time.utc)
-    end
-
-    def set_event_queue(queue)
-      @event_queue = queue
     end
 
     #  Sets and writes to the log a new state.
@@ -379,7 +371,6 @@ module FileMonitoring
             child_stat.size = globed_path_stat.size
             child_stat.creation_time = globed_path_stat.ctime.utc
             child_stat.modification_time = globed_path_stat.mtime.utc
-            child_stat.event_queue = @event_queue
             @@log.info("NEW: " + globed_path)
             @@log.outputters[0].flush if Params['log_flush_each_message']
             child_stat.marked = true
@@ -391,7 +382,6 @@ module FileMonitoring
             child_stat.size = globed_path_stat.size
             child_stat.creation_time = globed_path_stat.ctime.utc
             child_stat.modification_time = globed_path_stat.mtime.utc
-            child_stat.event_queue = @event_queue
             @@log.info("NEW: " + globed_path)
             @@log.outputters[0].flush if Params['log_flush_each_message']
             child_stat.marked = true
@@ -463,7 +453,6 @@ module FileMonitoring
                                   # newly added directories have to remain with NEW state
             was_changed = true
             ds = DirStat.new(file, self.stable_state, @content_data_cache, FileStatEnum::NON_EXISTING)
-            ds.set_event_queue(@event_queue) unless @event_queue.nil?
             ds.monitor
             add_dir(ds)
           end
@@ -478,8 +467,6 @@ module FileMonitoring
               file_state = FileStatEnum::STABLE
             end
             fs = FileStat.new(file, self.stable_state, @content_data_cache, file_state)
-
-            fs.set_event_queue(@event_queue) unless @event_queue.nil?
             fs.monitor
             add_file(fs)
           end

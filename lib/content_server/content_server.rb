@@ -63,20 +63,11 @@ module ContentServer
     end
 
     Log.info("Init monitoring")
-    monitoring_events = Queue.new
     fm = FileMonitoring::FileMonitoring.new()
-    fm.set_event_queue(monitoring_events)
     # Start monitoring and writing changes to queue
     all_threads << Thread.new do
       fm.monitor_files
     end
-
-    # # # # # # # # # # # # # #
-    # Initialize/Start local indexer
-    Log.debug1('Start indexer')
-    queue_indexer = QueueIndexer.new(monitoring_events)
-    # Start indexing on demand and write changes to queue
-    all_threads << queue_indexer.run
 
     # # # # # # # # # # # # # # # # # # # # # # # #
     # thread: Start dump local content data to file
@@ -109,6 +100,7 @@ module ContentServer
         ContentServer.monitor_general_process_vars
       end
     end
+
     # Finalize server threads.
     all_threads.each { |t| t.abort_on_exception = true }
     all_threads.each { |t| t.join }
