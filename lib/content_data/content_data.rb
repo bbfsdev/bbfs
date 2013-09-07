@@ -274,14 +274,14 @@ module ContentData
       contents_info_enum = @contents_info.each
       finished = false
       loop do
+        str = ''
         500.times { |ind|
-          str = ''
           begin
             checksum, info = contents_info_enum.next
             str += "#{checksum},#{info[0]},#{info[2]}\n"
           rescue
-            file.write(str)
             finished=true
+            break
           end
         }
         file.write(str)
@@ -293,8 +293,8 @@ module ContentData
       contents_info_enum = @contents_info.each
       finished = false
       loop do
+        str = ''
         500.times { |ind|
-          str = ''
           begin
             checksum, info = contents_info_enum.next
             instances_enum = info[1].each
@@ -305,8 +305,8 @@ module ContentData
               str += "#{checksum},#{info[0]},#{location[0]},#{location[1]},#{inst_mod_time}\n"
             end
           rescue
-            file.write(str)
             finished=true
+            break
           end
         }
         file.write(str)
