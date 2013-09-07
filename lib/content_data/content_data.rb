@@ -272,13 +272,35 @@ module ContentData
       }
 =end
       contents_info_enum = @contents_info.each
+      iter=0
+      loop do
+        iter+=1
+        break if iter==75000
+        checksum, info = contents_info_enum.next rescue break
+        # provide checksum, size and content modification time to the block
+        file.write("#{checksum},#{info[0]},#{info[2]}\n")
+      end
       loop do
         checksum, info = contents_info_enum.next rescue break
         # provide checksum, size and content modification time to the block
         file.write("#{checksum},#{info[0]},#{info[2]}\n")
       end
+
       file.write("#{@instances_info.length}\n")
       contents_info_enum = @contents_info.each
+      iter=0
+      loop do
+        iter+=1
+        break if iter==75000
+        checksum, info = contents_info_enum.next rescue break
+        instances_enum = info[1].each
+        loop do
+          location, inst_mod_time = instances_enum.next rescue break
+          # provide the block with: checksum, size, content modification time,instance modification time,
+          #   server and path.
+          file.write("#{checksum},#{info[0]},#{location[0]},#{location[1]},#{inst_mod_time}\n")
+        end
+      end
       loop do
         checksum, info = contents_info_enum.next rescue break
         instances_enum = info[1].each
