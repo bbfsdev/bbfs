@@ -85,40 +85,24 @@ module FileMonitoring
         end
 
         unless $testing_memory_active
-          Log.info("Start monitor path:#{dir_stat.path}")
+          Log.info("Start monitor path:#{dir_stat.path} and index")
           dir_stat.monitor_add_new
+          Log.info("indexed file count:#{$indexed_file_count}")
           Log.info('Start remove non existing paths')
           dir_stat.removed_unmarked_paths
-          Log.info("indexed file count:#{$indexed_file_count}")
-          puts("indexed file count=#{$indexed_file_count}")
-          #Log.info('Start index')
-          #dir_stat.index
-          Log.info('End monitor path')
-=begin
-          Log.info('Start flush local content data to file.')
-          $testing_memory_log.info('Start flush content data to file') if $testing_memory_active
-          $local_content_data_lock.synchronize{
-            local_content_data_unique_id = $local_content_data.unique_id
-            #if (local_content_data_unique_id != last_content_data_id)
-            last_content_data_id = local_content_data_unique_id
-            $local_content_data.to_file($tmp_content_data_file)
-            Log.info('End flush local content data to file.')
-            #else
-            #Log.info('no need to flush. content data has not changed')
-            #end
-          }
-          File.rename($tmp_content_data_file, Params['local_content_data_path'])
-          $testing_memory_log.info("End flush content data to file") if $testing_memory_active
-=end
+          Log.info('End monitor path and index')
         else
-          $testing_memory_log.info("Start monitor")
+          $testing_memory_log.info("Start monitor path:#{dir_stat.path} and index")
           dir_stat.monitor_add_new
-          $testing_memory_log.info("Start remove unmarked paths")
+          $testing_memory_log.info("indexed file count:#{$indexed_file_count}")
+          $testing_memory_log.info('Start remove non existing paths')
           dir_stat.removed_unmarked_paths
-          #$testing_memory_log.info("Start Index")
-          #dir_stat.index
-          $testing_memory_log.info("End Index & Monitor")
+          $testing_memory_log.info('End monitor path and index')
         end
+
+        #flush content data if changed
+        ContentServer.flush_content_data
+
         priority = (Time.now + conf['scan_period']).to_i
         pq.push([priority, conf, dir_stat], -priority)
       end

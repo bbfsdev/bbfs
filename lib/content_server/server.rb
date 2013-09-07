@@ -31,6 +31,7 @@ module ContentServer
     $local_content_data_lock = nil
     $remote_content_data_lock = nil
     $remote_content_data = nil
+    $last_content_data_id = nil
   end
 
   def handle_program_termination(exception)
@@ -87,5 +88,23 @@ module ContentServer
     end
   end
 
-  module_function :init_globals, :handle_program_termination, :monitor_general_process_vars
+  def flush_content_data
+    Log.info('Start flush local content data to file.')
+    $testing_memory_log.info('Start flush content data to file') if $testing_memory_active
+    $local_content_data_lock.synchronize{
+      local_content_data_unique_id = $local_content_data.unique_id
+      if (local_content_data_unique_id != $last_content_data_id)
+        $last_content_data_id = local_content_data_unique_id
+        $local_content_data.to_file($tmp_content_data_file)
+        File.rename($tmp_content_data_file, Params['local_content_data_path']) if written_to_file
+        Log.info('End flush local content data to file.')
+        $testing_memory_log.info('End flush content data to file') if $testing_memory_active
+      else
+        Log.info('no need to flush. content data has not changed')
+        $testing_memory_log.info('no need to flush. content data has not changed') if $testing_memory_active
+      end
+    }
+  end
+
+  module_function :init_globals, :handle_program_termination, :monitor_general_process_vars, :flush_content_data
 end
