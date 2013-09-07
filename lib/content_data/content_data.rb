@@ -275,7 +275,7 @@ module ContentData
       finished = false
       loop do
         str = ''
-        500.times { |ind|
+        10000.times { |ind|
           begin
             checksum, info = contents_info_enum.next
             str += "#{checksum},#{info[0]},#{info[2]}\n"
@@ -294,7 +294,7 @@ module ContentData
       finished = false
       loop do
         str = ''
-        500.times { |ind|
+        10000.times { |ind|
           begin
             checksum, info = contents_info_enum.next
             instances_enum = info[1].each
