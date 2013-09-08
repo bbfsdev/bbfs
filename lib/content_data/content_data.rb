@@ -86,6 +86,7 @@ module ContentData
     # block is provided with: checksum, size, content modification time,
     #   instance modification time, server and file path
     def each_instance(&block)
+      Log.info('inside each_instance')
       contents_enum = @contents_info.each_key
       loop {
         checksum = contents_enum.next rescue break
@@ -98,6 +99,7 @@ module ContentData
                      location[0], location[1])
         }
       }
+      Log.info('end of each_instance')
     end
 
     # iterator of instances over specific content
