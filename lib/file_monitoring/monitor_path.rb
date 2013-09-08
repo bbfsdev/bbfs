@@ -36,6 +36,8 @@ module FileMonitoring
   class FileStat
     attr_accessor :path, :state, :stable_state, :size, :modification_time, :marked, :cycles
 
+    @@digest = Digest::SHA1.new
+
     #  Initializes new file monitoring object
     # ==== Arguments:
     #
@@ -63,9 +65,36 @@ module FileMonitoring
       #   If true, file will not be removed during removed_unmarked_paths phase.
       @marked = false
 
-      #Number of times that file was monitored and not changed.
+      # Number of times that file was monitored and not changed.
       #  When @cycles exceeds @stable_state, @state is set to Stable and can be indexed.
       @cycles = 0
+
+      # flag to indicate if file was indexed
+      @indexed = false
+    end
+
+    def index
+      @indexed=false
+      if !@indexed and FileStatEnum::STABLE == @state
+        #index file
+        @@digest.reset
+        begin
+          File.open(@path, 'rb') { |f|
+            while buffer = f.read(16384) do
+              @@digest << buffer
+            end
+          }
+          $local_content_data_lock.synchronize{
+            $local_content_data.add_instance(@@digest.hexdigest.downcase, @size, Params['local_server_name'],
+                                             @path, @modification_time)
+          }
+          #$process_vars.inc('indexed_files')
+          $indexed_file_count += 1
+          @indexed = true
+        rescue
+          Log.warning("Indexed path'#{@path}' does not exist. Probably file changed")
+        end
+      end
     end
 
     #  Checks that stored file attributes are the same as file attributes taken from file system.
@@ -88,8 +117,6 @@ module FileMonitoring
   #  This class holds current state of directory and methods to control changes
   class DirStat
     attr_accessor :path, :marked
-
-    @@digest = Digest::SHA1.new
 
     @@log = nil
 
@@ -241,7 +268,7 @@ module FileMonitoring
     # Change state for existing files\dirs
     # Index stable files
     # Remove non existing files\dirs is handled in method: remove_unmarked_paths
-    def monitor_add_new
+    def monitor
 
       # Algorithm:
       # assume that current dir is present
@@ -298,23 +325,6 @@ module FileMonitoring
                   child_stat.state = FileStatEnum::STABLE
                   @@log.info("STABLE: " + globed_path)
                   @@log.outputters[0].flush if Params['log_flush_each_message']
-                  #index file
-                  @@digest.reset
-                  begin
-                    File.open(globed_path, 'rb') { |f|
-                      while buffer = f.read(16384) do
-                        @@digest << buffer
-                      end
-                    }
-                    $local_content_data_lock.synchronize{
-                      $local_content_data.add_instance(@@digest.hexdigest.downcase, child_stat.size, Params['local_server_name'],
-                                                       globed_path, child_stat.modification_time)
-                    }
-                    #$process_vars.inc('indexed_files')
-                    $indexed_file_count += 1
-                  rescue
-                    Log.warning("Indexed path'#{globed_path}' does not exist. Probably file changed")
-                  end
                 else
                   @@log.info("UNCHANGED: " + globed_path)
                   @@log.outputters[0].flush if Params['log_flush_each_message']
@@ -342,8 +352,22 @@ module FileMonitoring
           end
           child_stat.marked = true
           #recursive call for dirs
-          child_stat.monitor_add_new if globed_path_stat.directory?
+          child_stat.monitor if globed_path_stat.directory?
         end
+      end
+    end
+
+    def index
+      files_enum = @files.each_value
+      loop do
+        file_stat = files_enum.next rescue break
+        file_stat.index  # file index
+      end
+
+      dirs_enum = @dirs.each_value
+      loop do
+        dir_stat = dirs_enum.next rescue break
+        dir_stat.index  # dir recursive call
       end
     end
 

@@ -110,11 +110,16 @@ module FileMonitoring
           sleep(time_span)
         end
 
-        # Start monitor and index
-        Log.info("Start monitor path and index for path:%s ", dir_stat.path)
-        $testing_memory_log.info("Start monitor and index for path:#{dir_stat.path}") if $testing_memory_active
+        # Start monitor
+        Log.info("Start monitor path:%s ", dir_stat.path)
+        $testing_memory_log.info("Start monitor path:#{dir_stat.path}") if $testing_memory_active
         ::FileMonitoring.stable_state=elem['stable_state']
-        dir_stat.monitor_add_new
+        dir_stat.monitor
+
+        # Start monitor
+        Log.info("Start index path:%s ", dir_stat.path)
+        $testing_memory_log.info("Start index path:#{dir_stat.path}") if $testing_memory_active
+        dir_stat.index
 
         # print number of indexed files
         Log.info("indexed file count:%s", $indexed_file_count)
