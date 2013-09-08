@@ -90,8 +90,10 @@ module ContentData
       contents_enum = @contents_info.each_key
       loop {
         checksum = contents_enum.next rescue break
+        Log.info("checksum:#{checksum}")
         content_info = @contents_info[checksum]
         content_info[1].keys.each {|location|
+          Log.info("location:#{location}")
           # provide the block with: checksum, size, content modification time,instance modification time,
           #   server and path.
           instance_modification_time = content_info[1][location]
