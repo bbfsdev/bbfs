@@ -1,3 +1,5 @@
+#todo: stable state not working. after 2 cycles...
+
 require 'algorithms'
 require 'fileutils'
 require 'log4r'
@@ -8,12 +10,6 @@ require 'file_monitoring/monitor_path'
 module FileMonitoring
   # Manages file monitoring of number of file system locations
   class FileMonitoring
-
-    # Set event queue used for communication between different proceses.
-    # @param queue [Queue]
-    def set_event_queue(queue)
-      @event_queue = queue
-    end
 
     # The main method. Loops on all paths, each time span and monitors them.
     #
@@ -32,9 +28,8 @@ module FileMonitoring
       # create root dirs of monitoring
       dir_stat_array = []
       conf_array.each { |elem|
-        dir_stat = DirStat.new(File.expand_path(elem['path']), elem['stable_state'])
-        dir_stat.set_event_queue(@event_queue) if @event_queue
-        dir_stat_array.push(dir_stat)
+        dir_stat = DirStat.new(File.expand_path(elem['path']))
+        dir_stat_array.push([dir_stat, elem['stable_state']])
       }
 
       #Look over loaded content data if not empty
@@ -63,12 +58,12 @@ module FileMonitoring
             # if index is found then it the monitor path
             # the next index indicates the next sub path to insert to the tree
             # the index will be raised at each recursive call down the tree
-            sub_paths_index = sub_paths.index(dir_stat.path)
+            sub_paths_index = sub_paths.index(dir_stat[0].path)
             next if sub_paths_index.nil?  # monitor path was not found. skip this instance.
-            # monitor path was found. Add to tree as stable.
-            dir_stat.state = FileStatEnum::STABLE
+            # monitor path was found. Add to tree
             # start the recursive call with next sub path index
-            dir_stat.load_instance(sub_paths, sub_paths_index+1, size, mod_time)
+            ::FileMonitoring.stable_state = dir_stat[1]
+            dir_stat[0].load_instance(sub_paths, sub_paths_index+1, size, mod_time)
           }
         }
         Log.info("End build data base from loaded file")
@@ -81,7 +76,7 @@ module FileMonitoring
       conf_array.each_with_index { |elem, index|
         priority = (Time.now + elem['scan_period']).to_i
         #Log.info("File monitoring started for: #{elem}")
-        pq.push([priority, elem, dir_stat_array[index]], -priority)
+        pq.push([priority, elem, dir_stat_array[index][0]], -priority)
       }
 
       #init log4r
@@ -103,38 +98,41 @@ module FileMonitoring
       file_outputter.level = Log4r::INFO
       file_outputter.formatter = formatter
       @log4r.outputters << file_outputter
-      FileStat.set_log(@log4r)
+      ::FileMonitoring::DirStat.set_log(@log4r)
 
       while true do
         # pull entry that should be checked next,
         # according to it's scan_period
-        time, conf, dir_stat = pq.pop
+        time, elem, dir_stat = pq.pop
         # time remains to wait before directory should be checked
         time_span = time - Time.now.to_i
         if (time_span > 0)
           sleep(time_span)
         end
 
-        unless $testing_memory_active
-          Log.info("Start monitor path:%s and index", dir_stat.path)
-          dir_stat.monitor_add_new
-          Log.info("indexed file count:%s", $indexed_file_count)
-          Log.info('Start remove non existing paths')
-          dir_stat.removed_unmarked_paths
-          Log.info('End monitor path and index')
-        else
-          $testing_memory_log.info("Start monitor path:%s and index", dir_stat.path)
-          dir_stat.monitor_add_new
-          $testing_memory_log.info("indexed file count:%s", $indexed_file_count)
-          $testing_memory_log.info('Start remove non existing paths')
-          dir_stat.removed_unmarked_paths
-          $testing_memory_log.info('End monitor path and index')
-        end
+        # Start monitor and index
+        Log.info("Start monitor path and index for path:%s ", dir_stat.path)
+        $testing_memory_log.info("Start monitor and index for path:#{dir_stat.path}") if $testing_memory_active
+        ::FileMonitoring.stable_state=elem['stable_state']
+        dir_stat.monitor_add_new
+
+        # print number of indexed files
+        Log.info("indexed file count:%s", $indexed_file_count)
+        $testing_memory_log.info("indexed file count: #{$indexed_file_count}") if $testing_memory_active
+
+        # remove non existing (not marked) files\dirs
+        Log.info('Start remove non existing paths')
+        $testing_memory_log.info('Start remove non existing paths') if $testing_memory_active
+        dir_stat.removed_unmarked_paths
+        Log.info('End monitor path and index')
+        $testing_memory_log.info('End monitor path and index') if $testing_memory_active
 
         #flush content data if changed
         ContentServer.flush_content_data
-        priority = (Time.now + conf['scan_period']).to_i
-        pq.push([priority, conf, dir_stat], -priority)
+
+        #Add back to queue
+        priority = (Time.now + elem['scan_period']).to_i
+        pq.push([priority, elem, dir_stat], -priority)
       end
     end
   end

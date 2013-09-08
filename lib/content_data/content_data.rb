@@ -73,7 +73,7 @@ module ContentData
     # iterator over @contents_info data structure (not including instances)
     # block is provided with: checksum, size and content modification time
     def each_content(&block)
-      contents_enum = @contents_info.keys
+      contents_enum = @contents_info.each_key
       loop {
         checksum = contents_enum.next rescue break
         content_val = @contents_info[checksum]
@@ -86,7 +86,7 @@ module ContentData
     # block is provided with: checksum, size, content modification time,
     #   instance modification time, server and file path
     def each_instance(&block)
-      contents_enum = @contents_info.keys
+      contents_enum = @contents_info.each_key
       loop {
         checksum = contents_enum.next rescue break
         content_info = @contents_info[checksum]
@@ -256,6 +256,7 @@ module ContentData
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
       str_instances = ''
       str_contents = ''
+
       each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
         str_contents += "#{checksum},#{size},#{content_mod_time}\n"
         str_instances += "#{checksum},#{size},#{server},#{path},#{instance_mod_time}\n"

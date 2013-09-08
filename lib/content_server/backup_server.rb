@@ -13,8 +13,8 @@ require 'file_monitoring'
 require 'log'
 require 'networking/tcp'
 require 'params'
-require 'process_monitoring/monitoring'
-require 'process_monitoring/monitoring_info'
+#require 'process_monitoring/monitoring'
+#require 'process_monitoring/monitoring_info'
 
 # Content server. Monitors files, index local files, listen to backup server content,
 # copy changes and new files to backup server.
@@ -60,11 +60,10 @@ module ContentServer
 
     # Read here for initial content data that exist from previous system run
     content_data_path = Params['local_content_data_path']
-    last_content_data_id = nil
     if File.exists?(content_data_path) and !File.directory?(content_data_path)
       Log.info("reading initial content data that exist from previous system run from file:%s", content_data_path)
       $local_content_data.from_file(content_data_path)
-      last_content_data_id = $local_content_data.unique_id
+      $last_content_data_id = $local_content_data.unique_id
     else
       if File.directory?(content_data_path)
         raise("Param:'local_content_data_path':'%s' cannot be a directory name", Params['local_content_data_path'])
