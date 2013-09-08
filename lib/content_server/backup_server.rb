@@ -88,7 +88,7 @@ module ContentServer
       FileUtils.mkdir_p(Params['tmp_path']) unless File.directory?(Params['tmp_path'])
       loop{
         sleep(Params['data_flush_delay'])
-        #ContentServer.flush_content_data
+        ContentServer.flush_content_data
       }
     end
 
