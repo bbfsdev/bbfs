@@ -252,15 +252,17 @@ module ContentData
     end
 
     def to_file(filename)
+      Log.info('inside to_file')
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
       str_instances = ''
       str_contents = ''
-
+      Log.info('before each_instance')
       each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
         str_contents += "#{checksum},#{size},#{content_mod_time}\n"
         str_instances += "#{checksum},#{size},#{server},#{path},#{instance_mod_time}\n"
       }
+      Log.info('after each_instance')
       file = File.open(filename, 'w')
       file.write("#{@contents_info.length}\n")
       file.write(str_contents)

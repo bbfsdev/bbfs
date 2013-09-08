@@ -92,7 +92,9 @@ module ContentServer
   def flush_content_data
     Log.info('Start flush local content data to file.')
     $testing_memory_log.info('Start flush content data to file') if $testing_memory_active
+
     $local_content_data_lock.synchronize{
+      Log.info('inside lock')
       local_content_data_unique_id = $local_content_data.unique_id
       if (local_content_data_unique_id != $last_content_data_id)
         $last_content_data_id = local_content_data_unique_id
