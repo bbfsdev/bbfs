@@ -258,40 +258,73 @@ module ContentData
     def to_file(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
-      #str_instances = ''
-      #str_contents = ''
+      file = File.open(filename, 'w')
+      file.write("#{@contents_info.length}\n")
+      contents_enum = @contents_info.each_key
+      content_chunks = @contents_info.length / 5000 + 1
+      content_chunks.times { |index|
+        to_file_contents_chunk(file,contents_enum,5000)
+        GC.start
+      }
+      file.write("#{@instances_info.length}\n")
+      contents_enum = @contents_info.each_key
+      instances_chunks = @instances_info.length / 5000 + 1
+      instances_chunks.times { |index|
+        to_file_instances_chunk(file,contents_enum,5000)
+        GC.start
+      }
+      file.close
+
+    end
+
+    def to_file_contents_chunk(file, contents_enum, chunk_size)
+      loop {
+        checksum = contents_enum.next rescue return
+        content_info = @contents_info[checksum]
+        file.write("#{checksum},#{content_info[0]},#{content_info[2]}\n")
+        chunk_size-=1
+        return if 0==chunk_size
+      }
+    end
+
+    def to_file_instances_chunk(file, contents_enum, chunk_size)
+      loop {
+        checksum = contents_enum.next rescue break
+        content_info = @contents_info[checksum]
+        content_info[1].keys.each {|location|
+          # provide the block with: checksum, size, content modification time,instance modification time,
+          #   server and path.
+          instance_modification_time = content_info[1][location]
+          file.write("#{checksum},#{content_info[0]},#{location[0]},#{location[1]},#{instance_modification_time}\n")
+          chunk_size-=1
+          return if chunk_size==0
+        }
+      }
+    end
+
+    def to_file_saved(filename)
+      content_data_dir = File.dirname(filename)
+      FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
       file = File.open(filename, 'w')
       file.write("#{@contents_info.length}\n")
       contents_enum = @contents_info.each_key
       loop {
         checksum = contents_enum.next rescue break
-        #Log.info("checksum:#{checksum}")
         content_info = @contents_info[checksum]
         file.write("#{checksum},#{content_info[0]},#{content_info[2]}\n")
       }
+      file.write("#{@instances_info.length}\n")
       contents_enum = @contents_info.each_key
       loop {
         checksum = contents_enum.next rescue break
-        #Log.info("checksum:#{checksum}")
         content_info = @contents_info[checksum]
         content_info[1].keys.each {|location|
-          #Log.info("location:#{location}")
           # provide the block with: checksum, size, content modification time,instance modification time,
           #   server and path.
           instance_modification_time = content_info[1][location]
           file.write("#{checksum},#{content_info[0]},#{location[0]},#{location[1]},#{instance_modification_time}\n")
         }
       }
-      file.write("#{@instances_info.length}\n")
-      #each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
-      #  str_contents += "#{checksum},#{size},#{content_mod_time}\n"
-      #  str_instances += "#{checksum},#{size},#{server},#{path},#{instance_mod_time}\n"
-      #}
-
-      #file.write("#{@contents_info.length}\n")
-      #file.write(str_contents)
-      #file.write("#{@instances_info.length}\n")
-      #file.write(str_instances)
       file.close
     end
 
