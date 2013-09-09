@@ -13,6 +13,34 @@ module FileMonitoring
       MOVE_DEST_DIR = RESOURCES_DIR # directory where moved entities will be placed
       LOG_PATH = RESOURCES_DIR + '/../log.txt'
 
+      # simulates log4r activuty used by FileMonitoring
+      class LogMock
+        def initialize()
+          File.unlink(LOG_PATH) if File.exists?(LOG_PATH)
+          @log = File.open(LOG_PATH, 'w+')
+        end
+
+        def close()
+          @log.close()
+        end
+
+        def outputters()
+          [self];
+        end
+
+        def flush()
+          # Do nothing
+        end
+
+        def log()
+          @log
+        end
+
+        def info(str)
+          @log.puts(str)
+        end
+      end
+
       def setup
         @sizes = [500, 1000, 1500]
         @numb_of_copies = 2
@@ -48,11 +76,19 @@ module FileMonitoring
             ::FileUtils.cp(file_path, "#{file_path}.#{i}")
           end
         end
+
+        @log4r_mock = LogMock.new
+      end
+
+      def teardown()
+        @log4r_mock.close
+        File.unlink(LOG_PATH)
+        ::FileUtils.rm_rf(RESOURCES_DIR) if (File.exists?(RESOURCES_DIR))
       end
 
       def test_monitor
-        log = File.open(LOG_PATH, 'w+')
-        FileStat.set_log(log)
+        log = @log4r_mock.log
+        FileStat.set_log(@log4r_mock)
         test_dir = DirStat.new(RESOURCES_DIR)
 
         # Initial run of monitoring -> initializing DirStat object
@@ -145,8 +181,6 @@ module FileMonitoring
           assert_equal(true, line.include?(FileStatEnum::STABLE))
         end
         assert_equal(@numb_entities, log.lineno - log_prev_line)
-
-        log.close
       end
     end
   end
