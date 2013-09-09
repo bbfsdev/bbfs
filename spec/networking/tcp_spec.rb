@@ -5,9 +5,6 @@ require 'stringio'
 
 require_relative '../../lib/networking/tcp'
 
-# Uncomment to debug spec.
-Params['log_write_to_console'] = true
-Params['log_debug_level'] = 0
 Log.init
 
 module Networking
@@ -31,6 +28,7 @@ module Networking
         info = 'info'
         data = 'kuku!!!'
         stream = StringIO.new
+        stream.stub(:peeraddr).and_return(Array.new)
         ::Socket.stub(:tcp_server_loop).and_yield(stream, info)
         ::TCPSocket.stub(:new).and_return(stream)
 

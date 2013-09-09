@@ -46,7 +46,7 @@ module ContentServer
             # Remove directory but only when non-existing.
             Log.debug1("Directory to remove: %s", path)
             $local_content_data_lock.synchronize{
-              $local_content_data.remove_directory(Params['local_server_name'], path)
+              $local_content_data.remove_directory(path, Params['local_server_name'])
             }
           else
             Log.debug1("This case should not be handled: %s, %s, %s", state, is_dir, path)

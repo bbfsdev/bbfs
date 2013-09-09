@@ -18,6 +18,11 @@ module FileUtils
       @base_db
 
       def setup
+        Params.init Array.new
+        # must preced Log.init, otherwise log containing default values will be created
+        Params['log_write_to_file'] = false
+        Log.init
+
         sizes = [500, 1000, 1500]
         numb_of_copies = 2
         test_file_name = "test_file"   # file name format: <test_file_name_prefix>.<size>[.serial_number_if_more_then_1]
@@ -76,6 +81,10 @@ module FileUtils
           end
         }
         @ref_db.add_instance(NOT_FOUND_CHECKSUM, 500, `hostname`.chomp, "/not/exist/path/file", Time.now.utc.to_i)
+      end
+
+      def teardown
+        ::FileUtils.rm_rf(RESOURCES_DIR) if (File.exists?(RESOURCES_DIR))
       end
 
       def test_create_symlink_structure

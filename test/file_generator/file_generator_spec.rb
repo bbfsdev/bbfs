@@ -15,6 +15,7 @@ module FileGenerator
         Params['sleep_time_in_seconds'] = 0
         Params['dir_name_prefix'] = "td4bs"
         Params['file_name_prefix'] = "agf4bs_"
+        Params['file_size_in_bytes'] = 10
       end
 
       it 'should reach File.open 1 files' do
@@ -73,9 +74,9 @@ module FileGenerator
 
       it 'should create filename and put text in it' do
         file = mock('file')
-        File.should_receive(:open).with(any_args(), "w").exactly(2).times.and_yield(file)
-        file.should_receive(:write).exactly(2).times
         Params['total_files_in_dir'] = 2
+        File.should_receive(:open).with(any_args(), "w").exactly(Params['total_files_in_dir']).times.and_yield(file)
+        file.should_receive(:write).exactly(Params['file_size_in_bytes'] * Params['total_files_in_dir']).times
         fg = FileGenerator.new()
         fg.run()
       end

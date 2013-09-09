@@ -6,22 +6,24 @@
 DBG = false  # NOTE be sure to disable it in production 
 
 begin
-  begin
-    require 'log'
-    require 'params'
-  rescue LoadError
-    $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..', 'lib'))
-    $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..'))
-    require 'log'
-    require 'params'
-  end
 
   # On WindowsXP log can be found under:
   # C:/Documents and Settings/NetworkService/.bbfs/test_app_<pid>.log
-  Params['log_file_name'] = File.join(Dir.home, '.bbfs', "#{File.basename(__FILE__)}_#{Process.pid}.log")
-  Params['log_write_to_console'] = false
+  #Params['log_file_name'] = File.join(Dir.home, '.bbfs', "#{File.basename(__FILE__)}_#{Process.pid}.log")
   if DBG
+    begin
+      require 'params'
+      require 'log'
+    rescue LoadError
+      $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..', 'lib'))
+      $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), '..', '..'))
+      require 'params'
+      require 'log'
+    end
+    Params.init Array.new
     Params['log_debug_level'] = 1
+    Params['log_write_to_console'] = false
+    Params['log_write_to_file'] = true
     Log.init
   end
 
@@ -35,23 +37,23 @@ begin
       require 'run_in_background'
     end
 
-    Log.debug1 "Before run in background: PID #{Process.pid}"
+    Log.debug1 "Before run in background: PID #{Process.pid}" if DBG
     # ARGV.pop returns frozen string and thus causes a failure of Service.create
     # to fix it new string with the same content created.
     RunInBackground.start!(String.new(ARGV.pop))
     # if got here then error
-    Log.error "After run in background: ERROR"
+    Log.error "After run in background: ERROR" if DBG
   end
 
   max = (ARGV.size > 0 && ARGV[0] != nil && ARGV[0].to_i > 0)? ARGV[0].to_i : 200
 
   while max > 0
-    Log.debug1 "#{max}"
+    Log.debug1 "#{max}" if DBG
     sleep 1
     max -= 1
   end
 
 rescue Exception => err
-  Log.error "Wrapper error: #{err}"
+  Log.error "Wrapper error: #{err}" if DBG
   raise
 end

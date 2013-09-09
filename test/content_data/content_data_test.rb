@@ -5,6 +5,13 @@ require_relative '../../lib/content_data/content_data.rb'
 
 class TestContentData < Test::Unit::TestCase
 
+  def setup
+        Params.init Array.new
+        # must preced Log.init, otherwise log containing default values will be created
+        Params['log_write_to_file'] = false
+        Log.init
+  end
+
   def test_cloning_db_1
     content_data = ContentData::ContentData.new
     content_data.add_instance("A1", 1242, "server_1",
@@ -52,17 +59,15 @@ class TestContentData < Test::Unit::TestCase
     #both new content and new instances are created in DB
     content_data.add_instance("A2", 60, "server_1",
                               "/home/file_2", 3333333333)
-    assert_equal("2\nA1,60,2222222222\nA2,60,3333333333\n3\n" +
+    assert_equal("2\nA1,60,2222222222\nA2,60,3333333333\n2\n" +
                      "A1,60,server_1,/home/file_1,2222222222\n" +
-                     "A1,60,server_1,/home/file_2,2222222222\n" +
                      "A2,60,server_1,/home/file_2,3333333333\n", content_data.to_s)
 
         #Add new instance - same content
     content_data.add_instance("A2", 60, "server_1",
                               "/home/file_3", 4444444444)
-    assert_equal("2\nA1,60,2222222222\nA2,60,3333333333\n4\n" +
+    assert_equal("2\nA1,60,2222222222\nA2,60,3333333333\n3\n" +
         "A1,60,server_1,/home/file_1,2222222222\n" +
-        "A1,60,server_1,/home/file_2,2222222222\n" +
         "A2,60,server_1,/home/file_2,3333333333\n" +
         "A2,60,server_1,/home/file_3,4444444444\n", content_data.to_s)
         end

@@ -32,6 +32,12 @@ module FileUtils
       @mod_instance_checksum = nil  # checksum of the instance that was manually modified
 
       def setup
+        Params.init Array.new
+        # must preced Log.init, otherwise log containing default values will be created
+        Params['log_write_to_file'] = false
+        Params['log_write_to_console'] = false
+        Log.init
+
         sizes = [500, 1000, 1500]
         numb_of_copies = 2
         test_file_name = "test_file"
@@ -121,8 +127,6 @@ module FileUtils
           patterns = FileIndexing::IndexerPatterns.new
           patterns.add_pattern(File.dirname(path) + '/*')     # this pattern index all files
           indexer.index(patterns, mod_db)
-          p mod_db.to_s
-          p indexer.indexed_content.to_s
           assert_equal(indexer.indexed_content, mod_db)
           break
         }

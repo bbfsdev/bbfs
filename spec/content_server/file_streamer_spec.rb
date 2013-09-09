@@ -2,6 +2,7 @@ require 'log'
 require 'rspec'
 require 'stringio'
 
+require_relative '../../lib/content_server/backup_server'
 require_relative '../../lib/content_server/file_streamer'
 
 # Uncomment to debug spec.
@@ -10,7 +11,11 @@ Params['log_write_to_file'] = false
 Params['log_debug_level'] = 0
 Params['streaming_chunk_size'] = 5
 Params.init ARGV
+Params['log_write_to_file'] = false
+Params['log_write_to_console'] = false
+Params['enable_monitoring'] = false
 Log.init
+ContentServer.init_globals
 # Have to be set to test chunking mechanism.
 
 module ContentServer
