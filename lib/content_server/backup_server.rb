@@ -13,8 +13,8 @@ require 'file_monitoring'
 require 'log'
 require 'networking/tcp'
 require 'params'
-#require 'process_monitoring/monitoring'
-#require 'process_monitoring/monitoring_info'
+require 'process_monitoring/monitoring'
+require 'process_monitoring/monitoring_info'
 
 # Content server. Monitors files, index local files, listen to backup server content,
 # copy changes and new files to backup server.
