@@ -74,7 +74,6 @@ module FileMonitoring
     end
 
     def index
-      @indexed=false
       if !@indexed and FileStatEnum::STABLE == @state
         #index file
         @@digest.reset
