@@ -123,11 +123,7 @@ module ContentData
     end
 
     def instances_size()
-      counter=0
-      @contents_info.values.each { |content_info|
-        counter += content_info[1].length
-      }
-      counter
+      @instances_info.length
     end
 
     def checksum_instances_size(checksum)
@@ -195,7 +191,9 @@ module ContentData
     # input params: server & dir_to_remove - are used to check each instance unique key (called location)
     # removes also content\s, if a content\s become\s empty after removing instance\s
     def remove_directory(server, dir_to_remove)
-      @contents_info.keys.each { |checksum|
+      contents_enum = @contents_info.each_key
+      loop {
+        checksum = contents_enum.next rescue break
         instances =  @contents_info[checksum][1]
         instances.each_key { |location|
           if location[0] == server and location[1].scan(dir_to_remove).size > 0
@@ -302,32 +300,6 @@ module ContentData
       }
     end
 
-    def to_file_saved(filename)
-      content_data_dir = File.dirname(filename)
-      FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
-      file = File.open(filename, 'w')
-      file.write("#{@contents_info.length}\n")
-      contents_enum = @contents_info.each_key
-      loop {
-        checksum = contents_enum.next rescue break
-        content_info = @contents_info[checksum]
-        file.write("#{checksum},#{content_info[0]},#{content_info[2]}\n")
-      }
-      file.write("#{@instances_info.length}\n")
-      contents_enum = @contents_info.each_key
-      loop {
-        checksum = contents_enum.next rescue break
-        content_info = @contents_info[checksum]
-        content_info[1].keys.each {|location|
-          # provide the block with: checksum, size, content modification time,instance modification time,
-          #   server and path.
-          instance_modification_time = content_info[1][location]
-          file.write("#{checksum},#{content_info[0]},#{location[0]},#{location[1]},#{instance_modification_time}\n")
-        }
-      }
-      file.close
-    end
-
     # TODO validation that file indeed contains ContentData missing
     def from_file(filename)
       lines = IO.readlines(filename)
@@ -365,7 +337,9 @@ module ContentData
     # for each content, all time fields (content and instances) are replaced with the
     # min time found, while going through all time fields.
     def unify_time()
-      @contents_info.keys.each { |checksum|
+      contents_enum = @contents_info.each_key
+      loop {
+        checksum = contents_enum.next rescue break
         content_info = @contents_info[checksum]
         min_time_per_checksum = content_info[2]
         instances = content_info[1]
@@ -419,7 +393,9 @@ module ContentData
       end
 
       is_valid = true
-      @contents_info.keys.each { |checksum|
+      contents_enum = @contents_info.each_key
+      loop {
+        checksum = contents_enum.next rescue break
         instances = @contents_info[checksum]
         content_size = instances[0]
         content_mtime = instances[2]
