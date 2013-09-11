@@ -309,7 +309,7 @@ module FileMonitoring
               child_stat.cycles = 0
               child_stat.size = globed_path_stat.size
               child_stat.modification_time = globed_path_stat.mtime.to_i
-              @@log.info("CHANGED: " + globed_path)
+              @@log.info("CHANGED file: " + globed_path)
               @@log.outputters[0].flush if Params['log_flush_each_message']
               #Log.debug1("CHANGED file: #{globed_path}")
               # remove file with changed checksum. File will be added once indexed
@@ -323,10 +323,10 @@ module FileMonitoring
                 child_stat.cycles += 1
                 if child_stat.cycles >= child_stat.stable_state
                   child_stat.state = FileStatEnum::STABLE
-                  @@log.info("STABLE: " + globed_path)
+                  @@log.info("STABLE file: " + globed_path)
                   @@log.outputters[0].flush if Params['log_flush_each_message']
                 else
-                  @@log.info("UNCHANGED: " + globed_path)
+                  @@log.info("UNCHANGED file: " + globed_path)
                   @@log.outputters[0].flush if Params['log_flush_each_message']
                 end
               end
@@ -335,7 +335,7 @@ module FileMonitoring
             # new File child:
             child_stat = FileStat.new(globed_path, FileStatEnum::NEW,
                                       globed_path_stat.size, globed_path_stat.mtime.to_i)
-            @@log.info("NEW: " + globed_path)
+            @@log.info("NEW file: " + globed_path)
             @@log.outputters[0].flush if Params['log_flush_each_message']
             child_stat.marked = true
             add_file(child_stat)
@@ -347,7 +347,7 @@ module FileMonitoring
           unless child_stat
             child_stat = DirStat.new(globed_path)
             add_dir(child_stat)
-            @@log.info("NEW: " + globed_path)
+            @@log.info("NEW dir: " + globed_path)
             @@log.outputters[0].flush if Params['log_flush_each_message']
           end
           child_stat.marked = true
@@ -355,6 +355,7 @@ module FileMonitoring
           child_stat.monitor if globed_path_stat.directory?
         end
       end
+      GC.start
     end
 
     def index
@@ -363,6 +364,7 @@ module FileMonitoring
         file_stat = files_enum.next rescue break
         file_stat.index  # file index
       end
+      GC.start
 
       dirs_enum = @dirs.each_value
       loop do
