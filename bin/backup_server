@@ -12,7 +12,7 @@ require 'content_server/backup_server' # specific backup server impl
 require 'content_server/server' # shared file between content\backup
 require 'log'
 require 'params'
-#require 'run_in_background'
+require 'run_in_background'
 
 Params.init ARGV
 Log.init
@@ -21,7 +21,7 @@ ContentServer.init_globals
 Thread.abort_on_exception = true  # TODO (genadyp) should be treated globally? by param for example.
 
 begin
-  ContentServer.run_backup_server
+  RunInBackground.run { ContentServer.run_backup_server }
 rescue SystemExit, SignalException => exception
   # TODO (genadyp) do we need to trap signals by types?
   ContentServer.handle_program_termination(exception)
