@@ -34,7 +34,7 @@ module FileMonitoring
 
   #  This class holds current state of file and methods to control and report changes
   class FileStat
-    attr_accessor :path, :state, :stable_state, :size, :modification_time, :marked, :cycles
+    attr_accessor :path, :state, :size, :modification_time, :marked, :cycles
 
     @@digest = Digest::SHA1.new
 
@@ -55,9 +55,6 @@ module FileMonitoring
       # File modification time
       @modification_time = mod_time
 
-      # Number of iterations to move unchanged file to stable state
-      @stable_state = ::FileMonitoring.stable_state
-
       # File sate. see class FileStatEnum for states.
       @state = state
 
@@ -66,7 +63,7 @@ module FileMonitoring
       @marked = false
 
       # Number of times that file was monitored and not changed.
-      #  When @cycles exceeds @stable_state, @state is set to Stable and can be indexed.
+      #  When @cycles exceeds ::FileMonitoring::stable_state, @state is set to Stable and can be indexed.
       @cycles = 0
 
       # flag to indicate if file was indexed
@@ -104,7 +101,7 @@ module FileMonitoring
 
     #  Checks whether path and state are the same as of the argument
     def == (other)
-      @path == other.path and @stable_state == other.stable_state
+      @path == other.path
     end
 
     #  Returns path and state of the file with indentation
@@ -320,7 +317,7 @@ module FileMonitoring
               if child_stat.state != FileStatEnum::STABLE
                 child_stat.state = FileStatEnum::UNCHANGED
                 child_stat.cycles += 1
-                if child_stat.cycles >= child_stat.stable_state
+                if child_stat.cycles >= ::FileMonitoring.stable_state
                   child_stat.state = FileStatEnum::STABLE
                   @@log.info("STABLE file: " + globed_path)
                   @@log.outputters[0].flush if Params['log_flush_each_message']
@@ -351,7 +348,7 @@ module FileMonitoring
           end
           child_stat.marked = true
           #recursive call for dirs
-          child_stat.monitor if globed_path_stat.directory?
+          child_stat.monitor
         end
       end
       GC.start
