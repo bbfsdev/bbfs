@@ -46,28 +46,36 @@ module ContentData
     end
 
     def clone_instances_info
-      @instances_info.keys.inject({}) { |clone_instances_info, location|
+      clone_instances_info = {}
+      instances_info_enum = @instances_info.each_key
+      loop {
+        location = instances_info_enum.next rescue break
         clone_instances_info[[location[0].clone, location[1].clone]] = @instances_info[location].clone
-        clone_instances_info
       }
+      clone_instances_info
     end
 
     def clone_contents_info
-      @contents_info.keys.inject({}) { |clone_contents_info, checksum|
+      clone_contents_info = {}
+      contents_info_enum = @contents_info.each_key
+      loop {
+        checksum = contents_info_enum.next rescue break
         instances = @contents_info[checksum]
         size = instances[0]
         content_time = instances[2]
         instances_db = instances[1]
         instances_db_cloned = {}
-        instances_db.keys.each { |location|
+        instances_db_enum = instances_db.each_key
+        loop {
+          location =  instances_db_enum.next rescue break
           instance_mtime = instances_db[location]
           instances_db_cloned[[location[0].clone,location[1].clone]]=instance_mtime
         }
         clone_contents_info[checksum] = [size,
                               instances_db_cloned,
                               content_time]
-        clone_contents_info
       }
+      clone_contents_info
     end
 
     # iterator over @contents_info data structure (not including instances)
@@ -89,10 +97,10 @@ module ContentData
       contents_enum = @contents_info.each_key
       loop {
         checksum = contents_enum.next rescue break
-        #Log.info("checksum:#{checksum}")
         content_info = @contents_info[checksum]
-        content_info[1].keys.each {|location|
-          #Log.info("location:#{location}")
+        content_info_enum = content_info[1].each_key
+        loop {
+          location = content_info_enum.next rescue break
           # provide the block with: checksum, size, content modification time,instance modification time,
           #   server and path.
           instance_modification_time = content_info[1][location]
@@ -100,7 +108,6 @@ module ContentData
                      location[0], location[1])
         }
       }
-      Log.info('end of each_instance')
     end
 
     # iterator of instances over specific content
@@ -108,7 +115,9 @@ module ContentData
     #   instance modification time, server and file path
     def content_each_instance(checksum, &block)
       content_info = @contents_info[checksum]
-      content_info[1].keys.each {|location|
+      instances_db_enum = content_info[1].each_key
+      loop {
+        location = instances_db_enum.next rescue break
         # provide the block with: checksum, size, content modification time,instance modification time,
         #   server and path.
         instance_modification_time = content_info[1][location]
@@ -287,8 +296,9 @@ module ContentData
     def to_file_instances_chunk(file, contents_enum, chunk_size)
       loop {
         checksum = contents_enum.next rescue break
-        content_info = @contents_info[checksum]
-        content_info[1].keys.each {|location|
+        instances_db_enum = @contents_info[checksum][1].each_key
+        loop {
+          location = instances_db_enum.next rescue break
           # provide the block with: checksum, size, content modification time,instance modification time,
           #   server and path.
           instance_modification_time = content_info[1][location]
@@ -342,14 +352,18 @@ module ContentData
         content_info = @contents_info[checksum]
         min_time_per_checksum = content_info[2]
         instances = content_info[1]
-        instances.keys.each { |location|
+        instances_enum = instances.each_key
+        loop {
+          location = instances_enum.next rescue break
           instance_mod_time = instances[location]
           if instance_mod_time < min_time_per_checksum
             min_time_per_checksum = instance_mod_time
           end
         }
         # update all instances with min time
-        instances.keys.each { |location|
+        instances_enum = instances.each_key
+        loop {
+          location = instances_enum.next rescue break
           instances[location] = min_time_per_checksum
         }
         # update content time with min time
@@ -398,7 +412,9 @@ module ContentData
         instances = @contents_info[checksum]
         content_size = instances[0]
         content_mtime = instances[2]
-        instances[1].keys.each { |unique_path|
+        instances_enum = instances[1].each_key
+        loop {
+          unique_path = instances_enum.next rescue break
           instance_mtime = instances[1][unique_path]
           instance_info = [checksum, content_mtime, content_size, instance_mtime]
           instance_info.concat(unique_path)
