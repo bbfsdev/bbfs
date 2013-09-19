@@ -296,12 +296,13 @@ module ContentData
     def to_file_instances_chunk(file, contents_enum, chunk_size)
       loop {
         checksum = contents_enum.next rescue break
-        instances_db_enum = @contents_info[checksum][1].each_key
+        instances_db = @contents_info[checksum][1]
+        instances_db_enum = instances_db.each_key
         loop {
           location = instances_db_enum.next rescue break
           # provide the block with: checksum, size, content modification time,instance modification time,
           #   server and path.
-          instance_modification_time = content_info[1][location]
+          instance_modification_time = instances_db[location]
           file.write("#{checksum},#{content_info[0]},#{location[0]},#{location[1]},#{instance_modification_time}\n")
           chunk_size-=1
           return if chunk_size==0
