@@ -261,6 +261,10 @@ module ContentData
       return_str
     end
 
+    # Write content data to file.
+    # Write is using chunks (for both content chunks and instances chunks)
+    # Chunk is used to maximize GC affect. The temporary memory of each chunk is GCed.
+    # Without the chunks used in a dipper stack level, GC keeps the temporary objects as part of the stack context.
     def to_file(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)

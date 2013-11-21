@@ -279,7 +279,7 @@ module FileMonitoring
       # ls (glob) the dir path for child dirs and files
       globed_paths_enum = Dir.glob(@path + "/*").to_enum
       loop do
-        globed_path =  globed_paths_enum.next rescue break
+        globed_path = globed_paths_enum.next rescue break
 
         # UTF-8 - keep only files with names in
         next if @non_utf8_paths[globed_path]

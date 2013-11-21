@@ -116,7 +116,7 @@ module FileMonitoring
         ::FileMonitoring.stable_state=elem['stable_state']
         dir_stat.monitor
 
-        # Start monitor
+        # Start index
         Log.info("Start index path:%s ", dir_stat.path)
         $testing_memory_log.info("Start index path:#{dir_stat.path}") if $testing_memory_active
         dir_stat.index
