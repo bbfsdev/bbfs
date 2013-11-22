@@ -292,7 +292,7 @@ module FileMonitoring
         end
 
         # Get File \ Dir status
-        globed_path_stat = File.lstat(globed_path)
+        globed_path_stat = File.lstat(globed_path) rescue next  # File or dir removed from OS file system
         if globed_path_stat.file?
           # File case
           child_stat = @files[globed_path]
