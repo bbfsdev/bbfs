@@ -123,7 +123,7 @@ module FileMonitoring
         dir_stat.index
 
         # print number of indexed files
-        Log.info("indexed file count:%s", $indexed_file_count)
+        Log.debug1("indexed file count:%s", $indexed_file_count)
         $testing_memory_log.info("indexed file count: #{$indexed_file_count}") if $testing_memory_active
 
         # remove non existing (not marked) files\dirs
