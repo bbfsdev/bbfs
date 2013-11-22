@@ -233,7 +233,7 @@ module FileMonitoring
           @@log.outputters[0].flush if Params['log_flush_each_message']
           # remove file with changed checksum
           $local_content_data_lock.synchronize{
-            $local_content_data.remove_directory(Params['local_server_name'], dir_stat.path)
+            $local_content_data.remove_directory(dir_stat.path, Params['local_server_name'])
           }
           rm_dir(dir_stat)
         end
