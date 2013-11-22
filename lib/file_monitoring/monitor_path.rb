@@ -45,7 +45,7 @@ module FileMonitoring
     # * <tt>state</tt> - state. see class FileStatEnum. Default is NEW
     # * <tt>size</tt> - File size [Byte]. Default is -1 (will be set later during monitor) todo:used?
     # * <tt>mod_time</tt> - file mod time [seconds]. Default is -1 (will be set later during monitor)
-    def initialize(path, state=FileStatEnum::NEW, size=-1, mod_time=-1)
+    def initialize(path, state=FileStatEnum::NEW, size=-1, mod_time=-1, indexed=false)
       # File\Dir path
       @path = path
 
@@ -67,7 +67,7 @@ module FileMonitoring
       @cycles = 0
 
       # flag to indicate if file was indexed
-      @indexed = false
+      @indexed = indexed
     end
 
     def index
@@ -157,7 +157,7 @@ module FileMonitoring
       @files = {} unless @files
       if sub_paths.size-1 == sub_paths_index
         # Add File case - index points to last entry - leaf case.
-        file_stat = FileStat.new(sub_paths[sub_paths_index], FileStatEnum::STABLE, size, modification_time)
+        file_stat = FileStat.new(sub_paths[sub_paths_index], FileStatEnum::STABLE, size, modification_time, true)
         add_file(file_stat)
       else
         # Add Dir to tree if not present. index points to new dir path.
