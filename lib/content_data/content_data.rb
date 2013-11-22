@@ -149,6 +149,13 @@ module ContentData
 
     def add_instance(checksum, size, server, path, modification_time)
       location = [server, path]
+
+      # file was changed but remove_instance was not called
+      if (@instances_info.include?(location) && @instances_info[location] != checksum)
+        Log.warning("#{server}:#{path} file already exists with different checksum")
+        remove_instance(server, path)
+      end
+
       content_info = @contents_info[checksum]
       if content_info.nil?
         @contents_info[checksum] = [size,
@@ -198,7 +205,7 @@ module ContentData
     # found records are removed from both @instances_info and @instances_info.
     # input params: server & dir_to_remove - are used to check each instance unique key (called location)
     # removes also content\s, if a content\s become\s empty after removing instance\s
-    def remove_directory(server, dir_to_remove)
+    def remove_directory(dir_to_remove, server)
       contents_enum = @contents_info.each_key
       loop {
         checksum = contents_enum.next rescue break
