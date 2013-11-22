@@ -67,6 +67,7 @@ module FileMonitoring
           }
         }
         Log.info("End build data base from loaded file")
+        $last_content_data_id = $local_content_data.unique_id
       end
 
       # Directories states stored in the priority queue,
