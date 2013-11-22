@@ -356,11 +356,12 @@ module FileMonitoring
 
     def index
       files_enum = @files.each_value
+      index_counter = $indexed_file_count  # to check if files where actually indexed
       loop do
         file_stat = files_enum.next rescue break
         file_stat.index  # file index
       end
-      GC.start
+      GC.start if index_counter != $indexed_file_count  # GC only if files where indexed
 
       dirs_enum = @dirs.each_value
       loop do
