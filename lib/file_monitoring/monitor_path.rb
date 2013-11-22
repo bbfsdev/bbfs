@@ -11,8 +11,6 @@ module FileMonitoring
   # * <tt>CHANGED</tt> - State was changed between two checks
   # * <tt>UNCHANGED</tt> - Opposite to CHANGED
   # * <tt>STABLE</tt> - Entity is in the UNCHANGED state for a defined (by user) number of iterations
-
-
   class FileStatEnum
     NON_EXISTING = "NON_EXISTING"
     NEW = "NEW"
@@ -21,76 +19,78 @@ module FileMonitoring
     STABLE = "STABLE"
   end
 
+  # Number of iterations to move state from UNCHANGED to STABLE (for index)
+  @@stable_state = 10
+
+  def self.stable_state=(stable_state)
+    @@stable_state = stable_state
+  end
+
+  def self.stable_state
+    @@stable_state
+  end
+
+  public_class_method :stable_state, :stable_state=
+
   #  This class holds current state of file and methods to control and report changes
   class FileStat
-    attr_reader :cycles, :path, :stable_state
-    attr_accessor :state, :size, :modification_time
+    attr_accessor :path, :state, :size, :modification_time, :marked, :cycles
 
-    DEFAULT_STABLE_STATE = 10
-
-    @@log = nil
+    @@digest = Digest::SHA1.new
 
     #  Initializes new file monitoring object
     # ==== Arguments:
     #
-    # * <tt>path</tt> - File location
-    # * <tt>size</tt> - File size [Byte]
-    # * <tt>modification_time</tt> - file mod time [seconds]
-    # * <tt>cycles</tt> - # number of iterations from the last state change.
-    # * <tt>stable_state</tt> - Number of iterations to move unchanged file to stable state
-    def initialize(path, stable_state = DEFAULT_STABLE_STATE)
-      @path ||= path
-      @size = nil
-      @modification_time = nil
+    # * <tt>path</tt> - File\Dir path
+    # * <tt>state</tt> - state. see class FileStatEnum. Default is NEW
+    # * <tt>size</tt> - File size [Byte]. Default is -1 (will be set later during monitor) todo:used?
+    # * <tt>mod_time</tt> - file mod time [seconds]. Default is -1 (will be set later during monitor)
+    def initialize(path, state=FileStatEnum::NEW, size=-1, mod_time=-1, indexed=false)
+      # File\Dir path
+      @path = path
+
+      # File size
+      @size = size
+
+      # File modification time
+      @modification_time = mod_time
+
+      # File sate. see class FileStatEnum for states.
+      @state = state
+
+      # indicates if path EXISTS in file system.
+      #   If true, file will not be removed during removed_unmarked_paths phase.
+      @marked = false
+
+      # Number of times that file was monitored and not changed.
+      #  When @cycles exceeds ::FileMonitoring::stable_state, @state is set to Stable and can be indexed.
       @cycles = 0
-      @stable_state = stable_state
+
+      # flag to indicate if file was indexed
+      @indexed = indexed
     end
 
-    def set_output_queue(event_queue)
-      @event_queue = event_queue
-    end
-
-    #  Sets a log file to report changes
-    # ==== Arguments:
-    #
-    # * <tt>log</tt> - already opened ruby File object
-    def self.set_log (log)
-      @@log = log
-    end
-
-    # Checks whether file was changed from the last iteration.
-    # For files, size and modification time are checked.
-    def monitor
-      file_stats = File.lstat(@path) rescue nil
-      new_state = nil
-      if file_stats.nil?
-        new_state = FileStatEnum::NON_EXISTING
-        @size = nil
-        #@creation_time = nil
-        @modification_time = nil
-        @cycles = 0
-      elsif @size.nil?
-        new_state = FileStatEnum::NEW
-        @size = file_stats.size
-        #@creation_time = file_stats.ctime.utc
-        @modification_time = file_stats.mtime.to_i
-        @cycles = 0
-      elsif changed?(file_stats)
-        new_state = FileStatEnum::CHANGED
-        @size = file_stats.size
-        #@creation_time = file_stats.ctime.utc
-        @modification_time = file_stats.mtime.to_i
-        @cycles = 0
-      else
-        new_state = FileStatEnum::UNCHANGED
-        @cycles += 1
-        if @cycles >= @stable_state
-          new_state = FileStatEnum::STABLE
+    def index
+      if !@indexed and FileStatEnum::STABLE == @state
+        #index file
+        @@digest.reset
+        begin
+          File.open(@path, 'rb') { |f|
+            while buffer = f.read(16384) do
+              @@digest << buffer
+            end
+          }
+          $local_content_data_lock.synchronize{
+            $local_content_data.add_instance(@@digest.hexdigest.downcase, @size, Params['local_server_name'],
+                                             @path, @modification_time)
+          }
+          #$process_vars.inc('indexed_files')
+          $indexed_file_count += 1
+          @indexed = true
+        rescue
+          Log.warning("Indexed path'#{@path}' does not exist. Probably file changed")
         end
       end
-
-      # The assignment
-      set_state(new_state)
     end
 
     #  Checks that stored file attributes are the same as file attributes taken from file system.
@@ -99,29 +99,9 @@ module FileMonitoring
         (file_stats.mtime.to_i == @modification_time))
     end
 
-    def set_event_queue(queue)
-      @event_queue = queue
-    end
-
-    #  Sets and writes to the log a new state.
-    def set_state(new_state)
-      if (@state != new_state or @state == FileStatEnum::CHANGED)
-        @state = new_state
-        if (@@log)
-          @@log.info(state + ": " + path)
-          @@log.outputters[0].flush if Params['log_flush_each_message']
-        end
-        if @event_queue and FileStatEnum::NEW != @state  # NEW state is ignored in indexer
-          Log.debug1("Writing to event queue [%s, %s]", @state, @path)
-          @event_queue.push([@state, self.instance_of?(DirStat), @path, @modification_time, @size])
-          $process_vars.set('monitor to index queue size', @event_queue.size)
-        end
-      end
-    end
-
     #  Checks whether path and state are the same as of the argument
     def == (other)
-      @path == other.path and @stable_state == other.stable_state
+      @path == other.path
     end
 
     #  Returns path and state of the file with indentation
@@ -131,17 +111,31 @@ module FileMonitoring
   end
 
   #  This class holds current state of directory and methods to control changes
-  class DirStat < FileStat
+  class DirStat
+    attr_accessor :path, :marked
+
+    @@log = nil
+
+    def self.set_log (log)
+      @@log = log
+    end
+
+    public_class_method :set_log
+
     #  Initializes new directory monitoring object
     # ==== Arguments:
     #
-    # * <tt>path</tt> - File location
-    # * <tt>stable_state</tt> - Number of iterations to move unchanged directory to stable state
-    def initialize(path, stable_state = DEFAULT_STABLE_STATE)
-      super
-      @dirs = nil  # Hash: ["path" -> DirStat]
-      @files = nil # Hash: ["path" -> FileStat]
+    # * <tt>path</tt> - Dir location
+    def initialize(path)
+      @path = path
+      @dirs = {}
+      @files = {}
       @non_utf8_paths = {}  # Hash: ["path" -> true|false]
+
+      # indicates if path EXISTS in file system.
+      #   If true, file will not be removed during removed_unmarked_paths phase.
+      @marked = false
+
     end
 
     # add instance while initializing tree using content data from file
@@ -163,20 +157,14 @@ module FileMonitoring
       @files = {} unless @files
       if sub_paths.size-1 == sub_paths_index
         # Add File case - index points to last entry - leaf case.
-        file_stat = FileStat.new(sub_paths[sub_paths_index], @stable_state)
-        file_stat.set_event_queue(@event_queue)
-        file_stat.size = size
-        file_stat.modification_time = modification_time
-        file_stat.state = FileStatEnum::STABLE
+        file_stat = FileStat.new(sub_paths[sub_paths_index], FileStatEnum::STABLE, size, modification_time, true)
         add_file(file_stat)
       else
         # Add Dir to tree if not present. index points to new dir path.
         dir_stat = @dirs[sub_paths[sub_paths_index]]
         #create new dir if not exist
         unless dir_stat
-          dir_stat = DirStat.new(sub_paths[sub_paths_index], @stable_state)
-          dir_stat.state = FileStatEnum::STABLE
-          dir_stat.set_event_queue(@event_queue)
+          dir_stat = DirStat.new(sub_paths[sub_paths_index])
           add_dir(dir_stat)
         end
         # continue recursive call on tree with next sub path index
@@ -228,111 +216,161 @@ module FileMonitoring
       res
     end
 
-    # Checks that directory structure (i.e. files and directories located directly under this directory)
-    # wasn't changed since the last iteration.
+    # Recursively, remove non existing files and dirs in Tree
+    def removed_unmarked_paths
+      #remove dirs
+      dirs_enum = @dirs.each_value
+      loop do
+        dir_stat = dirs_enum.next rescue break
+        if dir_stat.marked
+          dir_stat.marked = false  # unset flag for next monitoring\index\remove phase
+          #recursive call
+          dir_stat.removed_unmarked_paths
+        else
+          # directory is not marked. Remove it, since it does not exist.
+          #Log.debug1("Non Existing dir: %s", file_stat.path)
+          @@log.info("NON_EXISTING dir: " + dir_stat.path)
+          @@log.outputters[0].flush if Params['log_flush_each_message']
+          # remove file with changed checksum
+          $local_content_data_lock.synchronize{
+            $local_content_data.remove_directory(dir_stat.path, Params['local_server_name'])
+          }
+          rm_dir(dir_stat)
+        end
+      end
+
+      #remove files
+      files_enum = @files.each_value
+      loop do
+        file_stat = files_enum.next rescue break
+        if file_stat.marked
+          file_stat.marked = false  # unset flag for next monitoring\index\remove phase
+        else
+          # file not marked meaning it is no longer exist. Remove.
+          #Log.debug1("Non Existing file: %s", file_stat.path)
+          @@log.info("NON_EXISTING file: " + file_stat.path)
+          @@log.outputters[0].flush if Params['log_flush_each_message']
+          # remove file with changed checksum
+          $local_content_data_lock.synchronize{
+            $local_content_data.remove_instance(Params['local_server_name'], file_stat.path)
+          }
+          rm_file(file_stat)
+        end
+      end
+    end
+
+    # Recursively, read files and dirs from file system (using Glob)
+    # Handle new files\dirs.
+    # Change state for existing files\dirs
+    # Index stable files
+    # Remove non existing files\dirs is handled in method: remove_unmarked_paths
     def monitor
-      was_changed = false
-      new_state = nil
-      self_stat = File.lstat(@path) rescue nil
-      if self_stat == nil
-        new_state = FileStatEnum::NON_EXISTING
-        @files = nil
-        @dirs = nil
-        @cycles = 0
-      elsif @files == nil
-        new_state = FileStatEnum::NEW
-        @files = Hash.new
-        @dirs = Hash.new
-        @cycles = 0
-        update_dir
-      elsif update_dir
-        new_state = FileStatEnum::CHANGED
-        @cycles = 0
-      else
-        new_state = FileStatEnum::UNCHANGED
-        @cycles += 1
-        if @cycles >= @stable_state
-          new_state = FileStatEnum::STABLE
-        end
-      end
 
-      # The assignment
-      set_state(new_state)
-    end
+      # Algorithm:
+      # assume that current dir is present
+      # ls (glob) the dir path for child dirs and files
+      # if child file is not already present, add it as new, mark it and handle its state
+      # if file already present, mark it and handle its state.
+      # if child dir is not already present, add it as new, mark it and propagates
+      #    the recursive call
+      # if child dir already present, mark it and handle its state
+      # marked files will not be remove in next remove phase
 
-    # Updates the files and directories hashes and globs the directory for changes.
-    def update_dir
-      was_changed = false
+      # ls (glob) the dir path for child dirs and files
+      globed_paths_enum = Dir.glob(@path + "/*").to_enum
+      loop do
+        globed_path = globed_paths_enum.next rescue break
 
-      # monitor existing and absent files
-      @files.each_value do |file|
-        file.monitor
-
-        if file.state == FileStatEnum::NON_EXISTING
-          was_changed = true
-          rm_file(file)
-        end
-      end
-
-      @dirs.each_value do |dir|
-        dir.monitor
-
-        if dir.state == FileStatEnum::NON_EXISTING
-          was_changed = true
-          rm_dir(dir)
-        end
-      end
-
-      was_changed = was_changed || glob_me
-
-      return was_changed
-    end
-
-    #  Globs the directory for new files and directories
-    def glob_me
-      was_changed = false
-      files = Dir.glob(path + "/*")
-
-      # add and monitor new files and directories
-      files.each do |file|
-        # keep only files with names in UTF-8
-        next if @non_utf8_paths[file]
-        check_utf_8_encoding_file = file.clone
+        # UTF-8 - keep only files with names in
+        next if @non_utf8_paths[globed_path]
+        check_utf_8_encoding_file = globed_path.clone
         unless check_utf_8_encoding_file.force_encoding("UTF-8").valid_encoding?
           Log.warning("Non UTF-8 file name '#{check_utf_8_encoding_file}', skipping.")
-          @non_utf8_paths[file]=true
+          @non_utf8_paths[globed_path]=true
+          check_utf_8_encoding_file=nil
           next
         end
-        file_stat = File.lstat(file) rescue nil
-        if (file_stat.directory?)
-          unless (has_dir?(file)) # new directory
-                                  # change state only for existing directories
-                                  # newly added directories have to remain with NEW state
-            was_changed = true
-            ds = DirStat.new(file, self.stable_state)
-            ds.set_event_queue(@event_queue) unless @event_queue.nil?
-            ds.monitor
-            add_dir(ds)
+
+        # Get File \ Dir status
+        globed_path_stat = File.lstat(globed_path) rescue next  # File or dir removed from OS file system
+        if globed_path_stat.file?
+          # File case
+          child_stat = @files[globed_path]
+          if child_stat
+            # file child exists in Tree
+            child_stat.marked = true
+            if child_stat.changed?(globed_path_stat)
+              # Update changed status
+              child_stat.state = FileStatEnum::CHANGED
+              child_stat.cycles = 0
+              child_stat.size = globed_path_stat.size
+              child_stat.modification_time = globed_path_stat.mtime.to_i
+              @@log.info("CHANGED file: " + globed_path)
+              @@log.outputters[0].flush if Params['log_flush_each_message']
+              #Log.debug1("CHANGED file: #{globed_path}")
+              # remove file with changed checksum. File will be added once indexed
+              $local_content_data_lock.synchronize{
+                $local_content_data.remove_instance(Params['local_server_name'], globed_path)
+              }
+            else
+              # File status is the same
+              if child_stat.state != FileStatEnum::STABLE
+                child_stat.state = FileStatEnum::UNCHANGED
+                child_stat.cycles += 1
+                if child_stat.cycles >= ::FileMonitoring.stable_state
+                  child_stat.state = FileStatEnum::STABLE
+                  @@log.info("STABLE file: " + globed_path)
+                  @@log.outputters[0].flush if Params['log_flush_each_message']
+                else
+                  @@log.info("UNCHANGED file: " + globed_path)
+                  @@log.outputters[0].flush if Params['log_flush_each_message']
+                end
+              end
+            end
+          else
+            # new File child:
+            child_stat = FileStat.new(globed_path, FileStatEnum::NEW,
+                                      globed_path_stat.size, globed_path_stat.mtime.to_i)
+            @@log.info("NEW file: " + globed_path)
+            @@log.outputters[0].flush if Params['log_flush_each_message']
+            child_stat.marked = true
+            add_file(child_stat)
           end
-        else # it is a file
-          unless(has_file?(file)) # new file
-                                  # change state only for existing directories
-                                  # newly added directories have to remain with NEW state
-            was_changed = true
-            # check if file exist in content data cache - set state to STABLE
-            file_state = FileStatEnum::NON_EXISTING
-            fs = FileStat.new(file, self.stable_state)
-            fs.set_event_queue(@event_queue) unless @event_queue.nil?
-            fs.monitor
-            add_file(fs)
+        else
+          # Dir
+          child_stat = @dirs[globed_path]
+          # Add Dir if not exists in Tree
+          unless child_stat
+            child_stat = DirStat.new(globed_path)
+            add_dir(child_stat)
+            @@log.info("NEW dir: " + globed_path)
+            @@log.outputters[0].flush if Params['log_flush_each_message']
           end
+          child_stat.marked = true
+          #recursive call for dirs
+          child_stat.monitor
         end
       end
-
-      return was_changed
+      GC.start
     end
 
-    protected :add_dir, :add_file, :rm_dir, :rm_file, :update_dir, :glob_me
+    def index
+      files_enum = @files.each_value
+      index_counter = $indexed_file_count  # to check if files where actually indexed
+      loop do
+        file_stat = files_enum.next rescue break
+        file_stat.index  # file index
+      end
+      GC.start if index_counter != $indexed_file_count  # GC only if files where indexed
+
+      dirs_enum = @dirs.each_value
+      loop do
+        dir_stat = dirs_enum.next rescue break
+        dir_stat.index  # dir recursive call
+      end
+    end
+
+    protected :add_dir, :add_file, :rm_dir, :rm_file
   end
 
 end

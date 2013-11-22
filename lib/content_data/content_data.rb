@@ -46,34 +46,44 @@ module ContentData
     end
 
     def clone_instances_info
-      @instances_info.keys.inject({}) { |clone_instances_info, location|
+      clone_instances_info = {}
+      instances_info_enum = @instances_info.each_key
+      loop {
+        location = instances_info_enum.next rescue break
         clone_instances_info[[location[0].clone, location[1].clone]] = @instances_info[location].clone
-        clone_instances_info
       }
+      clone_instances_info
     end
 
     def clone_contents_info
-      @contents_info.keys.inject({}) { |clone_contents_info, checksum|
+      clone_contents_info = {}
+      contents_info_enum = @contents_info.each_key
+      loop {
+        checksum = contents_info_enum.next rescue break
         instances = @contents_info[checksum]
         size = instances[0]
         content_time = instances[2]
         instances_db = instances[1]
         instances_db_cloned = {}
-        instances_db.keys.each { |location|
+        instances_db_enum = instances_db.each_key
+        loop {
+          location =  instances_db_enum.next rescue break
           instance_mtime = instances_db[location]
           instances_db_cloned[[location[0].clone,location[1].clone]]=instance_mtime
         }
         clone_contents_info[checksum] = [size,
                               instances_db_cloned,
                               content_time]
-        clone_contents_info
       }
+      clone_contents_info
     end
 
     # iterator over @contents_info data structure (not including instances)
     # block is provided with: checksum, size and content modification time
     def each_content(&block)
-      @contents_info.keys.each { |checksum|
+      contents_enum = @contents_info.each_key
+      loop {
+        checksum = contents_enum.next rescue break
         content_val = @contents_info[checksum]
         # provide checksum, size and content modification time to the block
         block.call(checksum,content_val[0], content_val[2])
@@ -84,9 +94,13 @@ module ContentData
     # block is provided with: checksum, size, content modification time,
     #   instance modification time, server and file path
     def each_instance(&block)
-      @contents_info.keys.each { |checksum|
+      contents_enum = @contents_info.each_key
+      loop {
+        checksum = contents_enum.next rescue break
         content_info = @contents_info[checksum]
-        content_info[1].keys.each {|location|
+        content_info_enum = content_info[1].each_key
+        loop {
+          location = content_info_enum.next rescue break
           # provide the block with: checksum, size, content modification time,instance modification time,
           #   server and path.
           instance_modification_time = content_info[1][location]
@@ -101,7 +115,9 @@ module ContentData
     #   instance modification time, server and file path
     def content_each_instance(checksum, &block)
       content_info = @contents_info[checksum]
-      content_info[1].keys.each {|location|
+      instances_db_enum = content_info[1].each_key
+      loop {
+        location = instances_db_enum.next rescue break
         # provide the block with: checksum, size, content modification time,instance modification time,
         #   server and path.
         instance_modification_time = content_info[1][location]
@@ -115,11 +131,7 @@ module ContentData
     end
 
     def instances_size()
-      counter=0
-      @contents_info.values.each { |content_info|
-        counter += content_info[1].length
-      }
-      counter
+      @instances_info.length
     end
 
     def checksum_instances_size(checksum)
@@ -194,7 +206,9 @@ module ContentData
     # input params: server & dir_to_remove - are used to check each instance unique key (called location)
     # removes also content\s, if a content\s become\s empty after removing instance\s
     def remove_directory(dir_to_remove, server)
-      @contents_info.keys.each { |checksum|
+      contents_enum = @contents_info.each_key
+      loop {
+        checksum = contents_enum.next rescue break
         instances =  @contents_info[checksum][1]
         instances.each_key { |location|
           if location[0] == server and location[1].scan(dir_to_remove).size > 0
@@ -254,19 +268,57 @@ module ContentData
       return_str
     end
 
+    # Write content data to file.
+    # Write is using chunks (for both content chunks and instances chunks)
+    # Chunk is used to maximize GC affect. The temporary memory of each chunk is GCed.
+    # Without the chunks used in a dipper stack level, GC keeps the temporary objects as part of the stack context.
     def to_file(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
       file = File.open(filename, 'w')
       file.write("#{@contents_info.length}\n")
-      each_content { |checksum, size, content_mod_time|
-        file.write("#{checksum},#{size},#{content_mod_time}\n")
+      contents_enum = @contents_info.each_key
+      content_chunks = @contents_info.length / 5000 + 1
+      content_chunks.times { |index|
+        to_file_contents_chunk(file,contents_enum,5000)
+        GC.start
       }
       file.write("#{@instances_info.length}\n")
-      each_instance { |checksum, size, _, instance_mod_time, server, path|
-        file.write("#{checksum},#{size},#{server},#{path},#{instance_mod_time}\n")
+      contents_enum = @contents_info.each_key
+      instances_chunks = @instances_info.length / 5000 + 1
+      instances_chunks.times { |index|
+        to_file_instances_chunk(file,contents_enum,5000)
+        GC.start
       }
       file.close
+
+    end
+
+    def to_file_contents_chunk(file, contents_enum, chunk_size)
+      loop {
+        checksum = contents_enum.next rescue return
+        content_info = @contents_info[checksum]
+        file.write("#{checksum},#{content_info[0]},#{content_info[2]}\n")
+        chunk_size-=1
+        return if 0==chunk_size
+      }
+    end
+
+    def to_file_instances_chunk(file, contents_enum, chunk_size)
+      loop {
+        checksum = contents_enum.next rescue break
+        content_info = @contents_info[checksum]
+        instances_db_enum = content_info[1].each_key
+        loop {
+          location = instances_db_enum.next rescue break
+          # provide the block with: checksum, size, content modification time,instance modification time,
+          #   server and path.
+          instance_modification_time = content_info[1][location]
+          file.write("#{checksum},#{content_info[0]},#{location[0]},#{location[1]},#{instance_modification_time}\n")
+          chunk_size-=1
+          return if chunk_size==0
+        }
+      }
     end
 
     # TODO validation that file indeed contains ContentData missing
@@ -306,18 +358,24 @@ module ContentData
     # for each content, all time fields (content and instances) are replaced with the
     # min time found, while going through all time fields.
     def unify_time()
-      @contents_info.keys.each { |checksum|
+      contents_enum = @contents_info.each_key
+      loop {
+        checksum = contents_enum.next rescue break
         content_info = @contents_info[checksum]
         min_time_per_checksum = content_info[2]
         instances = content_info[1]
-        instances.keys.each { |location|
+        instances_enum = instances.each_key
+        loop {
+          location = instances_enum.next rescue break
           instance_mod_time = instances[location]
           if instance_mod_time < min_time_per_checksum
             min_time_per_checksum = instance_mod_time
           end
         }
         # update all instances with min time
-        instances.keys.each { |location|
+        instances_enum = instances.each_key
+        loop {
+          location = instances_enum.next rescue break
           instances[location] = min_time_per_checksum
         }
         # update content time with min time
@@ -360,11 +418,15 @@ module ContentData
       end
 
       is_valid = true
-      @contents_info.keys.each { |checksum|
+      contents_enum = @contents_info.each_key
+      loop {
+        checksum = contents_enum.next rescue break
         instances = @contents_info[checksum]
         content_size = instances[0]
         content_mtime = instances[2]
-        instances[1].keys.each { |unique_path|
+        instances_enum = instances[1].each_key
+        loop {
+          unique_path = instances_enum.next rescue break
           instance_mtime = instances[1][unique_path]
           instance_info = [checksum, content_mtime, content_size, instance_mtime]
           instance_info.concat(unique_path)
