@@ -370,13 +370,13 @@ module ContentData
       # loop over instances lines (using chunks) and add instances
 
       file = File.open(filename, 'r')
-
+      puts "file starts at line: #{file.lineno}"
       # Get number of contents (at first line)
       number_of_contents = file.gets  # this gets the next line or return nil at EOF
       puts "first line:#{number_of_contents}"
       return reset_load_from_file(filename, file) unless number_of_contents
-      file.lineno = 2 + number_of_contents.to_i
-      puts "next line number:#{2 + number_of_contents.to_i}"
+      file.lineno = 1 + number_of_contents.to_i
+      puts "next line number:#{1 + number_of_contents.to_i}"
 
       # get number of instances
       number_of_instances = file.gets
