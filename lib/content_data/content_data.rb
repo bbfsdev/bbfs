@@ -381,7 +381,7 @@ module ContentData
       # get number of instances
       number_of_instances = file.gets
       puts "number of instances:#{number_of_instances}"
-      return reset_load_from_file(filename, file) unless number_of_instances
+      return reset_load_from_file(filename, file) unless number_of_instances and number_of_instances.is_a?(Numeric)
 
       # read in chunks and GC
       instances_chunks = number_of_instances.to_i / 5000
