@@ -375,8 +375,8 @@ module ContentData
       number_of_contents = file.gets  # this gets the next line or return nil at EOF
       puts "first line:#{number_of_contents}"
       return reset_load_from_file(filename, file) unless number_of_contents
-      file.lineno = 1 + number_of_contents.to_i
-      puts "next line number:#{1 + number_of_contents.to_i}"
+      file.lineno = number_of_contents.to_i
+      puts "next line number:#{number_of_contents.to_i}"
 
       # get number of instances
       number_of_instances = file.gets
@@ -428,7 +428,7 @@ module ContentData
     end
 
     def reset_load_from_file(file_name, file_io)
-      Log.warning("unexpected EOF for file:#{file_name}. Pls check file format")
+      Log.warning("unexpected format in file:#{file_name}")
       @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
       @instances_info = {}  # location --> checksum to optimize instances query
       file_io.close
