@@ -72,6 +72,7 @@ module FileMonitoring
 
     def index
       if !@indexed and FileStatEnum::STABLE == @state
+        put "Indexing file: #{@path}"
         #index file
         @@digest.reset
         begin

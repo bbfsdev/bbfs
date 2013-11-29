@@ -385,7 +385,6 @@ module ContentData
       }
       # get number of instances
       number_of_instances = file.gets
-      puts "number of instances:#{number_of_instances}"
       unless number_of_instances.match(/^[\d]+$/)  # check that line is of Number format
         return reset_load_from_file(filename, file, "number of instances should be a Number. We got:#{number_of_instances}")
       end
