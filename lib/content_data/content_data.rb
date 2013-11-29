@@ -370,18 +370,18 @@ module ContentData
       # loop over instances lines (using chunks) and add instances
 
       file = File.open(filename, 'r')
-      puts "file starts at line: #{file.lineno}"
       # Get number of contents (at first line)
       number_of_contents = file.gets  # this gets the next line or return nil at EOF
-      puts "first line:#{number_of_contents}"
-      puts "line of last read:#{$.}"
-      return reset_load_from_file(filename, file) unless number_of_contents
-      file.lineno = number_of_contents.to_i
-      puts "next line number:#{number_of_contents.to_i}"
-
+      return reset_load_from_file(filename, file) unless number_of_contents and number_of_contents.is_a?(Numeric)
+      # advance file lines over all contents. We need only the instances data to build the content data object
+      counter = 0
+      loop {
+        file.gets
+        counter += 1
+        break if counter == number_of_contents
+      }
       # get number of instances
       number_of_instances = file.gets
-      puts "line of last read:#{$.}"
       puts "number of instances:#{number_of_instances}"
       return reset_load_from_file(filename, file) unless number_of_instances and number_of_instances.is_a?(Numeric)
 
@@ -430,7 +430,7 @@ module ContentData
     end
 
     def reset_load_from_file(file_name, file_io)
-      Log.warning("unexpected format in file:#{file_name}")
+      Log.error("unexpected format in file:#{file_name}")
       @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
       @instances_info = {}  # location --> checksum to optimize instances query
       file_io.close
