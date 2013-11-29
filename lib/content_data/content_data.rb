@@ -279,53 +279,51 @@ module ContentData
       file.write("#{@contents_info.length}\n")
       contents_enum = @contents_info.each_key
       content_chunks = @contents_info.length / 5000 + 1
-      content_chunks_enum = content_chunks.times
+      chunks_counter = 0
       loop {
-        content_chunks_enum.next rescue break
         to_file_contents_chunk(file,contents_enum,5000)
         GC.start
+        chunks_counter += 1
+        break if chunks_counter == content_chunks
       }
       file.write("#{@instances_info.length}\n")
       contents_enum = @contents_info.each_key
-      instances_chunks = @instances_info.length / 5000 + 1
-      instances_chunks_enum = instances_chunks.times
       loop {
-        instances_chunks.next rescue break
         to_file_instances_chunk(file,contents_enum,5000)
         GC.start
+        chunks_counter += 1
+        break if chunks_counter == content_chunks
       }
       file.close
 
     end
 
     def to_file_contents_chunk(file, contents_enum, chunk_size)
-      chunk_size_enum = chunk_size.times
+      chunk_counter = 0
       loop {
-        chunk_size_enum.next rescue return
         checksum = contents_enum.next rescue return
         content_info = @contents_info[checksum]
         file.write("#{checksum},#{content_info[0]},#{content_info[2]}\n")
+        chunk_counter += 1
+        break if chunk_counter == chunk_size
       }
     end
 
     def to_file_instances_chunk(file, contents_enum, chunk_size)
-      chunk_size_enum = chunk_size.times
-      # finish_chunk flag is used in order to finish write all instances of the last content even if chunk
-      #size is overflowed (not to loos instances of the last content in the loop)
-      finish_chunk = false
+      chunk_counter = 0
       loop {
-        checksum = contents_enum.next rescue break
+        checksum = contents_enum.next rescue return
         content_info = @contents_info[checksum]
         instances_db_enum = content_info[1].each_key
         loop {
-          chunk_size_enum.next rescue finish_chunk = true
           location = instances_db_enum.next rescue break
           # provide the block with: checksum, size, content modification time,instance modification time,
           #   server and path.
           instance_modification_time = content_info[1][location]
           file.write("#{checksum},#{content_info[0]},#{location[0]},#{location[1]},#{instance_modification_time}\n")
         }
-        return if finish_chunk
+        chunk_counter += 1
+        break if chunk_counter == chunk_size
       }
     end
 
