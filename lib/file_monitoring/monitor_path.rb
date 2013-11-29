@@ -68,11 +68,9 @@ module FileMonitoring
 
       # flag to indicate if file was indexed
       @indexed = indexed
-      puts "creating file: #{@path}. Index=#{@indexed}"
     end
 
     def index
-      puts "at index file: #{@path}. Index=#{@indexed}"
       if !@indexed and FileStatEnum::STABLE == @state
         #index file
         @@digest.reset

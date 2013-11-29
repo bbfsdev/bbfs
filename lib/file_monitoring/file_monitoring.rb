@@ -37,6 +37,7 @@ module FileMonitoring
       # If file is NOT under monitoring path - skip (not a valid usage)
       unless $local_content_data.empty?
         Log.info("Start build data base from loaded file")
+        inst_count = 0
         $local_content_data.each_instance {
             |_, size, _, mod_time, _, path|
           # construct sub paths array from full file path:
@@ -63,9 +64,11 @@ module FileMonitoring
             # monitor path was found. Add to tree
             # start the recursive call with next sub path index
             ::FileMonitoring.stable_state = dir_stat[1]
+            inst_count += 1
             dir_stat[0].load_instance(sub_paths, sub_paths_index+1, size, mod_time)
           }
         }
+        puts "loaded instances:#{inst_count}"
         Log.info("End build data base from loaded file")
         $last_content_data_id = $local_content_data.unique_id
       end
