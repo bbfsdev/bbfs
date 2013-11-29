@@ -372,8 +372,8 @@ module ContentData
       file = File.open(filename, 'r')
       # Get number of contents (at first line)
       number_of_contents = file.gets  # this gets the next line or return nil at EOF
-      unless (number_of_contents and number_of_contents.is_a?(Numeric))
-        return reset_load_from_file(filename, file, "number of contents should be Numeric./We got:#{number_of_contents}")
+      unless number_of_contents.match(/^[\d]+$/)  # check that line is of Number format
+        return reset_load_from_file(filename, file, "number of contents should be a number. We got:#{number_of_contents}")
       end
 
       # advance file lines over all contents. We need only the instances data to build the content data object
@@ -381,31 +381,31 @@ module ContentData
       loop {
         file.gets
         counter += 1
-        break if counter == number_of_contents
+        break if counter == number_of_contents.to_i
       }
       # get number of instances
       number_of_instances = file.gets
       puts "number of instances:#{number_of_instances}"
-      unless (number_of_instances and number_of_instances.is_a?(Numeric))
-        return reset_load_from_file(filename, file, "number of instances should be Numeric./We got:#{number_of_instances}")
+      unless number_of_instances.match(/^[\d]+$/)  # check that line is of Number format
+        return reset_load_from_file(filename, file, "number of instances should be a Number. We got:#{number_of_instances}")
       end
 
       # read in chunks and GC
       instances_chunks = number_of_instances.to_i / 5000
       instances_chunks += 1 if (number_of_instances.to_i > instances_chunks * 5000)
-      last_chunk_size = number_of_instances.to_i - ((instances_chunks - 1) * 5000)
-      instances_chunks_enum = instances_chunks.times
+      chunk_index = 0
       loop {
-        chunk_index = instances_chunks_enum.next rescue break
         chunk_size = 5000
         if chunk_index + 1 == instances_chunks
-          # last chunk
+          # update last chunk size
           chunk_size = number_of_instances.to_i - (chunk_index * 5000)
         end
         ret_val = read_instances_chunk(filename, file, chunk_size)
         return reset_load_from_file(filename, file, "method read_instances_chunk failed") unless ret_val
 
         GC.start
+        break if chunk_index + 1 == instances_chunks
+        chunk_index += 1
       }
       file.close
     end
