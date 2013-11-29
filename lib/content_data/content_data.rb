@@ -372,8 +372,10 @@ module ContentData
       file = File.open(filename, 'r')
       # Get number of contents (at first line)
       number_of_contents = file.gets  # this gets the next line or return nil at EOF
-      return reset_load_from_file(filename, file, "number of contents should be Numeric./We got:#{number_of_contents}")/
-          unless number_of_contents and number_of_contents.is_a?(Numeric)
+      unless (number_of_contents and number_of_contents.is_a?(Numeric))
+        return reset_load_from_file(filename, file, "number of contents should be Numeric./We got:#{number_of_contents}")
+      end
+
       # advance file lines over all contents. We need only the instances data to build the content data object
       counter = 0
       loop {
@@ -384,8 +386,9 @@ module ContentData
       # get number of instances
       number_of_instances = file.gets
       puts "number of instances:#{number_of_instances}"
-      return reset_load_from_file(filename, file, "number of instances should be Numeric./We got:#{number_of_instances}")/
-          unless number_of_instances and number_of_instances.is_a?(Numeric)
+      unless (number_of_instances and number_of_instances.is_a?(Numeric))
+        return reset_load_from_file(filename, file, "number of instances should be Numeric./We got:#{number_of_instances}")
+      end
 
       # read in chunks and GC
       instances_chunks = number_of_instances.to_i / 5000
