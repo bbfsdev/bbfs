@@ -288,6 +288,7 @@ module ContentData
       }
       file.write("#{@instances_info.length}\n")
       contents_enum = @contents_info.each_key
+      chunks_counter = 0
       loop {
         to_file_instances_chunk(file,contents_enum,5000)
         GC.start
