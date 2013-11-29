@@ -391,7 +391,9 @@ module ContentData
 
       # read in chunks and GC
       instances_chunks = number_of_instances.to_i / 5000
+      puts "number of instances: #{number_of_instances}"
       instances_chunks += 1 if (number_of_instances.to_i > instances_chunks * 5000)
+      puts "number of instances chunks: #{instances_chunks}"
       chunk_index = 0
       loop {
         chunk_size = 5000
