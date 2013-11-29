@@ -391,23 +391,17 @@ module ContentData
 
       # read in chunks and GC
       instances_chunks = number_of_instances.to_i / 5000
-      puts "number of instances: #{number_of_instances}"
       instances_chunks += 1 if (number_of_instances.to_i > instances_chunks * 5000)
-      puts "number of instances chunks: #{instances_chunks}"
       chunk_index = 0
       loop {
-        puts "start loop:#{chunk_index}"
         chunk_size = 5000
         if chunk_index + 1 == instances_chunks
           # update last chunk size
           chunk_size = number_of_instances.to_i - (chunk_index * 5000)
         end
-        puts "deb 1"
         return unless read_instances_chunk(filename, file, chunk_size)
-        puts "deb 2"
         GC.start
         break if chunk_index + 1 == instances_chunks
-        puts "deb 3"
         chunk_index += 1
       }
       file.close
@@ -437,7 +431,6 @@ module ContentData
         chunk_index += 1
         break if chunk_index == chunk_size
       }
-      puts "instances_size:#{instances_size}"
       true
     end
 

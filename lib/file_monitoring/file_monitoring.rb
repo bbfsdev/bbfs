@@ -55,34 +55,23 @@ module FileMonitoring
           # sub_paths holds array => ["/dir1","/dir1/dir2","/dir1/dir2/file_name"]
 
           # Loop over monitor paths to start build tree under each
-          try_path = sub_paths[sub_paths.length-1]
-          try_flag = false
-          try_str = ""
           dir_stat_array.each { | dir_stat|
             # check if monitor path is one of the sub paths and find it's sub path index
             # if index is found then it the monitor path
             # the next index indicates the next sub path to insert to the tree
             # the index will be raised at each recursive call down the tree
             sub_paths_index = sub_paths.index(dir_stat[0].path)
-            if sub_paths_index.nil?  # monitor path was not found. skip this instance.
-              try_str += "path #{try_path} was not found at dir:#{dir_stat[0].path}\n"
-              next
-            end
+            next if sub_paths_index.nil?  # monitor path was not found. skip this instance.
+
             # monitor path was found. Add to tree
             # start the recursive call with next sub path index
             ::FileMonitoring.stable_state = dir_stat[1]
             inst_count += 1
-            try_flag = true
             dir_stat[0].load_instance(sub_paths, sub_paths_index+1, size, mod_time)
             break
           }
-          if !try_flag
-            puts "path:#{try_path} was not loaded!\n#{try_str}"
-            exit
-          end
         }
-        puts "loaded instances:#{inst_count}"
-        Log.info("End build data base from loaded file")
+        Log.info("End build data base from loaded file. loaded instances:#{inst_count}")
         $last_content_data_id = $local_content_data.unique_id
       end
 
