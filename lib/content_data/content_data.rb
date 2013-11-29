@@ -374,12 +374,14 @@ module ContentData
       # Get number of contents (at first line)
       number_of_contents = file.gets  # this gets the next line or return nil at EOF
       puts "first line:#{number_of_contents}"
+      puts "line of last read:#{$.}"
       return reset_load_from_file(filename, file) unless number_of_contents
       file.lineno = number_of_contents.to_i
       puts "next line number:#{number_of_contents.to_i}"
 
       # get number of instances
       number_of_instances = file.gets
+      puts "line of last read:#{$.}"
       puts "number of instances:#{number_of_instances}"
       return reset_load_from_file(filename, file) unless number_of_instances and number_of_instances.is_a?(Numeric)
 
