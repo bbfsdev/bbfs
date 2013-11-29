@@ -68,6 +68,7 @@ module FileMonitoring
 
       # flag to indicate if file was indexed
       @indexed = indexed
+      puts "creating file: #{@path}. Index=#{@indexed}"
     end
 
     def index
