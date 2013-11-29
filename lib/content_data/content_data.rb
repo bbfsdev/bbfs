@@ -433,7 +433,7 @@ module ContentData
     end
 
     def reset_load_from_file(file_name, file_io, err_msg)
-      Log.error("unexpected error reading file:#{file_name}\nError message:#{err_msg})")
+      Log.error("unexpected error reading file:#{file_name}\nError message:#{err_msg}")
       @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
       @instances_info = {}  # location --> checksum to optimize instances query
       file_io.close
