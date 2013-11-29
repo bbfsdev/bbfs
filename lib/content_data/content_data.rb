@@ -400,8 +400,7 @@ module ContentData
           # update last chunk size
           chunk_size = number_of_instances.to_i - (chunk_index * 5000)
         end
-        ret_val = read_instances_chunk(filename, file, chunk_size)
-        return reset_load_from_file(filename, file, "method read_instances_chunk failed") unless ret_val
+        return unless read_instances_chunk(filename, file, chunk_size)
 
         GC.start
         break if chunk_index + 1 == instances_chunks
@@ -411,11 +410,10 @@ module ContentData
     end
 
     def  read_instances_chunk(filename, file, chunk_size)
-      chunk_size_enum = chunk_size.times
+      chunk_index = 0
       loop {
-        chunk_size_enum.next rescue break
         instance_line = file.gets
-        return reset_load_from_file(filename, file) unless instance_line
+        return reset_load_from_file(filename, file, "Expected to read Instance line but reached EOF") unless instance_line
         parameters = instance_line.split(',')
         # bugfix: if file name consist a comma then parsing based on comma separating fails
         if (parameters.size > 5)
@@ -432,6 +430,8 @@ module ContentData
                      parameters[2],
                      parameters[3],
                      parameters[4].to_i)
+        chunk_index += 1
+        break if chunk_index == chunk_size
       }
     end
 
