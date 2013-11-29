@@ -434,6 +434,7 @@ module ContentData
         chunk_index += 1
         break if chunk_index == chunk_size
       }
+      puts "instances_size:#{instances_size}"
     end
 
     def reset_load_from_file(file_name, file_io, err_msg)
