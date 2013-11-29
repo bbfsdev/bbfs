@@ -46,6 +46,7 @@ module ContentServer
     # initial global local content data object
     $local_content_data_lock = Mutex.new
     $local_content_data = ContentData::ContentData.new
+    $last_content_data_id = $local_content_data.unique_id
 
     # Read here for initial content data that exist from previous system run
     content_data_path = Params['local_content_data_path']

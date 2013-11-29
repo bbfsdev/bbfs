@@ -329,7 +329,7 @@ module ContentData
     end
 
     # TODO validation that file indeed contains ContentData missing
-    def from_file(filename)
+    def from_file_old(filename)
       lines = IO.readlines(filename)
       number_of_contents = lines[0].to_i
       i = 1 + number_of_contents
@@ -363,7 +363,7 @@ module ContentData
     end
 
     # Loading db from file using chunks for better memory performance
-    def from_file_using_chunks(filename)
+    def from_file(filename)
       # read first line (number of contents)
       # calculate line number (number of instances)
       # read number of instances.
@@ -375,7 +375,7 @@ module ContentData
       number_of_contents = file.gets  # this gets the next line or return nil at EOF
       puts "first line:#{number_of_contents}"
       return reset_load_from_file(filename, file) unless number_of_contents
-      f.lineno = 2 + number_of_contents.to_i
+      file.lineno = 2 + number_of_contents.to_i
       puts "next line number:#{2 + number_of_contents.to_i}"
 
       # get number of instances
