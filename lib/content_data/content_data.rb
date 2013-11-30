@@ -415,6 +415,7 @@ module ContentData
         chunk_index += 1
       }
       file.close
+      puts "instances size #{instances_size}"
     end
 
     def  read_contents_chunk(filename, file, chunk_size)
