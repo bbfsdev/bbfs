@@ -38,7 +38,6 @@ module FileMonitoring
       unless $local_content_data.empty?
         Log.info("Start build data base from loaded file")
         inst_count = 0
-        puts "number of instances to load: #{$local_content_data.instances_size}"
         $local_content_data.each_instance {
             |_, size, _, mod_time, _, path|
           # construct sub paths array from full file path:
