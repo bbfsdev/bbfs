@@ -425,6 +425,7 @@ module ContentData
         chunk_index += 1
         break if chunk_index == chunk_size
       }
+      true
     end
 
     def  read_instances_chunk(filename, file, chunk_size)
