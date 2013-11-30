@@ -378,14 +378,14 @@ module ContentData
 
       # advance file lines over all contents. We need only the instances data to build the content data object
       # use chunks and GC
-      contents_chunks = number_of_contents.to_i / 500
-      contents_chunks += 1 if (contents_chunks * 500 < number_of_contents.to_i)
+      contents_chunks = number_of_contents.to_i / 5000
+      contents_chunks += 1 if (contents_chunks * 5000 < number_of_contents.to_i)
       chunk_index = 0
       loop {
-        chunk_size = 500
+        chunk_size = 5000
         if chunk_index + 1 == contents_chunks
           # update last chunk size
-          chunk_size = number_of_contents.to_i - (chunk_index * 500)
+          chunk_size = number_of_contents.to_i - (chunk_index * 5000)
         end
         return unless read_contents_chunk(filename, file, chunk_size)
         GC.start
@@ -400,14 +400,14 @@ module ContentData
       end
 
       # read in instances chunks and GC
-      instances_chunks = number_of_instances.to_i / 500
-      instances_chunks += 1 if (instances_chunks * 500 < number_of_instances.to_i)
+      instances_chunks = number_of_instances.to_i / 5000
+      instances_chunks += 1 if (instances_chunks * 5000 < number_of_instances.to_i)
       chunk_index = 0
       loop {
-        chunk_size = 500
+        chunk_size = 5000
         if chunk_index + 1 == instances_chunks
           # update last chunk size
-          chunk_size = number_of_instances.to_i - (chunk_index * 500)
+          chunk_size = number_of_instances.to_i - (chunk_index * 5000)
         end
         return unless read_instances_chunk(filename, file, chunk_size)
         GC.start
