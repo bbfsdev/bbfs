@@ -404,7 +404,7 @@ module ContentData
       instances_chunks += 1 if (instances_chunks * 500 < number_of_instances.to_i)
       chunk_index = 0
       loop {
-        chunk_size = 5000
+        chunk_size = 500
         if chunk_index + 1 == instances_chunks
           # update last chunk size
           chunk_size = number_of_instances.to_i - (chunk_index * 500)
