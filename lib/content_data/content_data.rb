@@ -377,21 +377,31 @@ module ContentData
       end
 
       # advance file lines over all contents. We need only the instances data to build the content data object
-      counter = 0
+      # use chunks and GC
+      contents_chunks = number_of_contents.to_i / 5000
+      contents_chunks += 1 if (contents_chunks * 5000 < number_of_contents.to_i)
+      chunk_index = 0
       loop {
-        file.gets
-        counter += 1
-        break if counter == number_of_contents.to_i
+        chunk_size = 5000
+        if chunk_index + 1 == contents_chunks
+          # update last chunk size
+          chunk_size = number_of_contents.to_i - (chunk_index * 5000)
+        end
+        return unless read_contents_chunk(filename, file, chunk_size)
+        GC.start
+        break if chunk_index + 1 == contents_chunks
+        chunk_index += 1
       }
+
       # get number of instances
       number_of_instances = file.gets
       unless number_of_instances.match(/^[\d]+$/)  # check that line is of Number format
         return reset_load_from_file(filename, file, "number of instances should be a Number. We got:#{number_of_instances}")
       end
 
-      # read in chunks and GC
+      # read in instances chunks and GC
       instances_chunks = number_of_instances.to_i / 5000
-      instances_chunks += 1 if (number_of_instances.to_i > instances_chunks * 5000)
+      instances_chunks += 1 if (instances_chunks * 5000 < number_of_instances.to_i)
       chunk_index = 0
       loop {
         chunk_size = 5000
@@ -405,6 +415,16 @@ module ContentData
         chunk_index += 1
       }
       file.close
+    end
+
+    def  read_contents_chunk(filename, file, chunk_size)
+      chunk_index = 0
+      loop {
+        return reset_load_from_file(filename, file, "Expecting content line but " +
+            "reached end of file after line #{$.}") unless file.gets
+        chunk_index += 1
+        break if chunk_index == chunk_size
+      }
     end
 
     def  read_instances_chunk(filename, file, chunk_size)
