@@ -42,6 +42,9 @@ remote_content_save_timeout: 120
 #Cycles where backup is checking if sync is required between remote and backup contents
 backup_check_delay: 60
 
+#Cycles where server write the content data to a local file
+data_flush_delay: 60
+
 ##########process variables monitoring parameters
 enable_monitoring: true
 #Browing on server:port will show the varialbes
