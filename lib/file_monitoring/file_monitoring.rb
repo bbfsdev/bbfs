@@ -36,7 +36,7 @@ module FileMonitoring
       # If file is under monitoring path - Add to DirStat tree as stable with path,size,mod_time read from file
       # If file is NOT under monitoring path - skip (not a valid usage)
       unless $local_content_data.empty?
-        Log.info("Start build data base from loaded file")
+        Log.info("Start build data base from loaded file. This could take several minutes")
         inst_count = 0
         $local_content_data.each_instance {
             |_, size, _, mod_time, _, path|
