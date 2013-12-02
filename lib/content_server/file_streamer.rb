@@ -195,6 +195,7 @@ module ContentServer
                       "content.nil?:#{content.nil?}, content_checksum:#{content_checksum}")
         return false
       end
+      true
     end
 
     # open new stream
