@@ -150,7 +150,7 @@ module TestingMemory
     dir_count = ObjectSpace.each_object(FileMonitoring::DirStat).count
     current_objects_counters['DirStat'] = dir_count
     file_count = ObjectSpace.each_object(FileMonitoring::FileStat).count
-    current_objects_counters['FileStat'] = file_count-dir_count
+    current_objects_counters['FileStat'] = file_count
 
     # Generate report and update global counters
     report = ""
