@@ -40,7 +40,7 @@ module ContentServer
 
       # Update remote content data and write to file if changed ContentData received
       if(message.unique_id != @last_content_data_id)
-        path = File.join(@content_server_content_data_path, @last_save_timestamp.to_s + '.cd')
+        path = File.join(@content_server_content_data_path, @last_fetch_timestamp.to_s + '.cd')
         FileUtils.makedirs(@content_server_content_data_path) unless \
               File.directory?(@content_server_content_data_path)
         $remote_content_data_lock.synchronize{
