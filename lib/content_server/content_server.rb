@@ -4,7 +4,6 @@ require 'thread'
 
 require 'content_data'
 require 'content_server/content_receiver'
-require 'content_server/queue_indexer'
 require 'content_server/queue_copy'
 require 'content_server/remote_content'
 require 'file_indexing'
