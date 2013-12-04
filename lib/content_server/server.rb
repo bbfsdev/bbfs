@@ -75,7 +75,7 @@ module ContentServer
       current_objects_counters['DirStat'] = dir_count
       file_count = ObjectSpace.each_object(FileMonitoring::FileStat).count
       $process_vars.set('FileStat count', file_count-dir_count)
-      current_objects_counters['FileStat'] = file_count-dir_count
+      current_objects_counters['FileStat'] = file_count
 
       # Generate report and update global counters
       report = ""

@@ -190,11 +190,13 @@ module ContentServer
         handle_new_stream(file_checksum, 0) if !@streams.key?(file_checksum)
         # Finalize the file copy.
         handle_last_chunk(file_checksum)
+        return true
       else
         Log.warning("Unexpected receive chuck message. file_checksum:#{file_checksum}, " \
                       "content.nil?:#{content.nil?}, content_checksum:#{content_checksum}")
         return false
       end
+      Log.error('Code should never reach this point')
     end
 
     # open new stream

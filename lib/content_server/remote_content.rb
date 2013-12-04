@@ -23,7 +23,6 @@ module ContentServer
     def initialize(host, port, local_backup_folder)
       @remote_tcp = Networking::TCPClient.new(host, port, method(:receive_content))
       @last_fetch_timestamp = nil
-      @last_save_timestamp = nil
       @last_content_data_id = nil
       @content_server_content_data_path = File.join(local_backup_folder, 'remote',
                                                     host + '_' + port.to_s)
@@ -40,7 +39,7 @@ module ContentServer
 
       # Update remote content data and write to file if changed ContentData received
       if(message.unique_id != @last_content_data_id)
-        path = File.join(@content_server_content_data_path, @last_save_timestamp.to_s + '.cd')
+        path = File.join(@content_server_content_data_path, @last_fetch_timestamp.to_s + '.cd')
         FileUtils.makedirs(@content_server_content_data_path) unless \
               File.directory?(@content_server_content_data_path)
         $remote_content_data_lock.synchronize{

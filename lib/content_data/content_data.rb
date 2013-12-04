@@ -29,6 +29,8 @@ module ContentData
   #      instances which was added to @contents_info
   class ContentData
 
+    CHUNK_SIZE = 5000
+
     def initialize(other = nil)
       if other.nil?
         @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
@@ -275,38 +277,41 @@ module ContentData
     def to_file(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
-      file = File.open(filename, 'w')
-      file.write("#{@contents_info.length}\n")
-      contents_enum = @contents_info.each_key
-      content_chunks = @contents_info.length / 5000 + 1
-      content_chunks.times { |index|
-        to_file_contents_chunk(file,contents_enum,5000)
-        GC.start
+      File.open(filename, 'w') { |file|
+        file.write("#{@contents_info.length}\n")
+        contents_enum = @contents_info.each_key
+        content_chunks = @contents_info.length / CHUNK_SIZE + 1
+        chunks_counter = 0
+        while chunks_counter < content_chunks
+          to_file_contents_chunk(file,contents_enum, CHUNK_SIZE)
+          GC.start
+          chunks_counter += 1
+        end
+        file.write("#{@instances_info.length}\n")
+        contents_enum = @contents_info.each_key
+        chunks_counter = 0
+        while chunks_counter < content_chunks
+          to_file_instances_chunk(file,contents_enum, CHUNK_SIZE)
+          GC.start
+          chunks_counter += 1
+        end
       }
-      file.write("#{@instances_info.length}\n")
-      contents_enum = @contents_info.each_key
-      instances_chunks = @instances_info.length / 5000 + 1
-      instances_chunks.times { |index|
-        to_file_instances_chunk(file,contents_enum,5000)
-        GC.start
-      }
-      file.close
-
     end
 
     def to_file_contents_chunk(file, contents_enum, chunk_size)
-      loop {
+      chunk_counter = 0
+      while chunk_counter < chunk_size
         checksum = contents_enum.next rescue return
         content_info = @contents_info[checksum]
         file.write("#{checksum},#{content_info[0]},#{content_info[2]}\n")
-        chunk_size-=1
-        return if 0==chunk_size
-      }
+        chunk_counter += 1
+      end
     end
 
     def to_file_instances_chunk(file, contents_enum, chunk_size)
-      loop {
-        checksum = contents_enum.next rescue break
+      chunk_counter = 0
+      while chunk_counter < chunk_size
+        checksum = contents_enum.next rescue return
         content_info = @contents_info[checksum]
         instances_db_enum = content_info[1].each_key
         loop {
@@ -315,44 +320,108 @@ module ContentData
           #   server and path.
           instance_modification_time = content_info[1][location]
           file.write("#{checksum},#{content_info[0]},#{location[0]},#{location[1]},#{instance_modification_time}\n")
-          chunk_size-=1
-          return if chunk_size==0
         }
-      }
+        chunk_counter += 1
+        break if chunk_counter == chunk_size
+      end
     end
 
     # TODO validation that file indeed contains ContentData missing
+    # Loading db from file using chunks for better memory performance
     def from_file(filename)
-      lines = IO.readlines(filename)
-      number_of_contents = lines[0].to_i
-      i = 1 + number_of_contents
-      number_of_instances = lines[i].to_i
-      i += 1
-      number_of_instances.times {
-        if lines[i].nil?
-          Log.warning("line ##{i} is nil !!!, Backing filename: #{filename} to #{filename}.bad")
-          FileUtils.cp(filename, "#{filename}.bad")
-          Log.warning("Lines:\n#{lines[i].join("\n")}")
-        else
-          parameters = lines[i].split(',')
-          # bugfix: if file name consist a comma then parsing based on comma separating fails
-          if (parameters.size > 5)
-            (4..parameters.size-2).each do |i|
-              parameters[3] = [parameters[3], parameters[i]].join(",")
-            end
-            (4..parameters.size-2).each do |i|
-              parameters.delete_at(4)
-            end
-          end
+      # read first line (number of contents)
+      # calculate line number (number of instances)
+      # read number of instances.
+      # loop over instances lines (using chunks) and add instances
 
-          add_instance(parameters[0],
-                       parameters[1].to_i,
-                       parameters[2],
-                       parameters[3],
-                       parameters[4].to_i)
+      File.open(filename, 'r') { |file|
+        # Get number of contents (at first line)
+        number_of_contents = file.gets  # this gets the next line or return nil at EOF
+        unless (number_of_contents and number_of_contents.match(/^[\d]+$/))  # check that line is of Number format
+          return reset_load_from_file(filename, file, "number of contents should be a number. We got:#{number_of_contents}")
         end
-        i += 1
+        number_of_contents = number_of_contents.to_i
+        # advance file lines over all contents. We need only the instances data to build the content data object
+        # use chunks and GC
+        contents_chunks = number_of_contents / CHUNK_SIZE
+        contents_chunks += 1 if (contents_chunks * CHUNK_SIZE < number_of_contents)
+        chunk_index = 0
+        while chunk_index < contents_chunks
+          chunk_size = CHUNK_SIZE
+          if chunk_index + 1 == contents_chunks
+            # update last chunk size
+            chunk_size = number_of_contents - (chunk_index * CHUNK_SIZE)
+          end
+          return unless read_contents_chunk(filename, file, chunk_size)
+          GC.start
+          chunk_index += 1
+        end
+
+        # get number of instances
+        number_of_instances = file.gets
+        unless (number_of_instances and number_of_instances.match(/^[\d]+$/))  # check that line is of Number format
+          return reset_load_from_file(filename, file, "number of instances should be a Number. We got:#{number_of_instances}")
+        end
+        number_of_instances = number_of_instances.to_i
+        # read in instances chunks and GC
+        instances_chunks = number_of_instances / CHUNK_SIZE
+        instances_chunks += 1 if (instances_chunks * CHUNK_SIZE < number_of_instances)
+        chunk_index = 0
+        while chunk_index < instances_chunks
+          chunk_size = CHUNK_SIZE
+          if chunk_index + 1 == instances_chunks
+            # update last chunk size
+            chunk_size = number_of_instances - (chunk_index * CHUNK_SIZE)
+          end
+          return unless read_instances_chunk(filename, file, chunk_size)
+          GC.start
+          chunk_index += 1
+        end
       }
+    end
+
+    def read_contents_chunk(filename, file, chunk_size)
+      chunk_index = 0
+      while chunk_index < chunk_size
+        return reset_load_from_file(filename, file, "Expecting content line but " +
+            "reached end of file after line #{$.}") unless file.gets
+        chunk_index += 1
+      end
+      true
+    end
+
+    def  read_instances_chunk(filename, file, chunk_size)
+      chunk_index = 0
+      while chunk_index < chunk_size
+        instance_line = file.gets
+        return reset_load_from_file(filename, file, "Expected to read Instance line but reached EOF") unless instance_line
+        parameters = instance_line.split(',')
+        # bugfix: if file name consist a comma then parsing based on comma separating fails
+        if (parameters.size > 5)
+          (4..parameters.size-2).each do |i|
+            parameters[3] = [parameters[3], parameters[i]].join(",")
+          end
+          (4..parameters.size-2).each do |i|
+            parameters.delete_at(4)
+          end
+        end
+
+        add_instance(parameters[0],
+                     parameters[1].to_i,
+                     parameters[2],
+                     parameters[3],
+                     parameters[4].to_i)
+        chunk_index += 1
+      end
+      true
+    end
+
+    def reset_load_from_file(file_name, file_io, err_msg)
+      Log.error("unexpected error reading file:#{file_name}\nError message:#{err_msg}")
+      @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
+      @instances_info = {}  # location --> checksum to optimize instances query
+      file_io.close
+      nil
     end
 
     # for each content, all time fields (content and instances) are replaced with the
