@@ -23,7 +23,6 @@ module ContentServer
     def initialize(host, port, local_backup_folder)
       @remote_tcp = Networking::TCPClient.new(host, port, method(:receive_content))
       @last_fetch_timestamp = nil
-      @last_save_timestamp = nil
       @last_content_data_id = nil
       @content_server_content_data_path = File.join(local_backup_folder, 'remote',
                                                     host + '_' + port.to_s)
