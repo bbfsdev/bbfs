@@ -4,7 +4,7 @@ require 'run_in_background'
 # TODO break to number of small tests according to functionality
 # TODO rewrite with Shoulda/RSpec
 class TestRunInBackground < Test::Unit::TestCase
-  #include RunInBackground
+  Param.init([])
 
   if RUBY_PLATFORM =~ /linux/ or RUBY_PLATFORM =~ /darwin/
     OS = :LINUX
