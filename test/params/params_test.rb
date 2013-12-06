@@ -3,7 +3,7 @@
 # run: rake test.
 # Note: This file will be tested along with all project tests.
 
-require 'params'
+#require 'params'
 require 'test/unit'
 require_relative '../../lib/params.rb'
 
