@@ -116,7 +116,7 @@ module Params
       end
 
       it 'should raise error when yml file format is bad' do
-        Params.read_yml_params StringIO.new('bad yml format').should eq false
+        Params.read_yml_params StringIO.new('"bad yml format').should be_false
       end
 
       it 'should override defined values with yml values' do
