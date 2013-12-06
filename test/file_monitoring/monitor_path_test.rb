@@ -86,6 +86,7 @@ module FileMonitoring
         ::FileUtils.rm_rf(RESOURCES_DIR) if (File.exists?(RESOURCES_DIR))
       end
 
+=begin [yarondbb] test needs to be refactored
       def test_monitor
         log = @log4r_mock.log
         FileStat.set_log(@log4r_mock)
@@ -182,6 +183,7 @@ module FileMonitoring
         end
         assert_equal(@numb_entities, log.lineno - log_prev_line)
       end
+=end
     end
   end
 end
