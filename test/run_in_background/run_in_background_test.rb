@@ -1,6 +1,5 @@
 require 'test/unit'
 require 'run_in_background'
-require 'Params'
 
 # TODO break to number of small tests according to functionality
 # TODO rewrite with Shoulda/RSpec
