@@ -8,7 +8,7 @@ require 'test/unit'
 require_relative '../../lib/params.rb'
 
 
-class TestLog < Test::Unit::TestCase
+class TestLog < ::Test::Unit::TestCase
 
   def test_parsing_of_the_defined_parameters
     #  Define options
