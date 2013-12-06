@@ -116,8 +116,7 @@ module Params
       end
 
       it 'should raise error when yml file format is bad' do
-        puts "method:return:#{Params.read_yml_params StringIO.new '"bad yml format'}"
-        expect { Params.read_yml_params StringIO.new '"bad yml format' }.to raise_error
+        Params.read_yml_params StringIO.new('"bad yml format').should eq false
       end
 
       it 'should override defined values with yml values' do
