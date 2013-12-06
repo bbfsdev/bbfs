@@ -14,12 +14,6 @@ require 'params'
 #           as a central code to use the log utility.
 module Log
 
-  #Auxiliary method to retrieve the executable name
-  def Log.executable_name
-    /([a-zA-Z0-9\-_\.]+):\d+/ =~ caller[caller.size-1]
-    return $1
-  end
-
   # Global params
   Params.integer('log_debug_level', 0 , \
       'Verbosity of logging. 0 will log only INFO messages. Other value, will log all DEBUG messages as well.')
