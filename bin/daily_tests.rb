@@ -13,8 +13,8 @@
 def uninstall_all_gems
   `gem list --no-versions`.each_line {|gem|
     puts "gem to uninstall #{gem}"
-   # `gem uninstall #{gem} -a -x -I`
-   # puts "removed gem #{gem}"
+    `gem uninstall #{gem} -a -x -I`
+    puts "removed gem #{gem}"
   }
 end
 
