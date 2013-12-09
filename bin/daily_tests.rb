@@ -1,6 +1,6 @@
 #TODO yarondbb Add time out for operations
 
-require 'FileUtils'
+require 'fileutils'
 #
 #Unit Tests (Rake):
 # Uninstall all Gems
@@ -13,8 +13,12 @@ require 'FileUtils'
 # Parse log and generate report
 #
 BBFS_GIT_REPO = 'https://github.com/bbfsdev/bbfs'
-#DAILY_TEST_DIR = File.join('C:/Users/ydror1','daily_tests')
-DAILY_TEST_DIR = File.join('tmp','daily_tests')
+unless Gem::win_platform?
+  DAILY_TEST_DIR = File.join('tmp','daily_tests')
+else
+  DAILY_TEST_DIR = File.join(File.expand_path('~'),'daily_tests')  #for Windows
+end
+
 BBFS_DIR = File.join(DAILY_TEST_DIR, 'bbfs')
 
 UNIT_TEST_BASE_DIR = File.join(DAILY_TEST_DIR, 'unit_test')
@@ -45,11 +49,14 @@ def uninstall_all_gems
   puts "\nDone uninstall all gems"
 end
 
-def prepare_latest_bbfs_repo
-  puts "\n\nStart removing bbfs dir:#{BBFS_DIR}"
+
+
+def prepare_daily_test_dirs
+  puts "\n\nStart removing and creating daily test dir:#{DAILY_TEST_DIR}"
   puts "-------------------------------------------------------------------"
-  ::FileUtils.remove_dir(BBFS_DIR, true)  # true will force delete
-  puts "\nDone removing bbfs dir:#{BBFS_DIR}"
+  ::FileUtils.remove_dir(DAILY_TEST_DIR, true)  # true will force delete
+  ::FileUtils.mkdir_p(DAILY_TEST_DIR)
+  puts "\nDone removing and creating bbfs dir:#{DAILY_TEST_DIR}"
   Dir.chdir(DAILY_TEST_DIR)
   puts "\n\nStart cloning bbfs from git repo:#{BBFS_GIT_REPO}"
   puts "-------------------------------------------------------------------"
@@ -97,10 +104,10 @@ def unit_test_generate_report
 end
 
 def unit_test
-  #uninstall_all_gems
-  #prepare_latest_bbfs_repo
-  #unit_test_prepare_prev_inout_paths
-  #unit_test_create_gems
+  uninstall_all_gems
+  prepare_daily_test_dirs
+  unit_test_prepare_prev_inout_paths
+  unit_test_create_gems
   unit_test_execute
   unit_test_parse_log
   unit_test_generate_report
