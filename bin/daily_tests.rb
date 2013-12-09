@@ -25,15 +25,23 @@ UNIT_TEST_BASE_DIR = File.join(DAILY_TEST_DIR, 'unit_test')
 UNIT_TEST_OUT_DIR = File.join(UNIT_TEST_BASE_DIR, 'log')
 UNIT_TEST_OUT_FILE = File.join(UNIT_TEST_OUT_DIR, 'rake.log')
 
-#output = `grep hosts /private/etc/* 2>&1`
-def execute_command(command)
+# Algorithm:
+#   executing shell commands. if stdout and\or stderr has the
+#   strings: fatal|fail|error|aborted an error will be raised
+# Parameters:
+#   in: command - the comand to execute
+#   in: raise_error - if false then if stdout and\or stderr has the
+#                     strings: fatal|fail|error|aborted they will not raise an error.
+#                     Used for 'rake' command where the string error is used but it does not indicate an error
+# Returns: Stdout and Stderr of the command
+def execute_command(command, raise_error=ture)
   puts "\n   Running command:'#{command}'"
   command_res = `#{command} 2>&1`  # this will redirect both stdout and stderr to stdout
   command_res.each_line { |line|
     chomped_line = line.chomp
     puts "      #{chomped_line}"
   }
-  raise("Error occurred in command:#{command}") if command_res.match(/fatal|fail|error|aborted/i)
+  raise("Error occurred in command:#{command}") if command_res.match(/fatal|fail|error|aborted/i) if raise_error
   command_res
 end
 
@@ -89,7 +97,7 @@ end
 def unit_test_execute
   puts "\n\nStart unit test execution"
   puts "-------------------------------------------------------------------"
-  rake_output = execute_command("rake")
+  rake_output = execute_command("rake", false)
   File.open(UNIT_TEST_OUT_FILE,'w') { |file|
     file.puts(rake_output)
   }
