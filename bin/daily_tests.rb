@@ -14,7 +14,7 @@ require 'fileutils'
 #
 BBFS_GIT_REPO = 'https://github.com/bbfsdev/bbfs'
 unless Gem::win_platform?
-  DAILY_TEST_DIR = File.join('tmp','daily_tests')
+  DAILY_TEST_DIR = File.join('/tmp','daily_tests')
 else
   DAILY_TEST_DIR = File.join(File.expand_path('~'),'daily_tests')  #for Windows
 end
