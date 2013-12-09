@@ -34,7 +34,7 @@ UNIT_TEST_OUT_FILE = File.join(UNIT_TEST_OUT_DIR, 'rake.log')
 #                     strings: fatal|fail|error|aborted they will not raise an error.
 #                     Used for 'rake' command where the string error is used but it does not indicate an error
 # Returns: Stdout and Stderr of the command
-def execute_command(command, raise_error=ture)
+def execute_command(command, raise_error=true)
   puts "\n   Running command:'#{command}'"
   command_res = `#{command} 2>&1`  # this will redirect both stdout and stderr to stdout
   command_res.each_line { |line|
