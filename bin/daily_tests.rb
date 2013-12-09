@@ -13,7 +13,8 @@ require 'FileUtils'
 # Parse log and generate report
 #
 BBFS_GIT_REPO = 'https://github.com/bbfsdev/bbfs'
-DAILY_TEST_DIR = File.join('C:/Users/ydror1','daily_tests')
+#DAILY_TEST_DIR = File.join('C:/Users/ydror1','daily_tests')
+DAILY_TEST_DIR = File.join('tmp','daily_tests')
 BBFS_DIR = File.join(DAILY_TEST_DIR, 'bbfs')
 
 UNIT_TEST_BASE_DIR = File.join(DAILY_TEST_DIR, 'unit_test')
