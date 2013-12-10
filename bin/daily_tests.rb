@@ -1,5 +1,6 @@
 #TODO yarondbb Add time out for operations
 
+require 'email'
 require 'fileutils'
 #
 #Unit Tests (Rake):
@@ -18,14 +19,22 @@ unless Gem::win_platform?
 else
   DAILY_TEST_DIR = File.join(File.expand_path('~'),'daily_tests')  #for Windows
 end
-
 BBFS_DIR = File.join(DAILY_TEST_DIR, 'bbfs')
-
 UNIT_TEST_BASE_DIR = File.join(DAILY_TEST_DIR, 'unit_test')
 UNIT_TEST_OUT_DIR = File.join(UNIT_TEST_BASE_DIR, 'log')
 UNIT_TEST_OUT_FILE = File.join(UNIT_TEST_OUT_DIR, 'rake.log')
+FROM_EMAIL = ARGV[0]
+FROM_EMAIL_PASSWORD = ARGV[1]
+TO_EMAIL = ARGV[2]
 
-# Algorithm:
+def send_email(report)
+  msg =<<EOF
+#{report}
+EOF
+  Email.send_email(from_email,from_email_password,to_email,'Daily system report',msg)
+end
+
+# execute_command Algorithm:
 #   executing shell commands. if stdout and\or stderr has the
 #   strings: fatal|fail|error|aborted an error will be raised
 # Parameters:
@@ -101,14 +110,48 @@ def unit_test_execute
   File.open(UNIT_TEST_OUT_FILE,'w') { |file|
     file.puts(rake_output)
   }
+  rake_output
 end
 
-def unit_test_parse_log
 
+def unit_test_parse_log(rake_output)
+  # format of Test is:
+  #   18 tests, 96 assertions, 0 failures, 0 errors, 0 skips
+  # format of Spec is:
+  #   42 examples, 0 failures
+  report = ''
+  rake_output.each_line { |line|
+    chomped_line = line.chomp
+    if chomped_line.match(/\d+ failures, \d+ errors, \d+ skips/)
+      if chomped_line.match(/0 failures, 0 errors, 0 skips/)
+        report += "Rake Test is OK. Description: #{chomped_line}"
+      else
+        report += "Rake Test is NOT OK. Description: #{chomped_line}"
+      end
+    elsif chomped_line.match(/examples, \d+ failures/)
+      if chomped_line.match(/examples, 0 failures/)
+        report += "Rake Spec is OK. Description: #{chomped_line} "
+      else
+        report += "Rake Spec is NOT OK. Description:#{chomped_line}"
+      end
+    else
+      report += "Rake Spec is OK. Description:#{chomped_line}"
+    end
+  }
+  puts report
+  report
 end
 
-def unit_test_generate_report
-
+def unit_test_generate_report(report)
+  mail_body =<<EOF
+Unit test report
+-------------------
+Unit Test log can be found at: #{DAILY_TEST_DIR}/log/daily_tests.log
+Rake command output can be found at: #{UNIT_TEST_OUT_FILE}
+Results:
+#{report}
+EOF
+  send_email(mail_body)
 end
 
 def unit_test
@@ -116,9 +159,9 @@ def unit_test
   prepare_daily_test_dirs
   unit_test_prepare_prev_inout_paths
   unit_test_create_gems
-  unit_test_execute
-  unit_test_parse_log
-  unit_test_generate_report
+  rake_output = unit_test_execute
+  report = unit_test_parse_log(rake_output)
+  unit_test_generate_report(report)
 end
 
 begin
