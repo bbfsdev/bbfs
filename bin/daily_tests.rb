@@ -123,10 +123,12 @@ def unit_test_parse_log(rake_output)
   # format of Spec is:
   #   42 examples, 0 failures
   report = ''
+  pass_counter = 0
   rake_output.each_line { |line|
     chomped_line = line.chomp
     # Check Rake Test
     if chomped_line.match(/\d+ failures, \d+ errors, \d+ skips/)
+      pass_counter += 1
       if chomped_line.match(/0 failures, 0 errors, 0 skips/)
         report += "   Rake Test is OK. Description: #{chomped_line}\n"
       else
@@ -134,6 +136,7 @@ def unit_test_parse_log(rake_output)
       end
       # Check Rake Spec
     elsif chomped_line.match(/examples, \d+ failures/)
+      pass_counter += 1
       if chomped_line.match(/examples, 0 failures/)
         report += "   Rake Spec is OK. Description: #{chomped_line}\n"
       else
@@ -141,7 +144,7 @@ def unit_test_parse_log(rake_output)
       end
     end
   }
-  if report.each_line.length != 2
+  if pass_counter != 2
     $log_file.puts("\n   Problem with parsing Rake log. Could not find status 2 lines")
   else
     $log_file.puts("\n   Rake report summary:\n   -----------------------\n#{report}")
