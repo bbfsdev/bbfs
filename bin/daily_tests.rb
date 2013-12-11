@@ -2,7 +2,8 @@
 
 require 'email'
 require 'fileutils'
-#
+
+#################################################################
 #Unit Tests (Rake):
 # Uninstall all Gems
 # Retrieve the latest master from BBFS git repository
@@ -12,7 +13,9 @@ require 'fileutils'
 # Create all needed Gems for tests (e.g. Bundler and Rake gem)
 # Run Rake and redirect to /tmp/daily_tests/unit_test/log/rake.log
 # Parse log and generate report
-#
+###################################################################
+
+# ------------------------------------------------- Definitions ---------------------------
 BBFS_GIT_REPO = 'https://github.com/bbfsdev/bbfs'
 unless Gem::win_platform?
   DAILY_TEST_DIR = File.join('/tmp','daily_tests')
@@ -26,13 +29,6 @@ UNIT_TEST_OUT_FILE = File.join(UNIT_TEST_OUT_DIR, 'rake.log')
 FROM_EMAIL = ARGV[0]
 FROM_EMAIL_PASSWORD = ARGV[1]
 TO_EMAIL = ARGV[2]
-
-def send_email(report)
-  msg =<<EOF
-#{report}
-EOF
-  Email.send_email(from_email,from_email_password,to_email,'Daily system report',msg)
-end
 
 # execute_command Algorithm:
 #   executing shell commands. if stdout and\or stderr has the
@@ -79,7 +75,7 @@ def prepare_daily_test_dirs
   puts "-------------------------------------------------------------------"
   execute_command("git clone #{BBFS_GIT_REPO}")
   puts "\nDone cloning bbfs from git repo:#{BBFS_GIT_REPO}"
- end
+end
 
 # Create all needed Gems for tests (Bundler and Rake)
 def unit_test_create_gems
@@ -122,23 +118,23 @@ def unit_test_parse_log(rake_output)
   report = ''
   rake_output.each_line { |line|
     chomped_line = line.chomp
+    # Check Rake Test
     if chomped_line.match(/\d+ failures, \d+ errors, \d+ skips/)
       if chomped_line.match(/0 failures, 0 errors, 0 skips/)
-        report += "Rake Test is OK. Description: #{chomped_line}"
+        report += "   Rake Test is OK. Description: #{chomped_line}\n"
       else
-        report += "Rake Test is NOT OK. Description: #{chomped_line}"
+        report += "   Rake Test is NOT OK. Description: #{chomped_line}\n"
       end
+      # Check Rake Spec
     elsif chomped_line.match(/examples, \d+ failures/)
       if chomped_line.match(/examples, 0 failures/)
-        report += "Rake Spec is OK. Description: #{chomped_line} "
+        report += "   Rake Spec is OK. Description: #{chomped_line}\n"
       else
-        report += "Rake Spec is NOT OK. Description:#{chomped_line}"
+        report += "   Rake Spec is NOT OK. Description:#{chomped_line}\n"
       end
-    else
-      report += "Rake Spec is OK. Description:#{chomped_line}"
     end
   }
-  puts report
+  puts "\n   Rake report summary:\n   -----------------------\n#{report}\n"
   report
 end
 
@@ -151,7 +147,8 @@ Rake command output can be found at: #{UNIT_TEST_OUT_FILE}
 Results:
 #{report}
 EOF
-  send_email(mail_body)
+  Email.send_email(TO_EMAIL, FROM_EMAIL_PASSWORD, FROM_EMAIL, 'Daily system report', mail_body)
+  puts "   Unit test sent to:#{TO_MAIL}"
 end
 
 def unit_test
@@ -169,5 +166,3 @@ begin
 rescue => e
   puts "\nError caught. Msg:#{e.message}\nBack trace:#{e.backtrace}"
 end
-
-
