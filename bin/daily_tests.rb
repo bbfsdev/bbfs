@@ -74,7 +74,7 @@ def prepare_daily_test_dirs
   puts("\n\nStart preparing daily test dir:#{$DAILY_TEST_DIR}")
   puts("-------------------------------------------------------------------")
   #::FileUtils.remove_dir($DAILY_TEST_DIR, true)  # true will force delete
-  ::FileUtils.mkdir_p($DAILY_TEST_DIR) unless File.exist($DAILY_TEST_DIR)
+  ::FileUtils.mkdir_p($DAILY_TEST_DIR) unless File.exist?($DAILY_TEST_DIR)
   ::FileUtils.mkdir_p($DAILY_TEST_LOG_DIR)
   puts("\nDone removing and creating bbfs dir:#{$DAILY_TEST_DIR}")
 end
@@ -201,7 +201,7 @@ begin
     #start at midnight
     time_now = Time.now
     puts("Wake at #{time_now} and Start Daily test execution")
-    update_dirs(time_now)
+    update_dirs("#{time_now.year}_#{time_now.month}_#{time_now.day}")
     prepare_daily_test_dirs  # this will use puts to console
     unit_test
   }
