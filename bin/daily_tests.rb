@@ -40,7 +40,7 @@ def execute_command(command, raise_error=true)
     chomped_line = line.chomp
     $log_file.puts("      #{chomped_line}")
   }
-  raise("Error occurred in command:#{command}") if command_res.match(/fatal|fail|error|aborted/i) if raise_error
+  raise("Error occurred in command:#{command}\nCommand log:#{command_res}") if command_res.match(/fatal|fail|error|aborted/i) if raise_error
   command_res
 end
 
@@ -76,7 +76,7 @@ def prepare_daily_test_dirs
   #::FileUtils.remove_dir($DAILY_TEST_DIR, true)  # true will force delete
   ::FileUtils.mkdir_p($DAILY_TEST_DIR) unless File.exist?($DAILY_TEST_DIR)
   ::FileUtils.mkdir_p($DAILY_TEST_LOG_DIR)
-  puts("\nDone removing and creating bbfs dir:#{$DAILY_TEST_DIR}")
+  puts("\nDone preparing daily test dir:#{$DAILY_TEST_DIR}")
 end
 
 def clone_bbfs_repo
@@ -196,12 +196,20 @@ begin
     seconds_from_midnight = current_seconds + current_minutes * 60 + current_hour * 3600
     seconds_till_midnight = 24*3600 - seconds_from_midnight
     puts("Time is:#{time_now}. sleeping till midnight: #{seconds_till_midnight}[S]")
-    sleep(seconds_till_midnight)
+    sleep(seconds_till_midnight+0.1)
 
     #start at midnight
     time_now = Time.now
     puts("Wake at #{time_now} and Start Daily test execution")
-    update_dirs("#{time_now.year}_#{time_now.month}_#{time_now.day}")
+    exec_index = 1
+    while exec_index < 99999
+      dir_time_format = "#{time_now.year}_#{time_now.month}_#{time_now.day}.exec_#{exec_index}"
+      trial_file = File.join('/tmp','daily_tests', dir_time_format)
+      break unless File.exist?(trial_file)
+      exec_index += 1
+    end
+
+    update_dirs(trial_file)
     prepare_daily_test_dirs  # this will use puts to console
     unit_test
   }
