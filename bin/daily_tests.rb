@@ -17,17 +17,7 @@ require 'fileutils'
 
 # ------------------------------------------------- Definitions ---------------------------
 BBFS_GIT_REPO = 'https://github.com/bbfsdev/bbfs'
-unless Gem::win_platform?
-  DAILY_TEST_DIR = File.join('/tmp','daily_tests')
-else
-  DAILY_TEST_DIR = File.join(File.expand_path('~'),'daily_tests')  #for Windows
-end
-DAILY_TEST_LOG_DIR = File.join(DAILY_TEST_DIR, 'log')
-DAILY_TEST_LOG_FILE = File.join(DAILY_TEST_LOG_DIR, 'daily_test.log')
-BBFS_DIR = File.join(DAILY_TEST_DIR, 'bbfs')
-UNIT_TEST_BASE_DIR = File.join(DAILY_TEST_DIR, 'unit_test')
-UNIT_TEST_OUT_DIR = File.join(UNIT_TEST_BASE_DIR, 'log')
-UNIT_TEST_OUT_FILE = File.join(UNIT_TEST_OUT_DIR, 'rake.log')
+
 FROM_EMAIL = ARGV[0]
 FROM_EMAIL_PASSWORD = ARGV[1]
 TO_EMAIL = ARGV[2]
@@ -66,30 +56,42 @@ def uninstall_all_gems
   $log_file.puts("\nDone uninstall all gems")
 end
 
-
+def update_dirs(time)
+  unless Gem::win_platform?
+    $DAILY_TEST_DIR = File.join('/tmp','daily_tests', time.to_s)
+  else
+    $DAILY_TEST_DIR = File.join(File.expand_path('~'),'daily_tests', time.to_s)  #for Windows
+  end
+  $DAILY_TEST_LOG_DIR = File.join($DAILY_TEST_DIR, 'log')
+  $DAILY_TEST_LOG_FILE = File.join($DAILY_TEST_LOG_DIR, 'daily_test.log')
+  $BBFS_DIR = File.join($DAILY_TEST_DIR, 'bbfs')
+  $UNIT_TEST_BASE_DIR = File.join($DAILY_TEST_DIR, 'unit_test')
+  $UNIT_TEST_OUT_DIR = File.join($UNIT_TEST_BASE_DIR, 'log')
+  $UNIT_TEST_OUT_FILE = File.join($UNIT_TEST_OUT_DIR, 'rake.log')
+end
 
 def prepare_daily_test_dirs
-  puts("\n\nStart removing and creating daily test dir:#{DAILY_TEST_DIR}")
+  puts("\n\nStart preparing daily test dir:#{$DAILY_TEST_DIR}")
   puts("-------------------------------------------------------------------")
-  ::FileUtils.remove_dir(DAILY_TEST_DIR, true)  # true will force delete
-  ::FileUtils.mkdir_p(DAILY_TEST_DIR)
-  ::FileUtils.mkdir_p(DAILY_TEST_LOG_DIR)
-  puts("\nDone removing and creating bbfs dir:#{DAILY_TEST_DIR}")
-  Dir.chdir(DAILY_TEST_DIR)
+  #::FileUtils.remove_dir($DAILY_TEST_DIR, true)  # true will force delete
+  ::FileUtils.mkdir_p($DAILY_TEST_DIR) unless File.exist($DAILY_TEST_DIR)
+  ::FileUtils.mkdir_p($DAILY_TEST_LOG_DIR)
+  puts("\nDone removing and creating bbfs dir:#{$DAILY_TEST_DIR}")
 end
 
 def clone_bbfs_repo
+  Dir.chdir($DAILY_TEST_DIR)
   $log_file.puts("\n\nStart cloning bbfs from git repo:#{BBFS_GIT_REPO}")
   $log_file.puts("-------------------------------------------------------------------")
   execute_command("git clone #{BBFS_GIT_REPO}")
   $log_file.puts("\nDone cloning bbfs from git repo:#{BBFS_GIT_REPO}")
+  Dir.chdir($BBFS_DIR)
 end
 
 # Create all needed Gems for tests (Bundler and Rake)
 def unit_test_create_gems
   $log_file.puts("\n\nStart install bundler gems")
   $log_file.puts("-------------------------------------------------------------------")
-  Dir.chdir(BBFS_DIR)
   execute_command('gem install bundler')
   execute_command('bundle install')
   $log_file.puts("\nDone install bundler gems")
@@ -99,9 +101,9 @@ end
 def unit_test_prepare_prev_inout_paths
   $log_file.puts("\n\nUnit test: Start prepare prev inout paths")
   $log_file.puts("-------------------------------------------------------------------")
-  ::FileUtils.remove_dir(UNIT_TEST_OUT_DIR, true)  # true will force delete
-  ::FileUtils.mkdir_p(UNIT_TEST_OUT_DIR)
-  $log_file.puts("   Cleared and Created out path:#{UNIT_TEST_OUT_DIR}")
+  #::FileUtils.remove_dir($UNIT_TEST_OUT_DIR, true)  # true will force delete
+  ::FileUtils.mkdir_p($UNIT_TEST_OUT_DIR)
+  $log_file.puts("   Cleared and Created out path:#{$UNIT_TEST_OUT_DIR}")
   $log_file.puts("\nUnit test: Done prepare prev inout paths")
 end
 
@@ -110,7 +112,7 @@ def unit_test_execute
   $log_file.puts("\n\nStart unit test execution")
   $log_file.puts("-------------------------------------------------------------------")
   rake_output = execute_command("rake", false)
-  File.open(UNIT_TEST_OUT_FILE,'w') { |file|
+  File.open($UNIT_TEST_OUT_FILE,'w') { |file|
     file.puts(rake_output)
   }
   rake_output
@@ -156,21 +158,20 @@ def unit_test_generate_report(report)
   mail_body =<<EOF
 1. Unit test report
 ---------------------------------
-Unit Test log can be found at: #{DAILY_TEST_LOG_FILE}
-Rake command output can be found at: #{UNIT_TEST_OUT_FILE}
+Unit Test log can be found at: #{$DAILY_TEST_LOG_FILE}
+Rake command output can be found at: #{$UNIT_TEST_OUT_FILE}
 Results:
 #{report}
 EOF
   Email.send_email(TO_EMAIL, FROM_EMAIL_PASSWORD, FROM_EMAIL, 'Daily system report', mail_body)
-  $log_file.puts("   Unit test sent to:#{TO_MAIL}")
+  $log_file.puts("   Unit test report sent to:#{TO_EMAIL}")
 end
 
 def unit_test
-  prepare_daily_test_dirs  # this will use puts to console
 
   # init log
-  $log_file = File.open(DAILY_TEST_LOG_FILE, 'w')
-  puts("\nRest of log can be found in: #{DAILY_TEST_LOG_FILE}")
+  $log_file = File.open($DAILY_TEST_LOG_FILE, 'w')
+  puts("\nRest of log can be found in: #{$DAILY_TEST_LOG_FILE}")
   # from now on log file will be used by methods
 
   clone_bbfs_repo
@@ -181,10 +182,29 @@ def unit_test
   report = unit_test_parse_log(rake_output)
   unit_test_generate_report(report)
   $log_file.close
+
 end
 
 begin
-  unit_test
+  puts("Start Daily tests")
+  loop {
+    time_now = Time.now
+    current_hour = time_now.hour
+    current_minutes = time_now.min
+    current_seconds = time_now.sec
+    #Time since 00:00:00 of this day
+    seconds_from_midnight = current_seconds + current_minutes * 60 + current_hour * 3600
+    seconds_till_midnight = 24*3600 - seconds_from_midnight
+    puts("Time is:#{time_now}. sleeping till midnight: #{seconds_till_midnight}[S]")
+    sleep(seconds_till_midnight)
+
+    #start at midnight
+    time_now = Time.now
+    puts("Wake at #{time_now} and Start Daily test execution")
+    update_dirs(time_now)
+    prepare_daily_test_dirs  # this will use puts to console
+    unit_test
+  }
 rescue => e
   puts("\nError caught. Msg:#{e.message}\nBack trace:#{e.backtrace}")
   $log_file.puts("\nError caught. Msg:#{e.message}\nBack trace:#{e.backtrace}")
