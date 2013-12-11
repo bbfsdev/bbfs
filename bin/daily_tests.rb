@@ -69,13 +69,15 @@ end
 
 
 def prepare_daily_test_dirs
-  $log_file.puts("\n\nStart removing and creating daily test dir:#{DAILY_TEST_DIR}")
-  $log_file.puts("-------------------------------------------------------------------")
+  puts("\n\nStart removing and creating daily test dir:#{DAILY_TEST_DIR}")
+  puts("-------------------------------------------------------------------")
   ::FileUtils.remove_dir(DAILY_TEST_DIR, true)  # true will force delete
   ::FileUtils.mkdir_p(DAILY_TEST_DIR)
   ::FileUtils.mkdir_p(DAILY_TEST_LOG_DIR)
-  $log_file.puts("\nDone removing and creating bbfs dir:#{DAILY_TEST_DIR}")
+  puts("\nDone removing and creating bbfs dir:#{DAILY_TEST_DIR}")
   Dir.chdir(DAILY_TEST_DIR)
+  $log_file = File.open(DAILY_TEST_LOG_FILE, 'w')
+  puts("\nRest of log can be found in: #{DAILY_TEST_LOG_FILE}")
   $log_file.puts("\n\nStart cloning bbfs from git repo:#{BBFS_GIT_REPO}")
   $log_file.puts("-------------------------------------------------------------------")
   execute_command("git clone #{BBFS_GIT_REPO}")
