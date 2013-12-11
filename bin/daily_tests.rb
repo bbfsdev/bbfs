@@ -44,26 +44,26 @@ $log_file = nil  # will be initialized later
 #                     Used for 'rake' command where the string error is used but it does not indicate an error
 # Returns: Stdout and Stderr of the command
 def execute_command(command, raise_error=true)
-  puts "\n   Running command:'#{command}'"
+  $log_file.puts("\n   Running command:'#{command}'")
   command_res = `#{command} 2>&1`  # this will redirect both stdout and stderr to stdout
   command_res.each_line { |line|
     chomped_line = line.chomp
-    puts "      #{chomped_line}"
+    $log_file.puts("      #{chomped_line}")
   }
   raise("Error occurred in command:#{command}") if command_res.match(/fatal|fail|error|aborted/i) if raise_error
   command_res
 end
 
 def uninstall_all_gems
-  puts "\n\nStart uninstall all gems"
-  puts "-------------------------------------------------------------------"
+  $log_file.puts("\n\nStart uninstall all gems")
+  $log_file.puts("-------------------------------------------------------------------")
   `gem list --no-versions`.each_line {|gem|
     gem_new = gem.chomp
     next if gem_new.length == 0
     execute_command("gem uninstall #{gem_new} -a -x -I")
-    puts "   removed gem #{gem}"
+    $log_file.puts("   removed gem #{gem}")
   }
-  puts "\nDone uninstall all gems"
+  $log_file.puts("\nDone uninstall all gems")
 end
 
 
@@ -76,8 +76,9 @@ def prepare_daily_test_dirs
   ::FileUtils.mkdir_p(DAILY_TEST_LOG_DIR)
   puts("\nDone removing and creating bbfs dir:#{DAILY_TEST_DIR}")
   Dir.chdir(DAILY_TEST_DIR)
-  $log_file = File.open(DAILY_TEST_LOG_FILE, 'w')
-  puts("\nRest of log can be found in: #{DAILY_TEST_LOG_FILE}")
+end
+
+def clone_bbfs_repo
   $log_file.puts("\n\nStart cloning bbfs from git repo:#{BBFS_GIT_REPO}")
   $log_file.puts("-------------------------------------------------------------------")
   execute_command("git clone #{BBFS_GIT_REPO}")
@@ -162,10 +163,15 @@ EOF
 end
 
 def unit_test
-  uninstall_all_gems
-  prepare_daily_test_dirs
+  prepare_daily_test_dirs  # this will use puts to console
+
   # init log
   $log_file = File.open(DAILY_TEST_LOG_FILE, 'w')
+  puts("\nRest of log can be found in: #{DAILY_TEST_LOG_FILE}")
+  # from now on log file will be used by methods
+
+  clone_bbfs_repo
+  uninstall_all_gems
   unit_test_prepare_prev_inout_paths
   unit_test_create_gems
   rake_output = unit_test_execute
