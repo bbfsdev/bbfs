@@ -22,6 +22,8 @@ unless Gem::win_platform?
 else
   DAILY_TEST_DIR = File.join(File.expand_path('~'),'daily_tests')  #for Windows
 end
+DAILY_TEST_LOG_DIR = File.join(DAILY_TEST_DIR, 'log')
+DAILY_TEST_LOG_FILE = File.join(DAILY_TEST_LOG_DIR, 'daily_test.log')
 BBFS_DIR = File.join(DAILY_TEST_DIR, 'bbfs')
 UNIT_TEST_BASE_DIR = File.join(DAILY_TEST_DIR, 'unit_test')
 UNIT_TEST_OUT_DIR = File.join(UNIT_TEST_BASE_DIR, 'log')
@@ -29,6 +31,8 @@ UNIT_TEST_OUT_FILE = File.join(UNIT_TEST_OUT_DIR, 'rake.log')
 FROM_EMAIL = ARGV[0]
 FROM_EMAIL_PASSWORD = ARGV[1]
 TO_EMAIL = ARGV[2]
+
+$log_file = nil  # will be initialized later
 
 # execute_command Algorithm:
 #   executing shell commands. if stdout and\or stderr has the
@@ -65,43 +69,43 @@ end
 
 
 def prepare_daily_test_dirs
-  puts "\n\nStart removing and creating daily test dir:#{DAILY_TEST_DIR}"
-  puts "-------------------------------------------------------------------"
+  $log_file.puts("\n\nStart removing and creating daily test dir:#{DAILY_TEST_DIR}")
+  $log_file.puts("-------------------------------------------------------------------")
   ::FileUtils.remove_dir(DAILY_TEST_DIR, true)  # true will force delete
   ::FileUtils.mkdir_p(DAILY_TEST_DIR)
-  puts "\nDone removing and creating bbfs dir:#{DAILY_TEST_DIR}"
+  ::FileUtils.mkdir_p(DAILY_TEST_LOG_DIR)
+  $log_file.puts("\nDone removing and creating bbfs dir:#{DAILY_TEST_DIR}")
   Dir.chdir(DAILY_TEST_DIR)
-  puts "\n\nStart cloning bbfs from git repo:#{BBFS_GIT_REPO}"
-  puts "-------------------------------------------------------------------"
+  $log_file.puts("\n\nStart cloning bbfs from git repo:#{BBFS_GIT_REPO}")
+  $log_file.puts("-------------------------------------------------------------------")
   execute_command("git clone #{BBFS_GIT_REPO}")
-  puts "\nDone cloning bbfs from git repo:#{BBFS_GIT_REPO}"
+  $log_file.puts("\nDone cloning bbfs from git repo:#{BBFS_GIT_REPO}")
 end
 
 # Create all needed Gems for tests (Bundler and Rake)
 def unit_test_create_gems
-  puts "\n\nStart install bundler gems"
-  puts "-------------------------------------------------------------------"
+  $log_file.puts("\n\nStart install bundler gems")
+  $log_file.puts("-------------------------------------------------------------------")
   Dir.chdir(BBFS_DIR)
   execute_command('gem install bundler')
   execute_command('bundle install')
-  puts "\nDone install bundler gems"
+  $log_file.puts("\nDone install bundler gems")
 end
 
 
 def unit_test_prepare_prev_inout_paths
-  puts "\n\nUnit test: Start prepare prev inout paths"
-  puts "-------------------------------------------------------------------"
+  $log_file.puts("\n\nUnit test: Start prepare prev inout paths")
+  $log_file.puts("-------------------------------------------------------------------")
   ::FileUtils.remove_dir(UNIT_TEST_OUT_DIR, true)  # true will force delete
   ::FileUtils.mkdir_p(UNIT_TEST_OUT_DIR)
-  puts "   Cleared and Created out path:#{UNIT_TEST_OUT_DIR}"
-  puts "\nUnit test: Done prepare prev inout paths"
-
+  $log_file.puts("   Cleared and Created out path:#{UNIT_TEST_OUT_DIR}")
+  $log_file.puts("\nUnit test: Done prepare prev inout paths")
 end
 
 # Run Rake and redirect to /tmp/daily_tests/unit_test/log/rake.log
 def unit_test_execute
-  puts "\n\nStart unit test execution"
-  puts "-------------------------------------------------------------------"
+  $log_file.puts("\n\nStart unit test execution")
+  $log_file.puts("-------------------------------------------------------------------")
   rake_output = execute_command("rake", false)
   File.open(UNIT_TEST_OUT_FILE,'w') { |file|
     file.puts(rake_output)
@@ -134,35 +138,44 @@ def unit_test_parse_log(rake_output)
       end
     end
   }
-  puts "\n   Rake report summary:\n   -----------------------\n#{report}\n"
+  if report.each_line.length != 2
+    $log_file.puts("\n   Problem with parsing Rake log. Could not find status 2 lines")
+  else
+    $log_file.puts("\n   Rake report summary:\n   -----------------------\n#{report}")
+  end
   report
 end
 
 def unit_test_generate_report(report)
   mail_body =<<EOF
-Unit test report
--------------------
-Unit Test log can be found at: #{DAILY_TEST_DIR}/log/daily_tests.log
+1. Unit test report
+---------------------------------
+Unit Test log can be found at: #{DAILY_TEST_LOG_FILE}
 Rake command output can be found at: #{UNIT_TEST_OUT_FILE}
 Results:
 #{report}
 EOF
   Email.send_email(TO_EMAIL, FROM_EMAIL_PASSWORD, FROM_EMAIL, 'Daily system report', mail_body)
-  puts "   Unit test sent to:#{TO_MAIL}"
+  $log_file.puts("   Unit test sent to:#{TO_MAIL}")
 end
 
 def unit_test
   uninstall_all_gems
   prepare_daily_test_dirs
+  # init log
+  $log_file = File.open(DAILY_TEST_LOG_FILE, 'w')
   unit_test_prepare_prev_inout_paths
   unit_test_create_gems
   rake_output = unit_test_execute
   report = unit_test_parse_log(rake_output)
   unit_test_generate_report(report)
+  $log_file.close
 end
 
 begin
   unit_test
 rescue => e
-  puts "\nError caught. Msg:#{e.message}\nBack trace:#{e.backtrace}"
+  puts("\nError caught. Msg:#{e.message}\nBack trace:#{e.backtrace}")
+  $log_file.puts("\nError caught. Msg:#{e.message}\nBack trace:#{e.backtrace}")
+  $log_file.close
 end
