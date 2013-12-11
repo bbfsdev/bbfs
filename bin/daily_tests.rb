@@ -56,12 +56,8 @@ def uninstall_all_gems
   $log_file.puts("\nDone uninstall all gems")
 end
 
-def update_dirs(time)
-  unless Gem::win_platform?
-    $DAILY_TEST_DIR = File.join('/tmp','daily_tests', time.to_s)
-  else
-    $DAILY_TEST_DIR = File.join(File.expand_path('~'),'daily_tests', time.to_s)  #for Windows
-  end
+def update_dirs(base_dir)
+  $DAILY_TEST_DIR = base_dir
   $DAILY_TEST_LOG_DIR = File.join($DAILY_TEST_DIR, 'log')
   $DAILY_TEST_LOG_FILE = File.join($DAILY_TEST_LOG_DIR, 'daily_test.log')
   $BBFS_DIR = File.join($DAILY_TEST_DIR, 'bbfs')
@@ -201,10 +197,15 @@ begin
     #start at midnight
     time_now = Time.now
     puts("Wake at #{time_now} and Start Daily test execution")
+    unless Gem::win_platform?
+      basic_dir = File.join('/tmp','daily_tests')
+    else
+      basic_dir = File.join(File.expand_path('~'),'daily_tests')  #for Windows
+    end
     exec_index = 1
     while exec_index < 99999
       dir_time_format = "#{time_now.year}_#{time_now.month}_#{time_now.day}.exec_#{exec_index}"
-      trial_file = File.join('/tmp','daily_tests', dir_time_format)
+      trial_file = File.join(basic_dir, dir_time_format)
       break unless File.exist?(trial_file)
       exec_index += 1
     end
