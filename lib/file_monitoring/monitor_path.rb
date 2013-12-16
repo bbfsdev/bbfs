@@ -281,6 +281,9 @@ module FileMonitoring
       loop do
         globed_path = globed_paths_enum.next rescue break
 
+        # if symlink - skip
+        next if File.symlink?(globed_path)
+
         # UTF-8 - keep only files with names in
         next if @non_utf8_paths[globed_path]
         check_utf_8_encoding_file = globed_path.clone
