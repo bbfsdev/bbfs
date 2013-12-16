@@ -196,7 +196,7 @@ begin
 
     #start at midnight
     time_now = Time.now
-    puts("Wake at #{time_now} and Start Daily test execution")
+    puts("\nWake at #{time_now} and Start Daily test execution")
     unless Gem::win_platform?
       basic_dir = File.join('/tmp','daily_tests')
     else
