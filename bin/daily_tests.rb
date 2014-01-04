@@ -21,6 +21,7 @@ BBFS_GIT_REPO = 'https://github.com/bbfsdev/bbfs'
 FROM_EMAIL = ARGV[0]
 FROM_EMAIL_PASSWORD = ARGV[1]
 TO_EMAIL = ARGV[2]
+RUN_CMD = ARGV[3]   # MIDNIGHT ; RUN or any other input
 
 $log_file = nil  # will be initialized later
 
@@ -77,6 +78,7 @@ end
 
 def clone_bbfs_repo
   Dir.chdir($DAILY_TEST_DIR)
+  ::FileUtils.mkdir_p($BBFS_DIR)unless File.exist?($BBFS_DIR)
   $log_file.puts("\n\nStart cloning bbfs from git repo:#{BBFS_GIT_REPO}")
   $log_file.puts("-------------------------------------------------------------------")
   execute_command("git clone #{BBFS_GIT_REPO}")
@@ -165,9 +167,13 @@ end
 
 def unit_test
 
+
   # init log
   $log_file = File.open($DAILY_TEST_LOG_FILE, 'w')
+  $log_file.puts("Working server name: #{$DAILY_TEST_SERVER}")
+  puts("\n Working server name: #{$DAILY_TEST_SERVER}")
   puts("\nRest of log can be found in: #{$DAILY_TEST_LOG_FILE}")
+
   # from now on log file will be used by methods
 
   clone_bbfs_repo
@@ -182,7 +188,10 @@ def unit_test
 end
 
 begin
+  # Working server name
+  $DAILY_TEST_SERVER =`hostname`.strip
   puts("Start Daily tests")
+  puts("\n Working server name: #{$DAILY_TEST_SERVER}")
   loop {
     time_now = Time.now
     current_hour = time_now.hour
@@ -192,7 +201,7 @@ begin
     seconds_from_midnight = current_seconds + current_minutes * 60 + current_hour * 3600
     seconds_till_midnight = 24*3600 - seconds_from_midnight
     puts("Time is:#{time_now}. sleeping till midnight: #{seconds_till_midnight}[S]")
-    sleep(seconds_till_midnight+0.1)
+    sleep(seconds_till_midnight+0.1) if RUN_CMD == 'MIDNIGHT'
 
     #start at midnight
     time_now = Time.now
@@ -217,5 +226,6 @@ begin
 rescue => e
   puts("\nError caught. Msg:#{e.message}\nBack trace:#{e.backtrace}")
   $log_file.puts("\nError caught. Msg:#{e.message}\nBack trace:#{e.backtrace}")
+  $log_file.puts("Working server name: #{$DAILY_TEST_SERVER}")
   $log_file.close
 end
