@@ -32,6 +32,7 @@ module ContentServer
     $remote_content_data_lock = nil
     $remote_content_data = nil
     $last_content_data_id = nil
+    $file_attr_to_ref = {}
   end
 
   def handle_program_termination(exception)
