@@ -39,7 +39,19 @@ module FileMonitoring
         Log.info("Start build data base from loaded file. This could take several minutes")
         inst_count = 0
         $local_content_data.each_instance {
-            |_, size, _, mod_time, _, path|
+            |checksum, size, _, mod_time, _, path|
+
+          if Params['manual_file_changes']
+            file_attr_str = File.basename(path) + size + mod_time
+            ident_file_info = $file_attr_to_checksum[file_attr_str]
+            unless ident_file_info
+              #  Add file checksum to map
+              $file_attr_to_checksum[file_attr_str] = IdentFileInfo.new(checksum)
+            else
+              # File already in map. Need to mark as not unique
+              ident_file_info.unique = false  # file will be skipped if found at new location
+            end
+          end
           # construct sub paths array from full file path:
           # Example:
           #   instance path = /dir1/dir2/file_name
@@ -72,6 +84,39 @@ module FileMonitoring
         }
         Log.info("End build data base from loaded file. loaded instances:#{inst_count}")
         $last_content_data_id = $local_content_data.unique_id
+
+        if Params['manual_file_changes']
+          # -------------------------- MANUAL MODE
+          # ------------ LOOP DIRS
+          dir_stat_array.each { | dir_stat|
+            Log.info("In Manual mode. Start monitor path:%s. moved or copied files (same name, size and time " +
+                         "modification) will use the checksum of the original files and be updated in " +
+                         "content data file", dir_stat.path)
+            $testing_memory_log.info("Start monitor path:#{dir_stat.path} moved or copied files (same name, size and " +
+                                         "time modification) will use the checksum of the original files and be updated in " +
+                                         "content data file") if $testing_memory_active
+            # ------- MONITOR
+            dir_stat.monitor
+
+            # ------- REMOVE PATHS
+            # remove non existing (not marked) files\dirs
+            Log.info('Start remove non existing paths')
+            $testing_memory_log.info('Start remove non existing paths') if $testing_memory_active
+            dir_stat.removed_unmarked_paths
+            Log.info('End monitor path and index')
+            $testing_memory_log.info('End monitor path and index') if $testing_memory_active
+          }
+
+          # ------ WRITE CONTENT DATA
+          ContentServer.flush_content_data
+          exit
+        end
+      else
+        if Params['manual_file_changes']
+          Log.info('Feature: manual_file_changes is ON. But No previous content data found. ' \
+                   'No change is required. Existing application')
+          exit
+        end
       end
 
       # Directories states stored in the priority queue,
@@ -121,6 +166,13 @@ module FileMonitoring
         ::FileMonitoring.stable_state=elem['stable_state']
         dir_stat.monitor
 
+        # remove non existing (not marked) files\dirs
+        Log.info('Start remove non existing paths')
+        $testing_memory_log.info('Start remove non existing paths') if $testing_memory_active
+        dir_stat.removed_unmarked_paths
+        Log.info('End monitor path and index')
+        $testing_memory_log.info('End monitor path and index') if $testing_memory_active
+
         # Start index
         Log.info("Start index path:%s ", dir_stat.path)
         $testing_memory_log.info("Start index path:#{dir_stat.path}") if $testing_memory_active
@@ -129,13 +181,6 @@ module FileMonitoring
         # print number of indexed files
         Log.debug1("indexed file count:%s", $indexed_file_count)
         $testing_memory_log.info("indexed file count: #{$indexed_file_count}") if $testing_memory_active
-
-        # remove non existing (not marked) files\dirs
-        Log.info('Start remove non existing paths')
-        $testing_memory_log.info('Start remove non existing paths') if $testing_memory_active
-        dir_stat.removed_unmarked_paths
-        Log.info('End monitor path and index')
-        $testing_memory_log.info('End monitor path and index') if $testing_memory_active
 
         #flush content data if changed
         ContentServer.flush_content_data

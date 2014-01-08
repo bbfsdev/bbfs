@@ -23,10 +23,10 @@ module FileMonitoring
   #   ref_counter = number of references to same file which exist under several DirStat
   #   file_ref = ref to single shared FileStat object. (the last one which was created)
   class IdentFileInfo
-    attr_accessor :ref_counter, :ref_file
-    def initialize(ref_file)
-      @ref_file = ref_file
-      @ref_counter = 0
+    attr_accessor :checksum, :unique
+    def initialize(checksum)
+      @checksum = checksum
+      @unique = true
     end
   end
 
@@ -240,10 +240,7 @@ module FileMonitoring
           #recursive call
           dir_stat.removed_unmarked_paths
         else
-          #recursive call (New call. for all files to be removed from global map:file-attr -> file-ref)
-          dir_stat.removed_unmarked_paths
           # directory is not marked. Remove it, since it does not exist.
-          #Log.debug1("Non Existing dir: %s", file_stat.path)
           @@log.info("NON_EXISTING dir: " + dir_stat.path)
           @@log.outputters[0].flush if Params['log_flush_each_message']
           # remove file with changed checksum
@@ -262,7 +259,6 @@ module FileMonitoring
           file_stat.marked = false  # unset flag for next monitoring\index\remove phase
         else
           # file not marked meaning it is no longer exist. Remove.
-          #Log.debug1("Non Existing file: %s", file_stat.path)
           @@log.info("NON_EXISTING file: " + file_stat.path)
           @@log.outputters[0].flush if Params['log_flush_each_message']
           # remove file with changed checksum
@@ -271,17 +267,6 @@ module FileMonitoring
           }
           # remove from tree
           @files.delete(file_stat.path)
-
-          # remove file from map:file-attr -> file-ref
-          file_attr_str = File.basename(file_stat.path)+file_stat.size+file_stat.modification_time
-          ident_file_info = $file_attr_to_ref[file_attr_str]
-          if ident_file_info
-            ref_counter -= 1
-            if 0 == ident_file_info.ref_counter
-              # need to delete file from map
-              $file_attr_to_ref.delete(file_attr_str)
-            end
-          end
         end
       end
     end
@@ -324,17 +309,49 @@ module FileMonitoring
         # Get File \ Dir status
         globed_path_stat = File.lstat(globed_path) rescue next  # File or dir removed from OS file system
         if globed_path_stat.file?
-          # File case
+          # ----------------------------- FILE -----------------------
           child_stat = @files[globed_path]
           if child_stat
-            # file child exists in Tree
-            handle_file_child_exist(child_stat, globed_path_stat)
+            # -------------- EXISTS in Tree
+            unless Params['manual_file_changes']
+              child_stat.marked = true
+              if child_stat.changed?(globed_path_stat)
+                # ---------- STATUS CHANGED
+                # Update changed status
+                child_stat.state = FileStatEnum::CHANGED
+                child_stat.cycles = 0
+                child_stat.size = globed_path_stat.size
+                child_stat.modification_time = globed_path_stat.mtime.to_i
+                @@log.info("CHANGED file: " + globed_path)
+                @@log.outputters[0].flush if Params['log_flush_each_message']
+                #Log.debug1("CHANGED file: #{globed_path}")
+                # remove file with changed checksum. File will be added once indexed
+                $local_content_data_lock.synchronize{
+                  $local_content_data.remove_instance(Params['local_server_name'], globed_path)
+                }
+              else
+                # ---------- SAME STATUS
+                # File status is the same
+                if child_stat.state != FileStatEnum::STABLE
+                  child_stat.state = FileStatEnum::UNCHANGED
+                  child_stat.cycles += 1
+                  if child_stat.cycles >= ::FileMonitoring.stable_state
+                    child_stat.state = FileStatEnum::STABLE
+                    @@log.info("STABLE file: " + globed_path)
+                    @@log.outputters[0].flush if Params['log_flush_each_message']
+                  else
+                    @@log.info("UNCHANGED file: " + globed_path)
+                    @@log.outputters[0].flush if Params['log_flush_each_message']
+                  end
+                end
+              end
+            else
+              # --------- MANUAL MODE
+              child_stat.marked = true
+            end
           else
-            # new File child:
-            # check if file name and attributes exist in global file attr map
-            file_attr_str = File.basename(globed_path)+globed_path_stat.size+globed_path_stat.mtime.to_i
-            file_ident_info = $file_attr_to_ref[file_attr_str]
-            unless file_ident_info
+            # ---------------------------- NEW FILE ----------
+            unless Params['manual_file_changes']
               child_stat = FileStat.new(globed_path,
                                         FileStatEnum::NEW,
                                         globed_path_stat.size,
@@ -343,74 +360,36 @@ module FileMonitoring
               @@log.outputters[0].flush if Params['log_flush_each_message']
               child_stat.marked = true
               add_file(child_stat)
-              # add file_name+file_size+file_mod_tim to global map
-              ident_file_info = IdentFileInfo.new(child_stat)
-              $file_attr_to_ref[file_attr_str] = ident_file_info
             else
-              # file found in map (file copied or moved from orig location to current location).
-              # Create new File obj and Copy orig file attributes to newly created File.
-              child_stat = FileStat.new(
-                  globed_path, file_ident_info.ref_file.state,
-                  globed_path_stat.size, globed_path_stat.mtime.to_i,
-                  file_ident_info.ref_file.indexed, file_ident_info.ref_file.cycles,
-              )
-              # Update map with new file ref and raise file ref counter
-              file_ident_info.ref_file = child_stat
-              file_ident_info.ref_counter += 1
-              $file_attr_to_ref[file_attr_str] = file_ident_info
-
-              # handle new file as an existing file
-              handle_file_child_exist(child_stat, globed_path_stat)
+              # --------------------- MANUAL MODE
+              # check if file name and attributes exist in global file attr map
+              file_attr_str = File.basename(globed_path)+globed_path_stat.size+globed_path_stat.mtime.to_i
+              file_ident_info = $file_attr_to_checksum[file_attr_str]
+              # If not found (real new file) or found but not unique then file needs indexing. skip in manual mode.
+              next unless file_ident_info and file_ident_info.unique
+              # update content data (no need to update Dir tree)
+              $local_content_data_lock.synchronize{
+                $local_content_data.add_instance(file_ident_info.checksum, globed_path_stat.size,
+                                                 Params['local_server_name'], globed_path, globed_path_stat.mtime.to_i)
+              }
             end
           end
         else
-          # Dir
+          # ------------------------------ DIR -----------------------
           child_stat = @dirs[globed_path]
-          # Add Dir if not exists in Tree
           unless child_stat
+            # ----------- ADD NEW DIR
             child_stat = DirStat.new(globed_path)
             add_dir(child_stat)
             @@log.info("NEW dir: " + globed_path)
             @@log.outputters[0].flush if Params['log_flush_each_message']
           end
           child_stat.marked = true
-          #recursive call for dirs
+          # recursive call for dirs
           child_stat.monitor
         end
       end
       GC.start
-    end
-
-    def handle_file_child_exist(child_stat, globed_path_stat)
-      child_stat.marked = true
-      if child_stat.changed?(globed_path_stat)
-        # Update changed status
-        child_stat.state = FileStatEnum::CHANGED
-        child_stat.cycles = 0
-        child_stat.size = globed_path_stat.size
-        child_stat.modification_time = globed_path_stat.mtime.to_i
-        @@log.info("CHANGED file: " + globed_path)
-        @@log.outputters[0].flush if Params['log_flush_each_message']
-        #Log.debug1("CHANGED file: #{globed_path}")
-        # remove file with changed checksum. File will be added once indexed
-        $local_content_data_lock.synchronize{
-          $local_content_data.remove_instance(Params['local_server_name'], globed_path)
-        }
-      else
-        # File status is the same
-        if child_stat.state != FileStatEnum::STABLE
-          child_stat.state = FileStatEnum::UNCHANGED
-          child_stat.cycles += 1
-          if child_stat.cycles >= ::FileMonitoring.stable_state
-            child_stat.state = FileStatEnum::STABLE
-            @@log.info("STABLE file: " + globed_path)
-            @@log.outputters[0].flush if Params['log_flush_each_message']
-          else
-            @@log.info("UNCHANGED file: " + globed_path)
-            @@log.outputters[0].flush if Params['log_flush_each_message']
-          end
-        end
-      end
     end
 
     def index
