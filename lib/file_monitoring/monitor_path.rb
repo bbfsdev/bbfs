@@ -363,10 +363,21 @@ module FileMonitoring
             else
               # --------------------- MANUAL MODE
               # check if file name and attributes exist in global file attr map
+              puts "file:#{globed_path}  base name:#{File.basename(globed_path)}"
               file_attr_str = File.basename(globed_path) + globed_path_stat.size.to_s + globed_path_stat.mtime.to_i.to_s
               file_ident_info = $file_attr_to_checksum[file_attr_str]
               # If not found (real new file) or found but not unique then file needs indexing. skip in manual mode.
-              next unless file_ident_info and file_ident_info.unique
+              puts "NEW FILE: file_attr_str=#{file_attr_str}"
+              puts "unless file_ident_info and file_ident_info.unique = #{file_ident_info and file_ident_info.unique}"
+              if file_ident_info
+                puts "file_ident_info"
+                if file_ident_info.unique
+                  puts "file_ident_info.uniqu"
+                end
+             end
+
+              next unless (file_ident_info and file_ident_info.unique)
+              puts "update content data with file:#{File.basename(globed_path)}  checksum:#{file_ident_info.checksum}"
               # update content data (no need to update Dir tree)
               $local_content_data_lock.synchronize{
                 $local_content_data.add_instance(file_ident_info.checksum, globed_path_stat.size,

@@ -69,9 +69,11 @@ module FileMonitoring
             unless ident_file_info
               #  Add file checksum to map
               $file_attr_to_checksum[file_attr_str] = IdentFileInfo.new(checksum)
+              puts "Added file:#{file_attr_str} to map"
             else
               # File already in map. Need to mark as not unique
               ident_file_info.unique = false  # file will be skipped if found at new location
+              puts "File #{file_attr_str} already exists"
             end
           end
           # construct sub paths array from full file path:
