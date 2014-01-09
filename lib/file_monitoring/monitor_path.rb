@@ -363,7 +363,7 @@ module FileMonitoring
             else
               # --------------------- MANUAL MODE
               # check if file name and attributes exist in global file attr map
-              file_attr_str = File.basename(globed_path)+globed_path_stat.size+globed_path_stat.mtime.to_i
+              file_attr_str = File.basename(globed_path) + globed_path_stat.size.to_s + globed_path_stat.mtime.to_i.to_s
               file_ident_info = $file_attr_to_checksum[file_attr_str]
               # If not found (real new file) or found but not unique then file needs indexing. skip in manual mode.
               next unless file_ident_info and file_ident_info.unique

@@ -23,7 +23,29 @@ module FileMonitoring
     # This methods controlled by <tt>monitoring_paths</tt> configuration parameter,
     # that provides path and file monitoring configuration data
     def monitor_files
-      conf_array = Params['monitoring_paths']
+      
+      #init log4r
+      monitoring_log_path = Params['default_monitoring_log_path']
+      Log.debug1 'File monitoring log: ' + Params['default_monitoring_log_path']
+      monitoring_log_dir = File.dirname(monitoring_log_path)
+      FileUtils.mkdir_p(monitoring_log_dir) unless File.exists?(monitoring_log_dir)
+
+      @log4r = Log4r::Logger.new 'BBFS monitoring log'
+      @log4r.trace = true
+      formatter = Log4r::PatternFormatter.new(:pattern => "[%d] [%m]")
+      #file setup
+      file_config = {
+          "filename" => Params['default_monitoring_log_path'],
+          "maxsize" => Params['log_rotation_size'],
+          "trunc" => true
+      }
+      file_outputter = Log4r::RollingFileOutputter.new("monitor_log", file_config)
+      file_outputter.level = Log4r::INFO
+      file_outputter.formatter = formatter
+      @log4r.outputters << file_outputter
+      ::FileMonitoring::DirStat.set_log(@log4r)
+      
+     conf_array = Params['monitoring_paths']
 
       # create root dirs of monitoring
       dir_stat_array = []
@@ -42,7 +64,7 @@ module FileMonitoring
             |checksum, size, _, mod_time, _, path|
 
           if Params['manual_file_changes']
-            file_attr_str = File.basename(path) + size + mod_time
+            file_attr_str = File.basename(path) + size.to_s + mod_time.to_s
             ident_file_info = $file_attr_to_checksum[file_attr_str]
             unless ident_file_info
               #  Add file checksum to map
@@ -91,31 +113,32 @@ module FileMonitoring
           dir_stat_array.each { | dir_stat|
             Log.info("In Manual mode. Start monitor path:%s. moved or copied files (same name, size and time " +
                          "modification) will use the checksum of the original files and be updated in " +
-                         "content data file", dir_stat.path)
-            $testing_memory_log.info("Start monitor path:#{dir_stat.path} moved or copied files (same name, size and " +
+                         "content data file", dir_stat[0].path)
+            $testing_memory_log.info("Start monitor path:#{dir_stat[0].path} moved or copied files (same name, size and " +
                                          "time modification) will use the checksum of the original files and be updated in " +
                                          "content data file") if $testing_memory_active
             # ------- MONITOR
-            dir_stat.monitor
+            dir_stat[0].monitor
 
             # ------- REMOVE PATHS
             # remove non existing (not marked) files\dirs
             Log.info('Start remove non existing paths')
             $testing_memory_log.info('Start remove non existing paths') if $testing_memory_active
-            dir_stat.removed_unmarked_paths
+            dir_stat[0].removed_unmarked_paths
             Log.info('End monitor path and index')
             $testing_memory_log.info('End monitor path and index') if $testing_memory_active
           }
 
           # ------ WRITE CONTENT DATA
           ContentServer.flush_content_data
-          exit
+          raise("Finished manual changes and update file:#{Params['local_content_data_path']}. Exit application\n")
         end
       else
         if Params['manual_file_changes']
-          Log.info('Feature: manual_file_changes is ON. But No previous content data found. ' \
+          Log.info('Feature: manual_file_changes is ON. But No previous content data found. ' +
                    'No change is required. Existing application')
-          exit
+          raise('Feature: manual_file_changes is ON. But No previous content data found at ' +
+                   "file:#{Params['local_content_data_path']}. No change is required. Existing application\n")
         end
       end
 
@@ -129,26 +152,6 @@ module FileMonitoring
         pq.push([priority, elem, dir_stat_array[index][0]], -priority)
       }
 
-      #init log4r
-      monitoring_log_path = Params['default_monitoring_log_path']
-      Log.debug1 'File monitoring log: ' + Params['default_monitoring_log_path']
-      monitoring_log_dir = File.dirname(monitoring_log_path)
-      FileUtils.mkdir_p(monitoring_log_dir) unless File.exists?(monitoring_log_dir)
-
-      @log4r = Log4r::Logger.new 'BBFS monitoring log'
-      @log4r.trace = true
-      formatter = Log4r::PatternFormatter.new(:pattern => "[%d] [%m]")
-      #file setup
-      file_config = {
-          "filename" => Params['default_monitoring_log_path'],
-          "maxsize" => Params['log_rotation_size'],
-          "trunc" => true
-      }
-      file_outputter = Log4r::RollingFileOutputter.new("monitor_log", file_config)
-      file_outputter.level = Log4r::INFO
-      file_outputter.formatter = formatter
-      @log4r.outputters << file_outputter
-      ::FileMonitoring::DirStat.set_log(@log4r)
 
       while true do
         # pull entry that should be checked next,
