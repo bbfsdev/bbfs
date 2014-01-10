@@ -61,19 +61,17 @@ module FileMonitoring
         Log.info("Start build data base from loaded file. This could take several minutes")
         inst_count = 0
         $local_content_data.each_instance {
-            |checksum, size, _, mod_time, _, path|
+            |checksum, size, _, mod_time, _, path, index_time|
 
           if Params['manual_file_changes']
             file_attr_str = File.basename(path) + size.to_s + mod_time.to_s
             ident_file_info = $file_attr_to_checksum[file_attr_str]
             unless ident_file_info
               #  Add file checksum to map
-              $file_attr_to_checksum[file_attr_str] = IdentFileInfo.new(checksum)
-              puts "Added file:#{file_attr_str} to map"
+              $file_attr_to_checksum[file_attr_str] = IdentFileInfo.new(checksum, index_time)
             else
               # File already in map. Need to mark as not unique
               ident_file_info.unique = false  # file will be skipped if found at new location
-              puts "File #{file_attr_str} already exists"
             end
           end
           # construct sub paths array from full file path:
