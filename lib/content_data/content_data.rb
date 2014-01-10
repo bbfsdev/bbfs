@@ -74,7 +74,7 @@ module ContentData
           # we use deep clone for location since map key is using shallow clone.
           # we dont want references between new content data
           # and orig object. This will help the GC dispose the orig object if not used any more.
-          instances_db_cloned[[location[0].clone,location[1].clone]] = inst_mod_times
+          instances_db_cloned[[location[0].clone,location[1].clone]] = inst_mod_times.clone
         }
         clone_contents_info[checksum] = [size,
                               instances_db_cloned,
