@@ -23,7 +23,7 @@ module ContentData
   #   unify time, add/remove instance, queries, merge, remove directory and more.
   # Content info data structure:
   #   @contents_info = { Checksum -> [size, *instances*, content_modification_time] }
-  #     *instances* = {[server,path] -> instance_modification_time }
+  #     *instances* = {[server,path] -> [instance_modification_time,index_time] }
   # Notes:
   #   1. content_modification_time is the instance_modification_time of the first
   #      instances which was added to @contents_info
@@ -70,8 +70,11 @@ module ContentData
         instances_db_enum = instances_db.each_key
         loop {
           location =  instances_db_enum.next rescue break
-          instance_mtime = instances_db[location]
-          instances_db_cloned[[location[0].clone,location[1].clone]]=instance_mtime
+          inst_mod_times = instances_db[location]
+          # we use deep clone for location since map key is using shallow clone.
+          # we dont want references between new content data
+          # and orig object. This will help the GC dispose the orig object if not used any more.
+          instances_db_cloned[[location[0].clone,location[1].clone]] = inst_mod_times
         }
         clone_contents_info[checksum] = [size,
                               instances_db_cloned,
@@ -105,9 +108,9 @@ module ContentData
           location = content_info_enum.next rescue break
           # provide the block with: checksum, size, content modification time,instance modification time,
           #   server and path.
-          instance_modification_time = content_info[1][location]
-          block.call(checksum,content_info[0], content_info[2], instance_modification_time,
-                     location[0], location[1])
+          inst_mod_time, inst_index_time = content_info[1][location]
+          block.call(checksum,content_info[0], content_info[2], inst_mod_time,
+                     location[0], location[1], inst_index_time)
         }
       }
     end
@@ -122,8 +125,8 @@ module ContentData
         location = instances_db_enum.next rescue break
         # provide the block with: checksum, size, content modification time,instance modification time,
         #   server and path.
-        instance_modification_time = content_info[1][location]
-        block.call(checksum,content_info[0], content_info[2], instance_modification_time,
+        inst_mod_time,_ = content_info[1][location]
+        block.call(checksum,content_info[0], content_info[2], inst_mod_time,
                    location[0], location[1])
       }
     end
@@ -146,10 +149,11 @@ module ContentData
       content_info = @contents_info[checksum]
       return nil if content_info.nil?
       instances = content_info[1]
-      instance_time = instances[location]
+      instance_time,_ = instances[location]
+      instance_time
     end
 
-    def add_instance(checksum, size, server, path, modification_time)
+    def add_instance(checksum, size, server, path, modification_time, index_time=Time.now.to_i)
       location = [server, path]
 
       # file was changed but remove_instance was not called
@@ -161,7 +165,7 @@ module ContentData
       content_info = @contents_info[checksum]
       if content_info.nil?
         @contents_info[checksum] = [size,
-                                    {location => modification_time},
+                                    {location => [modification_time,index_time]},
                                     modification_time]
       else
         if size != content_info[0]
@@ -172,7 +176,7 @@ module ContentData
         #override file if needed
         content_info[0] = size
         instances = content_info[1]
-        instances[location] = modification_time
+        instances[location] = [modification_time, index_time]
       end
       @instances_info[location] = checksum
     end
@@ -236,7 +240,7 @@ module ContentData
         local_instances =  local_content_info[1]
         return false if other.checksum_instances_size(checksum) != local_instances.length
         location = [server, path]
-        local_instance_mod_time = local_instances[location]
+        local_instance_mod_time, _ = local_instances[location]
         return false if local_instance_mod_time.nil?
         return false if local_instance_mod_time != instance_mod_time
       }
@@ -318,8 +322,9 @@ module ContentData
           location = instances_db_enum.next rescue break
           # provide the block with: checksum, size, content modification time,instance modification time,
           #   server and path.
-          instance_modification_time = content_info[1][location]
-          file.write("#{checksum},#{content_info[0]},#{location[0]},#{location[1]},#{instance_modification_time}\n")
+          instance_modification_time,instance_index_time = content_info[1][location]
+          file.write("#{checksum},#{content_info[0]},#{location[0]},#{location[1]}," +
+                     "#{instance_modification_time},#{instance_index_time}\n")
         }
         chunk_counter += 1
         break if chunk_counter == chunk_size
@@ -397,20 +402,21 @@ module ContentData
         return reset_load_from_file(filename, file, "Expected to read Instance line but reached EOF") unless instance_line
         parameters = instance_line.split(',')
         # bugfix: if file name consist a comma then parsing based on comma separating fails
-        if (parameters.size > 5)
-          (4..parameters.size-2).each do |i|
+        if (parameters.size > 6)
+          (4..parameters.size-3).each do |i|
             parameters[3] = [parameters[3], parameters[i]].join(",")
           end
-          (4..parameters.size-2).each do |i|
+          (4..parameters.size-3).each do |i|
             parameters.delete_at(4)
           end
         end
 
-        add_instance(parameters[0],
-                     parameters[1].to_i,
-                     parameters[2],
-                     parameters[3],
-                     parameters[4].to_i)
+        add_instance(parameters[0],        #checksum
+                     parameters[1].to_i,   # size
+                     parameters[2],        # server
+                     parameters[3],        # path
+                     parameters[4].to_i,   # mod time
+                     parameters[5].to_i)   # index time
         chunk_index += 1
       end
       true
@@ -436,7 +442,7 @@ module ContentData
         instances_enum = instances.each_key
         loop {
           location = instances_enum.next rescue break
-          instance_mod_time = instances[location]
+          instance_mod_time,_ = instances[location]
           if instance_mod_time < min_time_per_checksum
             min_time_per_checksum = instance_mod_time
           end
@@ -445,7 +451,7 @@ module ContentData
         instances_enum = instances.each_key
         loop {
           location = instances_enum.next rescue break
-          instances[location] = min_time_per_checksum
+          instances[location][0] = min_time_per_checksum
         }
         # update content time with min time
         content_info[2] = min_time_per_checksum
