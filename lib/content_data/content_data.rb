@@ -71,6 +71,9 @@ module ContentData
         loop {
           location =  instances_db_enum.next rescue break
           inst_mod_times = instances_db[location]
+          # we use deep clone for location since map key is using shallow clone.
+          # we dont want references between new content data
+          # and orig object. This will help the GC dispose the orig object if not used any more.
           instances_db_cloned[[location[0].clone,location[1].clone]] = inst_mod_times
         }
         clone_contents_info[checksum] = [size,
@@ -95,7 +98,7 @@ module ContentData
     # iterator over @contents_info data structure (including instances)
     # block is provided with: checksum, size, content modification time,
     #   instance modification time, server and file path
-    def each_instance_with_index_time(&block)
+    def each_instance(&block)
       contents_enum = @contents_info.each_key
       loop {
         checksum = contents_enum.next rescue break
@@ -108,26 +111,6 @@ module ContentData
           inst_mod_time, inst_index_time = content_info[1][location]
           block.call(checksum,content_info[0], content_info[2], inst_mod_time,
                      location[0], location[1], inst_index_time)
-        }
-      }
-    end
-
-    # iterator over @contents_info data structure (including instances)
-    # block is provided with: checksum, size, content modification time,
-    #   instance modification time, server and file path
-    def each_instance(&block)
-      contents_enum = @contents_info.each_key
-      loop {
-        checksum = contents_enum.next rescue break
-        content_info = @contents_info[checksum]
-        content_info_enum = content_info[1].each_key
-        loop {
-          location = content_info_enum.next rescue break
-          # provide the block with: checksum, size, content modification time,instance modification time,
-          #   server and path.
-          inst_mod_time,_ = content_info[1][location]
-          block.call(checksum,content_info[0], content_info[2], inst_mod_time,
-                     location[0], location[1])
         }
       }
     end
