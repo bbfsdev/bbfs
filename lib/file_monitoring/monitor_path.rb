@@ -369,7 +369,7 @@ module FileMonitoring
               # If not found (real new file) or found but not unique then file needs indexing. skip in manual mode.
 
               next unless (file_ident_info and file_ident_info.unique)
-              log.debug1("update content data with file:%s  checksum:%s  index_time:%s",
+              Log.debug1("update content data with file:%s  checksum:%s  index_time:%s",
                          File.basename(globed_path), file_ident_info.checksum, file_ident_info.index_time.to_s)
               # update content data (no need to update Dir tree)
               $local_content_data_lock.synchronize{
