@@ -74,7 +74,7 @@ module ContentData
           # we use deep clone for location since map key is using shallow clone.
           # we dont want references between new content data
           # and orig object. This will help the GC dispose the orig object if not used any more.
-          instances_db_cloned[[location[0].clone,location[1].clone]] = inst_mod_times
+          instances_db_cloned[[location[0].clone,location[1].clone]] = inst_mod_times.clone
         }
         clone_contents_info[checksum] = [size,
                               instances_db_cloned,
@@ -442,7 +442,7 @@ module ContentData
         instances_enum = instances.each_key
         loop {
           location = instances_enum.next rescue break
-          instance_mod_time,_ = instances[location]
+          instance_mod_time = instances[location][0]
           if instance_mod_time < min_time_per_checksum
             min_time_per_checksum = instance_mod_time
           end
@@ -502,7 +502,7 @@ module ContentData
         instances_enum = instances[1].each_key
         loop {
           unique_path = instances_enum.next rescue break
-          instance_mtime = instances[1][unique_path]
+          instance_mtime = instances[1][unique_path][0]
           instance_info = [checksum, content_mtime, content_size, instance_mtime]
           instance_info.concat(unique_path)
           unless check_instance(instance_info)
