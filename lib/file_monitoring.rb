@@ -20,8 +20,8 @@ module FileMonitoring
               'This log containd track of changes found during monitoring')
   Params.complex('monitoring_paths', [], 'Array of Hashes with 3 fields: ' \
                  'path, scan_period and stable_state.')
-  Params.boolean('manual_file_changes', false, 'true, indicates to application to check if new files were copied ' \
-                 'or moved from other location. In this case content data file should be updated accordingly')
+  Params.boolean('manual_file_changes', false, 'true, indicates to application that a set of files were ' \
+    ' moved/copied we we should not index them but rather copy their hashes from contents there were copied from')
 
   # @see FileMonitoring#monitor_files
   def monitor_files

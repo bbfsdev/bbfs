@@ -57,6 +57,7 @@ module FileMonitoring
       #Look over loaded content data if not empty
       # If file is under monitoring path - Add to DirStat tree as stable with path,size,mod_time read from file
       # If file is NOT under monitoring path - skip (not a valid usage)
+      file_attr_to_checksum = {}  # This structure is used to optimize indexing when user specifies a directory was moved.
       unless $local_content_data.empty?
         Log.info("Start build data base from loaded file. This could take several minutes")
         inst_count = 0
@@ -64,11 +65,11 @@ module FileMonitoring
             |checksum, size, _, mod_time, _, path, index_time|
 
           if Params['manual_file_changes']
-            file_attr_str = File.basename(path) + size.to_s + mod_time.to_s
-            ident_file_info = $file_attr_to_checksum[file_attr_str]
+            file_attr_key = [File.basename(path), size, mod_time]
+            ident_file_info = file_attr_to_checksum[file_attr_key]
             unless ident_file_info
               #  Add file checksum to map
-              $file_attr_to_checksum[file_attr_str] = IdentFileInfo.new(checksum, index_time)
+              file_attr_to_checksum[file_attr_key] = IdentFileInfo.new(checksum, index_time)
             else
               # File already in map. Need to mark as not unique
               ident_file_info.unique = false  # file will be skipped if found at new location
@@ -118,7 +119,7 @@ module FileMonitoring
                                          "time modification) will use the checksum of the original files and be updated in " +
                                          "content data file") if $testing_memory_active
             # ------- MONITOR
-            dir_stat[0].monitor
+            dir_stat[0].monitor(file_attr_to_checksum)
 
             # ------- REMOVE PATHS
             # remove non existing (not marked) files\dirs

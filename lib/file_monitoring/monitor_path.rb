@@ -20,8 +20,11 @@ module FileMonitoring
   end
 
   # Used for dir rename. Holds following info:
-  #   ref_counter = number of references to same file which exist under several DirStat
-  #   file_ref = ref to single shared FileStat object. (the last one which was created)
+  #   checksum = checksum of the file
+  #   index_time = index time of the file
+  #   unique - if same key (file attributes) found more then once, we mark the file as not unique.
+  #            This means that the file needs to be indexed.
+  #            In the manual changes phase, the file will be skipped.
   class IdentFileInfo
     attr_accessor :checksum, :index_time, :unique
     def initialize(checksum, index_time)
@@ -277,7 +280,7 @@ module FileMonitoring
     # Change state for existing files\dirs
     # Index stable files
     # Remove non existing files\dirs is handled in method: remove_unmarked_paths
-    def monitor
+    def monitor(file_attr_to_checksum=nil)
 
       # Algorithm:
       # assume that current dir is present
@@ -364,10 +367,9 @@ module FileMonitoring
             else
               # --------------------- MANUAL MODE
               # check if file name and attributes exist in global file attr map
-              file_attr_str = File.basename(globed_path) + globed_path_stat.size.to_s + globed_path_stat.mtime.to_i.to_s
-              file_ident_info = $file_attr_to_checksum[file_attr_str]
+              file_attr_key = [File.basename(globed_path), globed_path_stat.size, globed_path_stat.mtime.to_i]
+              file_ident_info = file_attr_to_checksum[file_attr_key]
               # If not found (real new file) or found but not unique then file needs indexing. skip in manual mode.
-
               next unless (file_ident_info and file_ident_info.unique)
               Log.debug1("update content data with file:%s  checksum:%s  index_time:%s",
                          File.basename(globed_path), file_ident_info.checksum, file_ident_info.index_time.to_s)
@@ -394,7 +396,7 @@ module FileMonitoring
           end
           child_stat.marked = true
           # recursive call for dirs
-          child_stat.monitor
+          child_stat.monitor(file_attr_to_checksum)
         end
       end
       GC.start
