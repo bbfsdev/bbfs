@@ -442,7 +442,7 @@ module ContentData
         instances_enum = instances.each_key
         loop {
           location = instances_enum.next rescue break
-          instance_mod_time,_ = instances[location]
+          instance_mod_time = instances[location][0]
           if instance_mod_time < min_time_per_checksum
             min_time_per_checksum = instance_mod_time
           end
@@ -502,7 +502,7 @@ module ContentData
         instances_enum = instances[1].each_key
         loop {
           unique_path = instances_enum.next rescue break
-          instance_mtime = instances[1][unique_path]
+          instance_mtime = instances[1][unique_path][0]
           instance_info = [checksum, content_mtime, content_size, instance_mtime]
           instance_info.concat(unique_path)
           unless check_instance(instance_info)
