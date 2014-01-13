@@ -105,7 +105,7 @@ module FileMonitoring
           $indexed_file_count += 1
           @indexed = true
         rescue
-          Log.warning("Indexed path'#{@path}' does not exist. Probably file changed")
+          Log.warning("Indexed path'#{@path}' does not exist. Probably file changed") if @@log
         end
       end
     end
@@ -245,8 +245,10 @@ module FileMonitoring
           dir_stat.removed_unmarked_paths
         else
           # directory is not marked. Remove it, since it does not exist.
-          @@log.info("NON_EXISTING dir: " + dir_stat.path)
-          @@log.outputters[0].flush if Params['log_flush_each_message']
+          if @@log
+            @@log.info("NON_EXISTING dir: " + dir_stat.path)
+            @@log.outputters[0].flush if Params['log_flush_each_message']
+          end
           # remove file with changed checksum
           $local_content_data_lock.synchronize{
             $local_content_data.remove_directory(dir_stat.path, Params['local_server_name'])
@@ -263,8 +265,10 @@ module FileMonitoring
           file_stat.marked = false  # unset flag for next monitoring\index\remove phase
         else
           # file not marked meaning it is no longer exist. Remove.
-          @@log.info("NON_EXISTING file: " + file_stat.path)
-          @@log.outputters[0].flush if Params['log_flush_each_message']
+          if @@log
+            @@log.info("NON_EXISTING file: " + file_stat.path)
+            @@log.outputters[0].flush if Params['log_flush_each_message']
+          end
           # remove file with changed checksum
           $local_content_data_lock.synchronize{
             $local_content_data.remove_instance(Params['local_server_name'], file_stat.path)
@@ -327,9 +331,10 @@ module FileMonitoring
                 child_stat.cycles = 0
                 child_stat.size = globed_path_stat.size
                 child_stat.modification_time = globed_path_stat.mtime.to_i
-                @@log.info("CHANGED file: " + globed_path)
-                @@log.outputters[0].flush if Params['log_flush_each_message']
-                #Log.debug1("CHANGED file: #{globed_path}")
+                if @@log
+                  @@log.info("CHANGED file: " + globed_path)
+                  @@log.outputters[0].flush if Params['log_flush_each_message']
+                end
                 # remove file with changed checksum. File will be added once indexed
                 $local_content_data_lock.synchronize{
                   $local_content_data.remove_instance(Params['local_server_name'], globed_path)
@@ -342,9 +347,12 @@ module FileMonitoring
                   child_stat.cycles += 1
                   if child_stat.cycles >= ::FileMonitoring.stable_state
                     child_stat.state = FileStatEnum::STABLE
-                    @@log.info("STABLE file: " + globed_path)
-                    @@log.outputters[0].flush if Params['log_flush_each_message']
+                    if @@log
+                      @@log.info("STABLE file: " + globed_path)
+                      @@log.outputters[0].flush if Params['log_flush_each_message']
+                    end
                   else
+                  if @@log
                     @@log.info("UNCHANGED file: " + globed_path)
                     @@log.outputters[0].flush if Params['log_flush_each_message']
                   end
@@ -361,8 +369,10 @@ module FileMonitoring
                                         FileStatEnum::NEW,
                                         globed_path_stat.size,
                                         globed_path_stat.mtime.to_i)
-              @@log.info("NEW file: " + globed_path)
-              @@log.outputters[0].flush if Params['log_flush_each_message']
+              if @@log
+                @@log.info("NEW file: " + globed_path)
+                @@log.outputters[0].flush if Params['log_flush_each_message']
+              end
               child_stat.marked = true
               add_file(child_stat)
             else  # case Params['manual_file_changes']
@@ -392,8 +402,10 @@ module FileMonitoring
             # ----------- ADD NEW DIR
             child_stat = DirStat.new(globed_path)
             add_dir(child_stat)
-            @@log.info("NEW dir: " + globed_path)
-            @@log.outputters[0].flush if Params['log_flush_each_message']
+            if @@log
+              @@log.info("NEW dir: " + globed_path)
+              @@log.outputters[0].flush if Params['log_flush_each_message']
+            end
           end
           child_stat.marked = true
           # recursive call for dirs
