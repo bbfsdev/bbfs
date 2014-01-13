@@ -352,9 +352,10 @@ module FileMonitoring
                       @@log.outputters[0].flush if Params['log_flush_each_message']
                     end
                   else
-                  if @@log
-                    @@log.info("UNCHANGED file: " + globed_path)
-                    @@log.outputters[0].flush if Params['log_flush_each_message']
+                    if @@log
+                      @@log.info("UNCHANGED file: " + globed_path)
+                      @@log.outputters[0].flush if Params['log_flush_each_message']
+                    end
                   end
                 end
               end
