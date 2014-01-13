@@ -23,7 +23,29 @@ module FileMonitoring
     # This methods controlled by <tt>monitoring_paths</tt> configuration parameter,
     # that provides path and file monitoring configuration data
     def monitor_files
-      conf_array = Params['monitoring_paths']
+      
+      #init log4r
+      monitoring_log_path = Params['default_monitoring_log_path']
+      Log.debug1 'File monitoring log: ' + Params['default_monitoring_log_path']
+      monitoring_log_dir = File.dirname(monitoring_log_path)
+      FileUtils.mkdir_p(monitoring_log_dir) unless File.exists?(monitoring_log_dir)
+
+      @log4r = Log4r::Logger.new 'BBFS monitoring log'
+      @log4r.trace = true
+      formatter = Log4r::PatternFormatter.new(:pattern => "[%d] [%m]")
+      #file setup
+      file_config = {
+          "filename" => Params['default_monitoring_log_path'],
+          "maxsize" => Params['log_rotation_size'],
+          "trunc" => true
+      }
+      file_outputter = Log4r::RollingFileOutputter.new("monitor_log", file_config)
+      file_outputter.level = Log4r::INFO
+      file_outputter.formatter = formatter
+      @log4r.outputters << file_outputter
+      ::FileMonitoring::DirStat.set_log(@log4r)
+      
+     conf_array = Params['monitoring_paths']
 
       # create root dirs of monitoring
       dir_stat_array = []
@@ -35,11 +57,24 @@ module FileMonitoring
       #Look over loaded content data if not empty
       # If file is under monitoring path - Add to DirStat tree as stable with path,size,mod_time read from file
       # If file is NOT under monitoring path - skip (not a valid usage)
+      file_attr_to_checksum = {}  # This structure is used to optimize indexing when user specifies a directory was moved.
       unless $local_content_data.empty?
         Log.info("Start build data base from loaded file. This could take several minutes")
         inst_count = 0
         $local_content_data.each_instance {
-            |_, size, _, mod_time, _, path|
+            |checksum, size, _, mod_time, _, path, index_time|
+
+          if Params['manual_file_changes']
+            file_attr_key = [File.basename(path), size, mod_time]
+            ident_file_info = file_attr_to_checksum[file_attr_key]
+            unless ident_file_info
+              #  Add file checksum to map
+              file_attr_to_checksum[file_attr_key] = IdentFileInfo.new(checksum, index_time)
+            else
+              # File already in map. Need to mark as not unique
+              ident_file_info.unique = false  # file will be skipped if found at new location
+            end
+          end
           # construct sub paths array from full file path:
           # Example:
           #   instance path = /dir1/dir2/file_name
@@ -72,6 +107,42 @@ module FileMonitoring
         }
         Log.info("End build data base from loaded file. loaded instances:#{inst_count}")
         $last_content_data_id = $local_content_data.unique_id
+
+        if Params['manual_file_changes']
+          # -------------------------- MANUAL MODE
+          # ------------ LOOP DIRS
+          dir_stat_array.each { | dir_stat|
+            log_msg = "In Manual mode. Start monitor path:%s. moved or copied files (same name, size and time " +
+                "modification) will use the checksum of the original files and be updated in " +
+                "content data file" % [dir_stat[0].path]
+            Log.info(log_msg)
+            $testing_memory_log.info(log_msg) if $testing_memory_active
+
+            # ------- MONITOR
+            dir_stat[0].monitor(file_attr_to_checksum)
+
+            # ------- REMOVE PATHS
+            # remove non existing (not marked) files\dirs
+            log_msg = 'Start remove non existing paths'
+            Log.info(log_msg)
+            $testing_memory_log.info(log_msg) if $testing_memory_active
+            dir_stat[0].removed_unmarked_paths
+            log_msg = 'End monitor path and index'
+            Log.info(log_msg)
+            $testing_memory_log.info(log_msg) if $testing_memory_active
+          }
+
+          # ------ WRITE CONTENT DATA
+          ContentServer.flush_content_data
+          raise("Finished manual changes and update file:#{Params['local_content_data_path']}. Exit application\n")
+        end
+      else
+        if Params['manual_file_changes']
+          Log.info('Feature: manual_file_changes is ON. But No previous content data found. ' +
+                   'No change is required. Existing application')
+          raise('Feature: manual_file_changes is ON. But No previous content data found at ' +
+                   "file:#{Params['local_content_data_path']}. No change is required. Existing application\n")
+        end
       end
 
       # Directories states stored in the priority queue,
@@ -84,26 +155,6 @@ module FileMonitoring
         pq.push([priority, elem, dir_stat_array[index][0]], -priority)
       }
 
-      #init log4r
-      monitoring_log_path = Params['default_monitoring_log_path']
-      Log.debug1 'File monitoring log: ' + Params['default_monitoring_log_path']
-      monitoring_log_dir = File.dirname(monitoring_log_path)
-      FileUtils.mkdir_p(monitoring_log_dir) unless File.exists?(monitoring_log_dir)
-
-      @log4r = Log4r::Logger.new 'BBFS monitoring log'
-      @log4r.trace = true
-      formatter = Log4r::PatternFormatter.new(:pattern => "[%d] [%m]")
-      #file setup
-      file_config = {
-          "filename" => Params['default_monitoring_log_path'],
-          "maxsize" => Params['log_rotation_size'],
-          "trunc" => true
-      }
-      file_outputter = Log4r::RollingFileOutputter.new("monitor_log", file_config)
-      file_outputter.level = Log4r::INFO
-      file_outputter.formatter = formatter
-      @log4r.outputters << file_outputter
-      ::FileMonitoring::DirStat.set_log(@log4r)
 
       while true do
         # pull entry that should be checked next,
@@ -121,6 +172,13 @@ module FileMonitoring
         ::FileMonitoring.stable_state=elem['stable_state']
         dir_stat.monitor
 
+        # remove non existing (not marked) files\dirs
+        Log.info('Start remove non existing paths')
+        $testing_memory_log.info('Start remove non existing paths') if $testing_memory_active
+        dir_stat.removed_unmarked_paths
+        Log.info('End monitor path and index')
+        $testing_memory_log.info('End monitor path and index') if $testing_memory_active
+
         # Start index
         Log.info("Start index path:%s ", dir_stat.path)
         $testing_memory_log.info("Start index path:#{dir_stat.path}") if $testing_memory_active
@@ -129,13 +187,6 @@ module FileMonitoring
         # print number of indexed files
         Log.debug1("indexed file count:%s", $indexed_file_count)
         $testing_memory_log.info("indexed file count: #{$indexed_file_count}") if $testing_memory_active
-
-        # remove non existing (not marked) files\dirs
-        Log.info('Start remove non existing paths')
-        $testing_memory_log.info('Start remove non existing paths') if $testing_memory_active
-        dir_stat.removed_unmarked_paths
-        Log.info('End monitor path and index')
-        $testing_memory_log.info('End monitor path and index') if $testing_memory_active
 
         #flush content data if changed
         ContentServer.flush_content_data
