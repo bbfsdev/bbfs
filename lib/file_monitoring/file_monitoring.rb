@@ -112,22 +112,24 @@ module FileMonitoring
           # -------------------------- MANUAL MODE
           # ------------ LOOP DIRS
           dir_stat_array.each { | dir_stat|
-            Log.info("In Manual mode. Start monitor path:%s. moved or copied files (same name, size and time " +
-                         "modification) will use the checksum of the original files and be updated in " +
-                         "content data file", dir_stat[0].path)
-            $testing_memory_log.info("Start monitor path:#{dir_stat[0].path} moved or copied files (same name, size and " +
-                                         "time modification) will use the checksum of the original files and be updated in " +
-                                         "content data file") if $testing_memory_active
+            log_msg = "In Manual mode. Start monitor path:%s. moved or copied files (same name, size and time " +
+                "modification) will use the checksum of the original files and be updated in " +
+                "content data file" % [dir_stat[0].path]
+            Log.info(log_msg)
+            $testing_memory_log.info(log_msg) if $testing_memory_active
+
             # ------- MONITOR
             dir_stat[0].monitor(file_attr_to_checksum)
 
             # ------- REMOVE PATHS
             # remove non existing (not marked) files\dirs
-            Log.info('Start remove non existing paths')
-            $testing_memory_log.info('Start remove non existing paths') if $testing_memory_active
+            log_msg = 'Start remove non existing paths'
+            Log.info(log_msg)
+            $testing_memory_log.info(log_msg) if $testing_memory_active
             dir_stat[0].removed_unmarked_paths
-            Log.info('End monitor path and index')
-            $testing_memory_log.info('End monitor path and index') if $testing_memory_active
+            log_msg = 'End monitor path and index'
+            Log.info(log_msg)
+            $testing_memory_log.info(log_msg) if $testing_memory_active
           }
 
           # ------ WRITE CONTENT DATA

@@ -318,6 +318,7 @@ module FileMonitoring
           if child_stat
             # -------------- EXISTS in Tree
             unless Params['manual_file_changes']
+              # --------- NON MANUAL MODE
               child_stat.marked = true
               if child_stat.changed?(globed_path_stat)
                 # ---------- STATUS CHANGED
@@ -333,7 +334,7 @@ module FileMonitoring
                 $local_content_data_lock.synchronize{
                   $local_content_data.remove_instance(Params['local_server_name'], globed_path)
                 }
-              else
+              else  # case child_stat did not change
                 # ---------- SAME STATUS
                 # File status is the same
                 if child_stat.state != FileStatEnum::STABLE
@@ -349,7 +350,7 @@ module FileMonitoring
                   end
                 end
               end
-            else
+            else  # case Params['manual_file_changes']
               # --------- MANUAL MODE
               child_stat.marked = true
             end
@@ -364,7 +365,7 @@ module FileMonitoring
               @@log.outputters[0].flush if Params['log_flush_each_message']
               child_stat.marked = true
               add_file(child_stat)
-            else
+            else  # case Params['manual_file_changes']
               # --------------------- MANUAL MODE
               # check if file name and attributes exist in global file attr map
               file_attr_key = [File.basename(globed_path), globed_path_stat.size, globed_path_stat.mtime.to_i]
