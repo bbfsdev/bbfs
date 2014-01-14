@@ -1,0 +1,71 @@
+# This auxiliary script converts Content data file format of 5 fields (for each indatnce)
+#   to New Content data format (new field - instance index time)
+#
+# Example of content data file name:
+#   backup.data-20130801.bz2
+#
+#The added index time will be calculated as follows:
+#  read the content data file name with format:
+#    <prefix_name>-<year in 4 digits><month in 2 digits><day in 2 digits>.<postfix_name>
+#  Unix-Time will use the date: <year in 4 digits><month in 2 digits><day in 2 digits>
+#
+#Summary:
+#  convert all instances like this example:
+#    a1234567890123456789_80124_server1_/user/path_to_file_1389167919
+#  Will be onverted to:
+#    a1234567890123456789,80124,server1,/user/path_to_file,1389167919,<Unix-Time >
+#  unix time will be the seconds conversion of the date provided in the file name
+
+content_data_input_file_name = ARGV[0]
+
+unless content_data_input_file_name
+  puts("first argument is empty but should hold the content_data file name")
+  exit
+end
+
+# ------------------ Open input file for reading -----------
+content_data_output_file_name = content_data_input_file_name + '.converted'
+begin
+  input_file = File.open(content_data_input_file_name, 'r')
+rescue Exception => err
+  puts("Error: First argument:'#{content_data_input_file_name}', should hold content_data file name.")
+  puts("Error: Message:#{err}")
+  exit
+end
+
+# ---------------------- PARSE FILE NAME - Index time
+# parse file name format. Example: backup.data-20130801.bz2
+#    <prefix_name>-<year in 4 digits><month in 2 digits><day in 2 digits>.<postfix_name>
+#  Unix-Time will use the date: <year in 4 digits><month in 2 digits><day in 2 digits>
+matches = content_data_input_file_name.match(/[a-zA-Z0-9_\.\-]+-(\d\d\d\d)(\d\d)(\d\d)\.[a-zA-Z0-9_\.\-]+/)
+unless matches
+  puts("First argument:'#{content_data_input_file_name}', should hold content_data file name")
+  puts('  and be in the format: <prefix_name>-<year in 4 digits><month in 2 digits><day in 2 digits>.<postfix_name>')
+  exit
+end
+index_time = Time.utc(matches[1].to_i, matches[2].to_i, matches[3].to_i).to_i
+puts("Index time will be used: Year:%s  Month:%s  Day:%s  Unix time:%s" %
+         [matches[1], matches[2], matches[3], index_time.to_s])
+
+# ------------------ Open output file for writing -----------
+output_file = File.open(content_data_output_file_name, 'w')
+puts("Converted file name:#{content_data_output_file_name}")
+
+# -------- Start convert input file and write output file
+puts("Start convert.. This could take few seconds")
+input_file.readlines.each { |line|
+  chomped_line = line.chomp
+  parameters = chomped_line.split(",")
+  parameters_size = parameters.length
+  if parameters_size < 5
+    output_file.puts(chomped_line)  # copy line as is since it is not an instance line
+  else
+    output_file.puts(chomped_line + ',' + index_time.to_s)  # add index time to instance
+  end
+}
+input_file.close
+output_file.close
+puts("Finished convert to file:'#{content_data_output_file_name}'.\nExiting.")
+
+
+
