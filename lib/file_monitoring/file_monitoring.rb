@@ -112,9 +112,8 @@ module FileMonitoring
           # -------------------------- MANUAL MODE
           # ------------ LOOP DIRS
           dir_stat_array.each { | dir_stat|
-            log_msg = "In Manual mode. Start monitor path:%s. moved or copied files (same name, size and time " +
-                "modification) will use the checksum of the original files and be updated in " +
-                "content data file" % [dir_stat[0].path]
+            log_msg = "In Manual mode. Start monitor path:#{dir_stat[0].path}. moved or copied files (same name, size and time " +
+                'modification) will use the checksum of the original files and be updated in content data file'
             Log.info(log_msg)
             $testing_memory_log.info(log_msg) if $testing_memory_active
 
