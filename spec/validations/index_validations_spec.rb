@@ -1,3 +1,8 @@
+# NOTE Code Coverage block must be issued before any of your application code is required
+if ENV['BBFS_COVERAGE']
+  require_relative '../spec_helper.rb'
+  SimpleCov.command_name 'validations'
+end
 require 'rspec'
 require_relative '../../lib/validations.rb'
 
