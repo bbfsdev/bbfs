@@ -1,23 +1,28 @@
+# NOTE Code Coverage block must be issued before any of your application code is required
+if ENV['BBFS_COVERAGE']
+  require_relative '../spec_helper.rb'
+  SimpleCov.command_name 'file_utils'
+end
 require 'fileutils'
-require 'test/unit'
+require 'rspec'
 
 require_relative '../../lib/content_data/content_data'
 require_relative '../../lib/file_indexing/index_agent'
 require_relative '../../lib/file_utils/file_utils'
 
 module FileUtils
-  module Test
+  module Spec
 
-    class TestFileUtilMkDirSymLink < ::Test::Unit::TestCase
+    describe 'File Util Mk Dir Sym Link Test' do
       # directory where tested files will be placed: <application_root_dir>/tests/../resources/time_modification_test
-      RESOURCES_DIR = File.expand_path(File.dirname(__FILE__) + "/mksymlink_test")
-      REF_DIR = RESOURCES_DIR + "/ref"
-      DEST_DIR = RESOURCES_DIR + "/dest"
+      MKSYMLINKS_RESOURCES_DIR = File.expand_path(File.dirname(__FILE__) + "/mksymlink_test")
+      REF_DIR = MKSYMLINKS_RESOURCES_DIR + "/ref"
+      DEST_DIR = MKSYMLINKS_RESOURCES_DIR + "/dest"
       NOT_FOUND_CHECKSUM = "absent_instance"
       @ref_db
       @base_db
 
-      def setup
+      before :all do
         Params.init Array.new
         # must preced Log.init, otherwise log containing default values will be created
         Params['log_write_to_file'] = false
@@ -27,7 +32,7 @@ module FileUtils
         numb_of_copies = 2
         test_file_name = "test_file"   # file name format: <test_file_name_prefix>.<size>[.serial_number_if_more_then_1]
 
-        ::FileUtils.rm_rf(RESOURCES_DIR) if (File.exists?(RESOURCES_DIR))
+        ::FileUtils.rm_rf(MKSYMLINKS_RESOURCES_DIR) if (File.exists?(MKSYMLINKS_RESOURCES_DIR))
 
         # prepare files for testing
         cur_dir = nil; # dir where currently files created in this iteration will be placed
@@ -37,7 +42,7 @@ module FileUtils
           file_name = test_file_name + "." + size.to_s
 
           if (cur_dir == nil)
-            cur_dir = String.new(RESOURCES_DIR)
+            cur_dir = String.new(MKSYMLINKS_RESOURCES_DIR)
           else
             cur_dir = cur_dir + "/dir" + size.to_s
           end
@@ -61,7 +66,7 @@ module FileUtils
 
         indexer = FileIndexing::IndexAgent.new  # (`hostname`.chomp, DEVICE_NAME)
         patterns = FileIndexing::IndexerPatterns.new
-        patterns.add_pattern(RESOURCES_DIR + '\**\*')
+        patterns.add_pattern(MKSYMLINKS_RESOURCES_DIR + '\**\*')
         indexer.index(patterns)
 
         @base_db = indexer.indexed_content
@@ -72,7 +77,7 @@ module FileUtils
             file_name = File.basename(path)
             base_dir = File.dirname(path)
             ref_full_path = String.new(REF_DIR)
-            if (base_dir == RESOURCES_DIR)
+            if (base_dir == MKSYMLINKS_RESOURCES_DIR)
               ref_full_path << "/dir/#{file_name}"
             else
               ref_full_path << "/#{file_name}"
@@ -83,16 +88,16 @@ module FileUtils
         @ref_db.add_instance(NOT_FOUND_CHECKSUM, 500, `hostname`.chomp, "/not/exist/path/file", Time.now.utc.to_i)
       end
 
-      def teardown
-        ::FileUtils.rm_rf(RESOURCES_DIR) if (File.exists?(RESOURCES_DIR))
+      after :all do
+        ::FileUtils.rm_rf(MKSYMLINKS_RESOURCES_DIR) if (File.exists?(MKSYMLINKS_RESOURCES_DIR))
       end
 
-      def test_create_symlink_structure
+      it 'test create symlink structure' do
         not_found_db = nil
         begin
           not_found_db = FileUtils.mksymlink(@ref_db, @base_db, DEST_DIR)
         rescue NotImplementedError
-          assert RUBY_PLATFORM =~ /mingw/ || RUBY_PLATFORM =~ /ms/ || RUBY_PLATFORM =~ /win/, \
+          (RUBY_PLATFORM =~ /mingw/ || RUBY_PLATFORM =~ /ms/ || RUBY_PLATFORM =~ /win/).should be_true \
                     'Symbolics links should be implemented for non windows platforms.'
           return
         end
@@ -114,19 +119,19 @@ module FileUtils
         @ref_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
           next if not_found_path2checksum.has_key?(path)
           ref_path = DEST_DIR + path
-          assert(File.exists?(ref_path))
-          assert(File.symlink?(ref_path))
+          (File.exists?(ref_path)).should be_true
+          (File.symlink?(ref_path)).should be_true
           base_file = File.expand_path(File.readlink(ref_path))
           base_checksum = base_path2checksum[base_file]
-          assert_equal(checksum, base_checksum)
+          base_checksum.should == checksum
         }
 
         if (not_found_db == nil)
-          assert_not_nil(not_found_db)
+          not_found_db.should_not be_nil
         else
-          assert_equal(not_found_db_contents_size, 1)
-          assert_equal(not_found_db_instances_size, 1)
-          assert(not_found_db.content_exists NOT_FOUND_CHECKSUM)
+          1.should == not_found_db_contents_size
+          1.should == not_found_db_instances_size
+          (not_found_db.content_exists NOT_FOUND_CHECKSUM).should be_true
         end
       end
     end
