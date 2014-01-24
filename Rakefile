@@ -83,10 +83,15 @@ task :new_spec do
   project_abs_pathname = Pathname.new(File.absolute_path(File.dirname(__FILE__)))
   src_rel_pathname = src_abs_pathname.relative_path_from(project_abs_pathname)
 
-
   src_lines = File.readlines(src_path)
+  # lines that contain module declaration (e.g. "module ContentData")
   module_lines = src_lines.select { |l| l =~ /module / }
   if (module_lines.length > 0)
+    # convention: suite name is a highest module among all modules declared in the source.
+    # e.g for the following module hierarchy
+    # module ContentData
+    #   module Validations
+    # the suite is a content_data
     module_name = module_lines.at(0).split(/\s+/).at(1).scan(/[A-Z][a-z0-9]*/).join('_').downcase
   else
     module_name = ''
@@ -137,19 +142,9 @@ require_relative '../../#{src_rel_pathname}'
   puts "New spec created: #{spec_path}"
 end
 
-#require 'rake/testtask'
-#Rake::TestTask.new do |t|
-  #t.libs << 'test' << 'spec'
-  #t.test_files = FileList['./test/**/*_test.rb']
-  #t.verbose = true
-#end
-
 require 'rspec/core/rake_task'
 desc "Run specs"
 RSpec::Core::RakeTask.new do |t|
   t.pattern = ["./test/**/*_spec.rb", "./spec/**/*_spec.rb"]
 end
 
-#Spec::Rake::SpecTask.new do |t|
-#  t.libs << 'lib'
-#end
