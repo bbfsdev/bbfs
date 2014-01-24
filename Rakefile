@@ -30,7 +30,7 @@ end
 # Current implementation: 
 #   SimpleCov package.
 # SimpleCov suggestions:
-#   * see spec/spec_helper.rb file
+#   * see spec/spec_helper.rb and .simplecov files
 #   * SimpleCov related code must be issued before any of your application code is required
 # Output:
 #   <project root>/coverage directory containing report files will be created.
