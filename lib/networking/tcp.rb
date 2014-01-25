@@ -135,14 +135,14 @@ module Networking
       @tcp_socket = nil
       @obj_clb = obj_clb
       @reconnected_clb = reconnected_clb
-      Log.debug3("Start TCPClient initialize  with @obj_clb: %s", @obj_clb)
+      # Variable to signal when remote server is ready.
+      @remote_server_available = ConditionVariable.new
+      @remote_server_available_mutex = Mutex.new
+      Log.debug3("Start TCPClient initialize with @obj_clb: %s", @obj_clb)
       if @obj_clb != nil
         @tcp_thread = start_reading
         @tcp_thread.abort_on_exception = true
       end
-      # Variable to signal when remote server is ready.
-      @remote_server_available = ConditionVariable.new
-      @remote_server_available_mutex = Mutex.new
       open_socket unless socket_good?
       Log.debug3("End TCPClient initialize.")
     end
