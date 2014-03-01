@@ -148,7 +148,7 @@ module FileMonitoring
       @dirs = {}
       @files = {}
       @non_utf8_paths = {}  # Hash: ["path" -> true|false]
-
+      @symlinks = {}  # Hash: [[server, link file name]] -> " target file name"]
       # indicates if path EXISTS in file system.
       #   If true, file will not be removed during removed_unmarked_paths phase.
       @marked = false
@@ -169,7 +169,7 @@ module FileMonitoring
     #   size - the instance size to insert to the tree
     #   modification_time - the instance modification_time to insert to the tree
     def load_instance(sub_paths, sub_paths_index, size, modification_time)
-      # initialize dirs and files. This will indicate that the current DirStat is not new.
+      # initialize dirs and files.
       @dirs = {} unless @dirs
       @files = {} unless @files
       if sub_paths.size-1 == sub_paths_index
@@ -186,6 +186,40 @@ module FileMonitoring
         end
         # continue recursive call on tree with next sub path index
         dir_stat.load_instance(sub_paths, sub_paths_index+1, size, modification_time)
+      end
+    end
+
+    # add symlink while initializing tree using content data from file.
+    #   Assumption is that Tree already built
+    # Parameters:
+    #   sub_paths - Array of sub paths of the symlink which is added to tree
+    #               Example:
+    #                 instance path = /dir1/dir2/file_name
+    #                   Sub path 1: /dir1
+    #                   Sub path 2: /dir1/dir2
+    #                   Sub path 3: /dir1/dir2/file_name
+    #               sub paths would create DirStat objs or FileStat(FileStat create using last sub path).
+    #   sub_paths_index - the index indicates the next sub path to insert to the tree
+    #                     the index will be raised at each recursive call down the tree
+    #   symlink_path - symlink file path
+    #   symlink_target - the target path pointed by the symlink
+    def load_symlink(sub_paths, sub_paths_index, symlink_path, symlink_target)
+      # initialize dirs and files.
+      @dirs = {} unless @dirs
+      @files = {} unless @files
+      if sub_paths.size-1 == sub_paths_index
+        # index points to last entry - leaf case. Add the symlink.
+        @symlinks[symlink_path] = symlink_target
+      else
+        # Add Dir to tree if not present. index points to new dir path.
+        dir_stat = @dirs[sub_paths[sub_paths_index]]
+        #create new dir if not exist
+        unless dir_stat
+          dir_stat = DirStat.new(sub_paths[sub_paths_index])
+          add_dir(dir_stat)
+        end
+        # continue recursive call on tree with next sub path index
+        dir_stat.load_instance(sub_paths, sub_paths_index+1, symlink_path, symlink_target)
       end
     end
 
@@ -298,11 +332,9 @@ module FileMonitoring
 
       # ls (glob) the dir path for child dirs and files
       globed_paths_enum = Dir.glob(@path + "/*").to_enum
+      found_symlinks = {}  # Store found symlinks under dir
       loop do
         globed_path = globed_paths_enum.next rescue break
-
-        # if symlink - skip
-        next if File.symlink?(globed_path)
 
         # UTF-8 - keep only files with names in
         next if @non_utf8_paths[globed_path]
@@ -311,6 +343,18 @@ module FileMonitoring
           Log.warning("Non UTF-8 file name '#{check_utf_8_encoding_file}', skipping.")
           @non_utf8_paths[globed_path]=true
           check_utf_8_encoding_file=nil
+          next
+        end
+
+        # if symlink - add to symlink temporary map and content data (even override).
+        # later all removed symlinks will be removed from content data
+        if File.symlink?(globed_path)
+          pointed_file_name = File.readlink(globed_path)
+          found_symlinks[globed_path] = pointed_file_name
+          # add to content data
+          $local_content_data_lock.synchronize{
+            $local_content_data.add_symlink(Params['local_server_name'], globed_path, pointed_file_name)
+          }
           next
         end
 
@@ -413,6 +457,20 @@ module FileMonitoring
           child_stat.monitor(file_attr_to_checksum)
         end
       end
+
+      # check if any symlink was removed and update current symlinks map
+      symlinks_enum = @symlinks.each_key
+      loop {
+        symlink_key = symlinks_enum.next rescue break
+        if !found_symlinks.has_key?(symlink_key)
+          # symlink was removed. remove from content data
+          $local_content_data_lock.synchronize{
+            $local_content_data.remove_symlink(Params['local_server_name'], symlink_key)
+          }
+        end
+      }
+      @symlinks = found_symlinks
+
       GC.start
     end
 

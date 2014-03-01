@@ -54,13 +54,14 @@ module FileMonitoring
         dir_stat_array.push([dir_stat, elem['stable_state']])
       }
 
-      #Look over loaded content data if not empty
-      # If file is under monitoring path - Add to DirStat tree as stable with path,size,mod_time read from file
-      # If file is NOT under monitoring path - skip (not a valid usage)
       file_attr_to_checksum = {}  # This structure is used to optimize indexing when user specifies a directory was moved.
+
+      #Look over loaded content data if not empty
       unless $local_content_data.empty?
         Log.info("Start build data base from loaded file. This could take several minutes")
         inst_count = 0
+        # If file is under monitoring path - Add to DirStat tree as stable with path,size,mod_time read from file
+        # If file is NOT under monitoring path - skip (not a valid usage)
         $local_content_data.each_instance {
             |checksum, size, _, mod_time, _, path, index_time|
 
@@ -105,7 +106,44 @@ module FileMonitoring
             break
           }
         }
-        Log.info("End build data base from loaded file. loaded instances:#{inst_count}")
+
+        # If symlink file is under monitoring path - Add to DirStat tree
+        # If file is NOT under monitoring path - skip (not a valid usage)
+        symlink_count = 0
+        $local_content_data.each_symlink {
+            |_, symlink_path, symlink_target|
+
+          # construct sub paths array from symlink path:
+          # Example:
+          #   symlink path = /dir1/dir2/file_name
+          #   Sub path 1: /dir1
+          #   Sub path 2: /dir1/dir2
+          #   Sub path 3: /dir1/dir2/file_name
+          # sub paths should match the paths of DirStat objs in the tree to reach the symlink location in Tree.
+          split_path = symlink_path.split(File::SEPARATOR)
+          sub_paths = (0..split_path.size-1).inject([]) { |paths, i|
+            paths.push(File.join(*split_path.values_at(0..i)))
+          }
+          # sub_paths holds array => ["/dir1","/dir1/dir2","/dir1/dir2/file_name"]
+
+          # Loop over monitor paths to start enter tree
+          dir_stat_array.each { | dir_stat|
+            # check if monitor path is one of the sub paths and find it's sub path index
+            # if index is found then it the monitor path
+            # the next index indicates the next sub path to insert to the tree
+            # the index will be raised at each recursive call down the tree
+            sub_paths_index = sub_paths.index(dir_stat[0].path)
+            next if sub_paths_index.nil?  # monitor path was not found. skip this instance.
+
+            # monitor path was found. Add to tree
+            # start the recursive call with next sub path index
+            ::FileMonitoring.stable_state = dir_stat[1]
+            symlink_count += 1
+            dir_stat[0].load_symlink(sub_paths, sub_paths_index+1, symlink_path, symlink_target)
+            break
+          }
+        }
+        Log.info("End build data base from loaded file. loaded instances:#{inst_count}  loaded symlinks:#{symlink_count}")
         $last_content_data_id = $local_content_data.unique_id
 
         if Params['manual_file_changes']
