@@ -13,7 +13,7 @@ Gem::Specification.new do |s|
 
   s.files       = Dir['lib/content_data.rb', 'lib/content_data/**/*',
     'lib/content_server.rb', 'lib/content_server/**/*',
-    'lib/email.rb', 'lib/email/**/*', 
+    'lib/email.rb', 'lib/email/**/*',
     'lib/file_copy.rb', 'lib/file_copy/**/*',
     'lib/file_indexing.rb', 'lib/file_indexing/**/*',
     'lib/file_monitoring.rb', 'lib/file_monitoring/**/*',
@@ -42,7 +42,7 @@ Gem::Specification.new do |s|
     'spec/validations/**/*'] \
     & `git ls-files -z`.split("\0")
 
-  s.executables = ['content_server', 'backup_server', 'testing_server', 'testing_memory']
+  s.executables = ['content_server', 'backup_server', 'file_utils', 'testing_server', 'testing_memory']
 
   # used by content_server, run_in_background
   s.add_runtime_dependency('rake', '0.9.2.2')

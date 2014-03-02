@@ -332,12 +332,17 @@ module ContentData
     end
 
     # TODO validation that file indeed contains ContentData missing
+    # TODO class level method?
     # Loading db from file using chunks for better memory performance
     def from_file(filename)
       # read first line (number of contents)
       # calculate line number (number of instances)
       # read number of instances.
       # loop over instances lines (using chunks) and add instances
+
+      unless File.exists? filename
+        raise ArgumentError.new "No such a file #{filename}"
+      end
 
       File.open(filename, 'r') { |file|
         # Get number of contents (at first line)
