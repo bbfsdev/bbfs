@@ -38,14 +38,14 @@ module FileMonitoring
         @dir_stat.monitor
 
         # check that 'regular_file' was added to @files map under DirStat
-        @dir_stat.instance_eval{@files}['regular_file'].nil?.should be(false)
+        @dir_stat.instance_variable_get(:@files).has_key?('regular_file').should be(true)
         # check that 'symlink_file' was not added to @files map under DirStat
-        @dir_stat.instance_eval{@files}['symlink_file'].nil?.should be(true)
+        @dir_stat.instance_variable_get(:@files).has_key?('symlink_file').should be(false)
         # check that 'symlink_file' was added to @symlinks map under DirStat
-        expect(@dir_stat.instance_eval{@symlinks}['symlink_file']).to eq('symlink_target')
+        expect(@dir_stat.instance_variable_get(:@symlinks)['symlink_file']).to eq('symlink_target')
         # check that 'symlink file' was added to content data object
         symlink_key = [`hostname`.strip, 'symlink_file']
-        expect($local_content_data.instance_eval{@symlinks_info}[symlink_key]).to eq('symlink_target')
+        expect($local_content_data.instance_variable_get(:@symlinks_info)[symlink_key]).to eq('symlink_target')
 
       end
 
@@ -59,14 +59,17 @@ module FileMonitoring
         return_lstat = File.lstat(__FILE__)
         File.stub(:lstat).with(any_args).and_return(return_lstat)
 
+        # check that 'symlink file' exists before monitoring
+        symlink_key = [`hostname`.strip, 'symlink_file']
+        $local_content_data.instance_variable_get(:@symlinks_info).has_key?(symlink_key).should be(true)
+
         # Perform monitoring
         @dir_stat.monitor
 
         # check that 'symlink_file' was deleted from @symlinks map under DirStat
-        expect(@dir_stat.instance_eval{@symlinks}['symlink_file']).to eq(nil)
+        @dir_stat.instance_variable_get(:@symlinks).has_key?('symlink_file').should be(false)
         # check that 'symlink file' was deleted from content data object
-        symlink_key = [`hostname`.strip, 'symlink_file']
-        expect($local_content_data.instance_eval{@symlinks_info}[symlink_key]).to eq(nil)
+        $local_content_data.instance_variable_get(:@symlinks_info).has_key?(symlink_key).should be(false)
 
       end
     end
