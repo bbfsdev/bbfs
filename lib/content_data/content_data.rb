@@ -46,7 +46,7 @@ module ContentData
     # Content Data unique identification
     # @return [ID] hash identification
     def unique_id
-      [@instances_info.hash,@symlinks_info.hash]
+      [@contents_info.hash,@symlinks_info.hash]
     end
 
     def clone_instances_info
@@ -277,35 +277,8 @@ module ContentData
       }
     end
 
-
     def ==(other)
-      # general quick checks
-      return false if other.nil?
-      return false if @contents_info.length != other.contents_size
-      return false if @instances_info.length != other.instances_size
-      return false if @symlinks_info.length != other.symlinks_size
-
-      # check instances
-      other.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
-        return false if instance_exists(path, server) != other.instance_exists(path, server)
-        local_content_info = @contents_info[checksum]
-        return false if local_content_info.nil?
-        return false if local_content_info[0] != size
-        return false if local_content_info[2] != content_mod_time
-        #check instances
-        local_instances =  local_content_info[1]
-        return false if other.checksum_instances_size(checksum) != local_instances.length
-        location = [server, path]
-        local_instance_mod_time, _ = local_instances[location]
-        return false if local_instance_mod_time.nil?
-        return false if local_instance_mod_time != instance_mod_time
-      }
-
-      # check symlinks
-      other.each_symlink { |server, path, target|
-        return false if symlink_exists(path, server) != other.symlink_exists(path, server)
-      }
-      true
+      unique_id  == other.unique_id
     end
 
     def remove_content(checksum)
