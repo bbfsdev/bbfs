@@ -33,7 +33,7 @@ end
 #   * see spec/spec_helper.rb and .simplecov files
 #   * SimpleCov related code must be issued before any of your application code is required
 # Output:
-#   <project root>/coverage directory containing report files will be created.
+#   <project root>/coverage directory, containing report files, will be created.
 # To view report:
 #   open in a browser <project root>/coverage/index.html file. 
 desc 'Run coverage'
