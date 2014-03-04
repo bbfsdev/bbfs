@@ -9,7 +9,7 @@ require 'params'
 #############################################
 # Definitions
 #############################################
-Params.string 'command', nil ,'path'
+Params.string 'command', nil ,'supported commands are: merge, intersect, minus'
 Params.string 'dest', nil ,'destination path'
 Params.string 'cd_a', nil ,'a path'
 Params.string 'cd_b', nil ,'b path'
