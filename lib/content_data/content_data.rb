@@ -278,6 +278,7 @@ module ContentData
     end
 
     def ==(other)
+      return nil if other.nil?  # for this case: content_data == nil
       unique_id  == other.unique_id
     end
 
