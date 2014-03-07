@@ -40,29 +40,27 @@ Log.init
 
 # Algebra of sets operations (merge, intersect, minus) on ContentData files
 def content_data_command()
-  if Params['cd_a'].nil?
-    err_msg = "--cd_a is not set"
-    puts err_msg
-    Log.error(err_msg)
-    return
+
+  ['cd_a', 'cd_b'].each do |param|
+    if Params[param].nil?
+      err_msg = "--#{param} is not set"
+      puts err_msg
+      Log.error(err_msg)
+      return
+    end
   end
+
   cd_a = ContentData::ContentData.new()
   begin
     cd_a.from_file(Params['cd_a'])
   rescue Exception => e
-    err_msg = "Error loading content data cd_a = %s: %s" % [Params['cd_a'], e.message]
+    err_msg = "Error loading content data #{'cd_a'} = %s: %s" % [Params['cd_a'], e.message]
     puts err_msg
     Log.error(err_msg)
     Log.flush
     return
   end
 
-  if Params['cd_b'].nil?
-    err_msg = "--cd_b is not set"
-    puts err_msg
-    Log.error(err_msg)
-    return
-  end
   cd_b = ContentData::ContentData.new()
   begin
     cd_b.from_file(Params['cd_b'])
