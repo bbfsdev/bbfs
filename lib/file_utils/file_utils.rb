@@ -5,6 +5,8 @@
 # Such as automatic file generation, symlink, etc.
 # Run from bbfs> ruby -Ilib bin/file_utils --command=generate_files --log_write_to_console=true --log_debug_level=3
 
+# TODO this module is deprecated and should be revised
+
 require 'content_data'
 require 'file_indexing'
 require 'file_utils'
@@ -15,6 +17,7 @@ require 'params'
 
 module FileUtils
   Params.string 'command', nil ,'path'
+  Params.string 'help', nil ,'get a help'
   Params.string 'ref_cd', nil ,'reference path'
   Params.string 'base_cd', nil ,'base path'
   Params.string 'dest', nil ,'destination path'
@@ -28,7 +31,8 @@ module FileUtils
   Params.string 'exist_cd', nil, 'exist_path'
   #Params.string 'config_file', 'path' ,'configuration file path'
   class FileUtils
-    def FileUtils.run
+
+    def self.run
       if Params['command'] == 'mksymlink'
         if Params['ref_cd'].nil?
           Log.error ("--ref_cd is not set")
@@ -59,45 +63,16 @@ module FileUtils
 
         not_found = nil
         begin
-          not_found = FileUtil.mksymlink(ref_cd, base_cd, Params['dest'])
+          not_found = FileUtils.mksymlink(ref_cd, base_cd, Params['dest'])
         rescue NotImplementedError
           Log.error ("symlinks are unimplemented on this machine")
           return nil
         end
         return not_found
-      elsif (Params['command'] == "merge" or
-          Params['command'] == "intersect" or
-          Params['command'] == "minus")
-
-        if Params['cd_a'].nil?
-          Log.error ("--cd_a is not set")
-          return
-        end
-        cd_a = ContentData.new()
-        cd_a.from_file(Params['cd_a'])
-        if cd_a.nil?
-          Log.error ("Error loading content data cd_a=%s" % Params['cd_a'])
-          return
-        end
-
-        if Params['cd_b'].nil?
-          Log.error ("--cd_b is not set")
-          return
-        end
-        cd_b = ContentData.new()
-        cd_b.from_file(Params['cd_b'])
-        if cd_b.nil?
-          Log.error ("Error loading content data cd_b=%s" % Params['cd_b'])
-          return
-        end
-
-        if Params['cd_b'].nil?
-          Log.error ("--dest is not set")
-          return
-        end
-
-        output = FileUtil.contet_data_command(Params['command'], cd_a, cd_b, Params['dest'])
-
+      elsif (Params['command'] == "merge" ||
+             Params['command'] == "intersect" ||
+             Params['command'] == "minus")
+        content_data_command
       elsif Params['command'] == 'unify_time'
         if  Params['cd'].nil?
           Log.error ("--cd is not set")
@@ -173,20 +148,6 @@ module FileUtils
       elsif Params['command'] == 'generate_files'
         fg = FileGenerator::FileGenerator.new()
         fg.run()
-      end
-    end
-
-    def self.contet_data_command(command, cd_a, cd_b, dest_path)
-      dest = nil
-      if command == "merge"
-        dest = ContentData.merge(cd_a, cd_b)
-      elsif command == "intersect"
-        dest = ContentData.intersect(cd_a, cd_b)
-      elsif command == "minus"
-        dest = ContentData.remove(cd_b, cd_a)
-      end
-      if dest
-        dest.to_file(dest_path)
       end
     end
 
