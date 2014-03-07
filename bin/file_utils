@@ -54,7 +54,7 @@ def content_data_command()
   begin
     cd_a.from_file(Params['cd_a'])
   rescue Exception => e
-    err_msg = "Error loading content data #{'cd_a'} = %s: %s" % [Params['cd_a'], e.message]
+    err_msg = "Error loading content data cd_a = %s: %s" % [Params['cd_a'], e.message]
     puts err_msg
     Log.error(err_msg)
     Log.flush
