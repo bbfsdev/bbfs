@@ -1,6 +1,11 @@
 # Author: Slava Pasechnik (slavapas13@gmail.com)
 # Run from bbfs> ruby -Ilib test/file_generator/file_generator_spec.rb
 
+# NOTE Code Coverage block must be issued before any of your application code is required
+if ENV['BBFS_COVERAGE']
+  require_relative '../spec_helper.rb'
+  SimpleCov.command_name 'file_monitoring'
+end
 require 'file_utils/file_generator/file_generator'
 require 'rspec'
 

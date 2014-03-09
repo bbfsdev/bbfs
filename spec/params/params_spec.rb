@@ -1,6 +1,12 @@
 # Author: Yaron Dror (yaron.dror.bb@gmail.com)
 # Description: The file contains 'Param' module tests
 
+# NOTE Code Coverage block must be issued before any of your application code is required
+if ENV['BBFS_COVERAGE']
+  require_relative '../spec_helper.rb'
+  SimpleCov.command_name 'params'
+end
+
 require 'rspec'
 require 'yaml'
 
@@ -13,6 +19,39 @@ module Params
                       :read_yml_params, :override_param
 
   module Spec
+
+    describe 'Params Test' do
+
+      it 'test parsing of the defined parameters' do
+        #  Define options
+        Params.integer('remote_server1', 3333,
+                       'Listening port for backup server content data.')
+        Params.string('backup_username1', 'tmp', 'Backup server username.')
+        Params.string('backup_password1', 'tmp', 'Backup server password.')
+        Params.string('backup_destination_folder1', '',
+                      'Backup server destination folder, default is the relative local folder.')
+        Params.string('content_data_path1', File.expand_path('~/.bbfs/var/content.data'),
+                      'ContentData file path.')
+        Params.string('monitoring_config_path1', File.expand_path('~/.bbfs/etc/file_monitoring.yml'),
+                      'Configuration file for monitoring.')
+        Params.float('time_to_start1', 0.03,
+                     'Time to start monitoring')
+
+        cmd = ['--remote_server1=2222', '--backup_username1=rami', '--backup_password1=kavana',
+          '--backup_destination_folder1=C:\Users\Alexey\Backup',
+          '--content_data_path1=C:\Users\Alexey\Content',
+          '--monitoring_config_path1=C:\Users\Alexey\Config',
+          '--time_to_start1=1.5']
+        Params.init cmd
+        Params['remote_server1'].should == 2222
+        Params['backup_username1'].should == 'rami'
+        Params['backup_password1'].should == 'kavana'
+        Params['backup_destination_folder1'].should == 'C:\Users\Alexey\Backup'
+        Params['content_data_path1'].should == 'C:\Users\Alexey\Content'
+        Params['monitoring_config_path1'].should == 'C:\Users\Alexey\Config'
+        Params['time_to_start1'].should == 1.5
+      end
+    end
 
     describe 'Params::parameter' do
 
