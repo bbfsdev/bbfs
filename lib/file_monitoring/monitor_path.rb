@@ -223,7 +223,7 @@ module FileMonitoring
     def to_s(indent = 0)
       indent_increment = 2
       child_indent = indent + indent_increment
-      res = super
+      res = super()
       @files.each_value do |file|
         res += "\n" + file.to_s(child_indent)
       end if @files
