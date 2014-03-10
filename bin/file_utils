@@ -2,11 +2,117 @@
 
 # This utility executable is used to easily execute BBFS operations on files.
 
-require 'file_utils'
+require 'content_data'
 require 'log'
 require 'params'
 
+#############################################
+# Definitions
+#############################################
+Params.string 'command', nil ,'supported commands are: merge, intersect, minus'
+Params.string 'dest', nil ,'destination path'
+Params.string 'cd_a', nil ,'a path'
+Params.string 'cd_b', nil ,'b path'
+
+HELP_MSG = <<EOF
+This is an utility functionality for BBFS,
+such as algebra of sets operations on ContentData files.
+Usage:
+  To get merge of two ContentData files,
+  i.e. contents and appropreate instances that exist in at least one ContentData file:
+    file_utils --command=merge --cd_a=<content_data_file1> --cd_b=<content_data_file_2> [--dest=<result_content_data_file>]
+  To get intersection of two ContentData files,
+  i.e. contents and appropreate instances that exist in the both ContentData files:
+    file_utils --command=intersect --cd_a=<content_data_file1> --cd_b=<content_data_file_2> [--dest=<result_content_data_file>]
+  To get content_data_2 minus content_data_1,
+  i.e. contents and appropreate instances that exist in content_data_file2 and absent in content_data_file1:
+    file_utils --command=minus --cd_a=<content_data_file1> --cd_b=<content_data_file_2> [--dest=<result_content_data_file>]
+EOF
+#############################################
+# Init
+#############################################
 Params.init ARGV
 Log.init
 
-FileUtils::FileUtils.run
+#############################################
+# Methods
+#############################################
+
+# Algebra of sets operations (merge, intersect, minus) on ContentData files
+def content_data_command()
+
+  ['cd_a', 'cd_b'].each do |param|
+    if Params[param].nil?
+      err_msg = "--#{param} is not set"
+      puts err_msg
+      Log.error(err_msg)
+      return
+    end
+  end
+
+  cd_a = ContentData::ContentData.new()
+  begin
+    cd_a.from_file(Params['cd_a'])
+  rescue Exception => e
+    err_msg = "Error loading content data cd_a = %s: %s" % [Params['cd_a'], e.message]
+    puts err_msg
+    Log.error(err_msg)
+    Log.flush
+    return
+  end
+
+  cd_b = ContentData::ContentData.new()
+  begin
+    cd_b.from_file(Params['cd_b'])
+  rescue Exception => e
+    err_msg = "Error loading content data cd_b = %s: %s" % [Params['cd_b'], e.message]
+    puts err_msg
+    Log.error(err_msg)
+    Log.flush
+    return
+  end
+
+  if Params['command'] == "merge"
+    res = ContentData.merge(cd_a, cd_b)
+    preface = '# ' + "Merge of #{Params['cd_a']} and #{Params['cd_b']}"
+  elsif Params['command'] == "intersect"
+    res = ContentData.intersect(cd_a, cd_b)
+    preface = '# ' + "Intersection of #{Params['cd_a']} and #{Params['cd_b']}"
+  elsif Params['command'] == "minus"
+    res = ContentData.remove(cd_a, cd_b)  # cd_b - cd_a
+    preface = '# ' + "Contents and appropreate instances that exist in #{Params['cd_b']}" +
+      " and absent in #{Params['cd_a']}"
+  end
+
+  unless res.nil?
+    puts preface
+    puts res.to_s
+    unless Params['dest'].nil?
+      res.to_file Params['dest']
+    end
+  end
+end
+
+# Main method
+def run
+  if ARGV.empty?
+    puts HELP_MSG
+    exit
+  end
+
+  if (Params['command'] == "merge" ||
+      Params['command'] == "intersect" ||
+      Params['command'] == "minus")
+    content_data_command
+  else
+    err_msg = "Unsupported command: #{Params['command']}"
+    puts err_msg
+    puts HELP_MSG
+    Log.error(err_msg)
+  end
+end
+
+#############################################
+# Main
+#############################################
+run

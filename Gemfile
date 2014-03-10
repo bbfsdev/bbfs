@@ -12,3 +12,4 @@ gem 'sinatra'
 gem 'thin'
 gem 'sys-uname', :platforms => [:mswin, :mingw]
 gem 'log4r'
+gem 'simplecov', :require => false, :group => :test

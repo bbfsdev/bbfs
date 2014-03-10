@@ -1,6 +1,11 @@
+# NOTE Code Coverage block must be issued before any of your application code is required
+if ENV['BBFS_COVERAGE']
+  require_relative '../spec_helper.rb'
+  SimpleCov.command_name 'file_utils'
+end
 require 'fileutils'
 require 'time'
-require 'test/unit'
+require 'rspec'
 
 require 'content_data'
 require 'file_indexing'
@@ -15,10 +20,10 @@ module FileUtils
     time = Time.at seconds_from_epoch
   end
 
-  module Test
-    class TestTimeModification < ::Test::Unit::TestCase
+  module Spec
+    describe 'Time Modification Test' do
       # directory where tested files will be placed: __FILE__/time_modification_test
-      RESOURCES_DIR = File.expand_path(File.dirname(__FILE__) + "/time_modification_test")
+      TIME_MODIFICATION_RESOURCES_DIR = File.expand_path(File.dirname(__FILE__) + "/time_modification_test")
       # minimal time that will be inserted in content
       MOD_TIME_CONTENTS = FileUtils.parse_time("1306527039")
       # minimal time that will be inserted in instance
@@ -31,7 +36,7 @@ module FileUtils
       @mod_content_checksum = nil  # checksum of the content that was manually modified
       @mod_instance_checksum = nil  # checksum of the instance that was manually modified
 
-      def setup
+      before :all do
         Params.init Array.new
         # must preced Log.init, otherwise log containing default values will be created
         Params['log_write_to_file'] = false
@@ -42,12 +47,12 @@ module FileUtils
         numb_of_copies = 2
         test_file_name = "test_file"
 
-        Dir.mkdir(RESOURCES_DIR) unless (File.exists?(RESOURCES_DIR))
-        raise "Can't create writable working directory: #{RESOURCES_DIR}" unless \
-              (File.exists?(RESOURCES_DIR) and File.writable?(RESOURCES_DIR))
+        Dir.mkdir(TIME_MODIFICATION_RESOURCES_DIR) unless (File.exists?(TIME_MODIFICATION_RESOURCES_DIR))
+        raise "Can't create writable working directory: #{TIME_MODIFICATION_RESOURCES_DIR}" unless \
+              (File.exists?(TIME_MODIFICATION_RESOURCES_DIR) and File.writable?(TIME_MODIFICATION_RESOURCES_DIR))
         # prepare files for testing
         sizes.each do |size|
-          file_path = "#{RESOURCES_DIR}/#{test_file_name}.#{size}"
+          file_path = "#{TIME_MODIFICATION_RESOURCES_DIR}/#{test_file_name}.#{size}"
           file = File.open(file_path, "w", 0777) do |file|
             content = Array.new
             size.times do |i|
@@ -63,7 +68,7 @@ module FileUtils
 
         indexer = FileIndexing::IndexAgent.new
         patterns = FileIndexing::IndexerPatterns.new
-        patterns.add_pattern(RESOURCES_DIR + '\*')
+        patterns.add_pattern(TIME_MODIFICATION_RESOURCES_DIR + '\*')
         indexer.index(patterns)
 
         @input_db = indexer.indexed_content
@@ -71,9 +76,9 @@ module FileUtils
 
       # This test compares two ways of ruby + OS to get mtime (modification file) of a file.
       # We can see that in Windows there is a difference.
-      def test_local_os
-        Dir.mkdir(RESOURCES_DIR) unless (File.exists?(RESOURCES_DIR))
-        file_path = "#{RESOURCES_DIR}/local_os_test.test"
+      it 'test local os' do
+        Dir.mkdir(TIME_MODIFICATION_RESOURCES_DIR) unless (File.exists?(TIME_MODIFICATION_RESOURCES_DIR))
+        file_path = "#{TIME_MODIFICATION_RESOURCES_DIR}/local_os_test.test"
         file = File.open(file_path, "w", 0777) do |file|
           file.puts("kuku")
         end
@@ -98,13 +103,13 @@ module FileUtils
           file_mtime = file.mtime
         end
 
-        assert_equal(MOD_TIME_CONTENTS, file_mtime)
+        file_mtime.should == MOD_TIME_CONTENTS
 
         # !!! This fails on windows with different timezone
-        # assert_equal(MOD_TIME_CONTENTS, file_stats.mtime)
+        # file_stats.mtime.should == MOD_TIME_CONTENTS
       end
 
-      def test_modify
+      it 'test modify' do
         # modified ContentData. Test files also were modified.
         mod_db = FileUtils.unify_time(@input_db)
 
@@ -116,9 +121,9 @@ module FileUtils
         mod_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
           next unless checksum.eql?(@mod_instance_checksum)
           content_time =  FileUtils.parse_time(content_mod_time.to_s)
-          assert_equal(MOD_TIME_INSTANCES, content_time)
+          content_time.should == MOD_TIME_INSTANCES
           instance_time =  FileUtils.parse_time(instance_mod_time.to_s)
-          assert_equal(MOD_TIME_INSTANCES, instance_time)
+          instance_time.should == MOD_TIME_INSTANCES
         }
 
         # checking that files were actually modified
@@ -127,7 +132,7 @@ module FileUtils
           patterns = FileIndexing::IndexerPatterns.new
           patterns.add_pattern(File.dirname(path) + '/*')     # this pattern index all files
           indexer.index(patterns, mod_db)
-          assert_equal(indexer.indexed_content, mod_db)
+          mod_db.should == indexer.indexed_content
           break
         }
       end
