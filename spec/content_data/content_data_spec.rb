@@ -3,8 +3,9 @@ if ENV['BBFS_COVERAGE']
   require_relative '../spec_helper.rb'
   SimpleCov.command_name 'content_data'
 end
-require 'time.rb'
 require 'rspec'
+require 'tempfile'
+require 'time.rb'
 require 'content_server/server'
 require_relative '../../lib/content_data/content_data.rb'
 
@@ -126,7 +127,7 @@ describe 'Content Data Test' do
 			      "/home/file_3", 55555555555)
     file_moc_object = StringIO.new
     file_moc_object.write(content_data.to_s)
-    test_file = __FILE__ + 'test'
+    test_file = Tempfile.new('content_data_spec.test')
     content_data.to_file(test_file)
     content_data_2 = ContentData::ContentData.new
     content_data_2.from_file(test_file)
