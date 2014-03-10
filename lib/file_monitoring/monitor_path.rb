@@ -223,7 +223,7 @@ module FileMonitoring
     def to_s(indent = 0)
       indent_increment = 2
       child_indent = indent + indent_increment
-      res = super
+      res = super()
       @files.each_value do |file|
         res += "\n" + file.to_s(child_indent)
       end if @files
@@ -297,7 +297,11 @@ module FileMonitoring
       # marked files will not be remove in next remove phase
 
       # ls (glob) the dir path for child dirs and files
-      globed_paths_enum = Dir.glob(@path + "/*").to_enum
+      print @path + "/*"
+      globed_paths = Dir.glob(@path + "/*")
+      print globed_paths
+      globed_paths_enum = globed_paths.to_enum
+      
       loop do
         globed_path = globed_paths_enum.next rescue break
 
@@ -364,8 +368,11 @@ module FileMonitoring
               child_stat.marked = true
             end
           else
+            print "\nNew File:\n"
+            print globed_path + " "
             # ---------------------------- NEW FILE ----------
             unless Params['manual_file_changes']
+              print "No\n"
               child_stat = FileStat.new(globed_path,
                                         FileStatEnum::NEW,
                                         globed_path_stat.size,
@@ -377,14 +384,20 @@ module FileMonitoring
               child_stat.marked = true
               add_file(child_stat)
             else  # case Params['manual_file_changes']
+              print "Yes\n"
               # --------------------- MANUAL MODE
               # check if file name and attributes exist in global file attr map
               file_attr_key = [File.basename(globed_path), globed_path_stat.size, globed_path_stat.mtime.to_i]
               file_ident_info = file_attr_to_checksum[file_attr_key]
+              print file_attr_to_checksum
+              print "\n"
+              print file_attr_key
+              print "\n"
               # If not found (real new file) or found but not unique then file needs indexing. skip in manual mode.
               next unless (file_ident_info and file_ident_info.unique)
               Log.debug1("update content data with file:%s  checksum:%s  index_time:%s",
                          File.basename(globed_path), file_ident_info.checksum, file_ident_info.index_time.to_s)
+              print "Adding to content data " + globed_path + "\n"
               # update content data (no need to update Dir tree)
               $local_content_data_lock.synchronize{
                 $local_content_data.add_instance(file_ident_info.checksum,
