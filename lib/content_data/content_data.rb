@@ -35,16 +35,18 @@ module ContentData
       if other.nil?
         @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
         @instances_info = {}  # location --> checksum to optimize instances query
+        @symlinks_info = {}  # [server,symlink path] -> target
       else
         @contents_info = other.clone_contents_info
         @instances_info = other.clone_instances_info  # location --> checksum to optimize instances query
+        @symlinks_info =  other.clone_symlinks_info
       end
     end
 
     # Content Data unique identification
     # @return [ID] hash identification
     def unique_id
-      @instances_info.hash
+      [@contents_info.hash,@symlinks_info.hash]
     end
 
     def clone_instances_info
@@ -81,6 +83,16 @@ module ContentData
                               content_time]
       }
       clone_contents_info
+    end
+
+    def clone_symlinks_info
+      symlinks_info_enum = @symlinks_info.each_key
+      cloned_symlinks = {}
+      loop {
+        symlink_key = symlinks_info_enum.next rescue break
+        cloned_symlinks[[symlink_key[0].clone, symlink_key[0].clone]] = @symlinks_info[symlink_key].clone
+      }
+      cloned_symlinks
     end
 
     # iterator over @contents_info data structure (not including instances)
@@ -131,12 +143,27 @@ module ContentData
       }
     end
 
+    # iterator over @symlinks_info data structure
+    # block is provided with: server, file path and target
+    def each_symlink(&block)
+      symlink_enum = @symlinks_info.each_key
+      loop {
+        symlink_key = symlink_enum.next rescue break
+        symlink_target = @symlinks_info[symlink_key]
+        block.call(symlink_key[0], symlink_key[1], symlink_target)
+      }
+    end
+
     def contents_size()
       @contents_info.length
     end
 
     def instances_size()
       @instances_info.length
+    end
+
+    def symlinks_size()
+      @symlinks_info.length
     end
 
     def checksum_instances_size(checksum)
@@ -181,8 +208,16 @@ module ContentData
       @instances_info[location] = checksum
     end
 
+    def add_symlink(server, path, target)
+      @symlinks_info[[server,path]] = target
+    end
+
+    def remove_symlink(server, path)
+      @symlinks_info.delete([server,path])
+    end
+
     def empty?
-      @contents_info.empty?
+      @contents_info.empty? and @symlinks_info.empty?
     end
 
     def content_exists(checksum)
@@ -192,6 +227,11 @@ module ContentData
     def instance_exists(path, server)
       @instances_info.has_key?([server, path])
     end
+
+    def symlink_exists(path, server)
+      @symlinks_info.has_key?([server, path])
+    end
+
 
     # removes an instance record both in @instances_info and @instances_info.
     # input params: server & path - are the instance unique key (called location)
@@ -208,7 +248,7 @@ module ContentData
     end
 
     # removes all instances records which are located under input param: dir_to_remove.
-    # found records are removed from both @instances_info and @instances_info.
+    # found records are removed from @contents_info , @instances_info and @symlinks_info
     # input params: server & dir_to_remove - are used to check each instance unique key (called location)
     # removes also content\s, if a content\s become\s empty after removing instance\s
     def remove_directory(dir_to_remove, server)
@@ -216,7 +256,9 @@ module ContentData
       loop {
         checksum = contents_enum.next rescue break
         instances =  @contents_info[checksum][1]
-        instances.each_key { |location|
+        instances_enum = instances.each_key
+        loop {
+          location = instances_enum.next rescue break
           if location[0] == server and location[1].scan(dir_to_remove).size > 0
             instances.delete(location)
             @instances_info.delete(location)
@@ -224,27 +266,20 @@ module ContentData
         }
         @contents_info.delete(checksum) if instances.empty?
       }
+
+      # handle symlinks
+      symlinks_enum = @symlinks_info.each_key
+      loop {
+        symlink_key = symlinks_enum.next rescue break
+        if symlink_key[0] == server and symlink_key[1].scan(dir_to_remove).size > 0
+          @symlinks_info.delete(symlink_key)
+        end
+      }
     end
 
-
     def ==(other)
-      return false if other.nil?
-      return false if @contents_info.length != other.contents_size
-      other.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
-        return false if instance_exists(path, server) != other.instance_exists(path, server)
-        local_content_info = @contents_info[checksum]
-        return false if local_content_info.nil?
-        return false if local_content_info[0] != size
-        return false if local_content_info[2] != content_mod_time
-        #check instances
-        local_instances =  local_content_info[1]
-        return false if other.checksum_instances_size(checksum) != local_instances.length
-        location = [server, path]
-        local_instance_mod_time, _ = local_instances[location]
-        return false if local_instance_mod_time.nil?
-        return false if local_instance_mod_time != instance_mod_time
-      }
-      true
+      return nil if other.nil?  # for this case: content_data == nil
+      unique_id  == other.unique_id
     end
 
     def remove_content(checksum)
@@ -282,6 +317,7 @@ module ContentData
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
       File.open(filename, 'w') { |file|
+        # Write contents
         file.write("#{@contents_info.length}\n")
         contents_enum = @contents_info.each_key
         content_chunks = @contents_info.length / CHUNK_SIZE + 1
@@ -291,6 +327,8 @@ module ContentData
           GC.start
           chunks_counter += 1
         end
+
+        # Write instances
         file.write("#{@instances_info.length}\n")
         contents_enum = @contents_info.each_key
         chunks_counter = 0
@@ -299,6 +337,14 @@ module ContentData
           GC.start
           chunks_counter += 1
         end
+
+        # Write symlinks
+        symlinks_info_enum = @symlinks_info.each_key
+        file.write("#{@symlinks_info.length}\n")
+        loop {
+          symlink_key = symlinks_info_enum.next rescue break
+          file.write("#{symlink_key[0]},#{symlink_key[1]},#{@symlinks_info[symlink_key]}\n")
+        }
       }
     end
 
@@ -348,7 +394,8 @@ module ContentData
         # Get number of contents (at first line)
         number_of_contents = file.gets  # this gets the next line or return nil at EOF
         unless (number_of_contents and number_of_contents.match(/^[\d]+$/))  # check that line is of Number format
-          return reset_load_from_file(filename, file, "number of contents should be a number. We got:#{number_of_contents}")
+          raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                "number of contents should be a number. We got:#{number_of_contents}")
         end
         number_of_contents = number_of_contents.to_i
         # advance file lines over all contents. We need only the instances data to build the content data object
@@ -370,7 +417,8 @@ module ContentData
         # get number of instances
         number_of_instances = file.gets
         unless (number_of_instances and number_of_instances.match(/^[\d]+$/))  # check that line is of Number format
-          return reset_load_from_file(filename, file, "number of instances should be a Number. We got:#{number_of_instances}")
+          raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                "number of instances should be a Number. We got:#{number_of_instances}")
         end
         number_of_instances = number_of_instances.to_i
         # read in instances chunks and GC
@@ -387,24 +435,51 @@ module ContentData
           GC.start
           chunk_index += 1
         end
+
+        # get number of symlinks
+        number_of_symlinks = file.gets
+        unless (number_of_symlinks and number_of_symlinks.match(/^[\d]+$/))  # check that line is of Number format
+          raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                    "number of symlinks should be a Number. We got:#{number_of_symlinks}")
+        end
+        number_of_symlinks.to_i.times {
+          symlinks_line = file.gets
+          unless symlinks_line
+            raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                   "Expected to read symlink line but reached EOF")
+          end
+          parameters = symlinks_line.split(',')
+          if (3 != parameters.length)
+            raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                  "Expected to read 3 fields (comma separated) but got #{parameters.length}.\nLine:#{symlinks_line}")
+          end
+
+          @symlinks_info[[parameters[0],parameters[1]]] = parameters[2]
+        }
       }
     end
 
     def read_contents_chunk(filename, file, chunk_size)
       chunk_index = 0
       while chunk_index < chunk_size
-        return reset_load_from_file(filename, file, "Expecting content line but " +
-            "reached end of file after line #{$.}") unless file.gets
+        unless file.gets
+          raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                "Expecting content line but reached end of file")
+        end
         chunk_index += 1
       end
       true
     end
 
-    def  read_instances_chunk(filename, file, chunk_size)
+    def read_instances_chunk(filename, file, chunk_size)
       chunk_index = 0
       while chunk_index < chunk_size
         instance_line = file.gets
-        return reset_load_from_file(filename, file, "Expected to read Instance line but reached EOF") unless instance_line
+        unless instance_line
+          raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                "Expected to read Instance line but reached EOF")
+        end
+
         parameters = instance_line.split(',')
         # bugfix: if file name consist a comma then parsing based on comma separating fails
         if (parameters.size > 6)
@@ -425,14 +500,6 @@ module ContentData
         chunk_index += 1
       end
       true
-    end
-
-    def reset_load_from_file(file_name, file_io, err_msg)
-      Log.error("unexpected error reading file:#{file_name}\nError message:#{err_msg}")
-      @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
-      @instances_info = {}  # location --> checksum to optimize instances query
-      file_io.close
-      nil
     end
 
     # for each content, all time fields (content and instances) are replaced with the

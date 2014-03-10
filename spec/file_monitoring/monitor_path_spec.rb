@@ -12,9 +12,16 @@ module FileMonitoring
 
     describe 'monitoring' do
 
-      # disabling log before running 'all' tests
       before :all do
+        # initial global local content data object
+        $local_content_data_lock = Mutex.new
+        $local_content_data = ContentData::ContentData.new
+
+        # disabling log before running 'all' tests
         DirStat.set_log(nil)
+
+        # create the directory
+        @dir_stat = DirStat.new('temp_path')
       end
 
       # Test will: 
@@ -30,11 +37,6 @@ module FileMonitoring
       # 5) Perform monitoring with Params['manual_file_changes']=true.
       # 6) Test will check that all files were moved appropriatly without reindexing.
       it 'should not index moved files in manual_file_changes mode' do
-        $local_content_data_lock = Mutex.new
-        $local_content_data = ContentData::ContentData.new
-        # create the directory
-        dir_stat = DirStat.new('temp_path')
-
         # Return X times some files, then other files.
         X = ::FileMonitoring.stable_state + 1
         return_files = Array.new(X, ['temp_path/const_file', 'temp_path/will_be_deleted_file', 'temp_path/will_be_moved_file'])
@@ -51,11 +53,11 @@ module FileMonitoring
         print "##### Monitor 5 times #####\n"
         # Perform monitoring
         X.times do
-          dir_stat.monitor
-          dir_stat.removed_unmarked_paths
-          dir_stat.index
+          @dir_stat.monitor
+          @dir_stat.removed_unmarked_paths
+          @dir_stat.index
         end
-        files = dir_stat.instance_variable_get(:@files)
+        files = @dir_stat.instance_variable_get(:@files)
         print files
         print "\n"
         files.has_key?('temp_path/const_file').should be(true)
@@ -83,9 +85,9 @@ module FileMonitoring
 
         print "##### Monitor with manual file changes #####\n"
         # Second round monitoring with manual_file_changes as true
-        dir_stat.monitor(file_attr_to_checksum)
-        dir_stat.removed_unmarked_paths
-        dir_stat.index
+        @dir_stat.monitor(file_attr_to_checksum)
+        @dir_stat.removed_unmarked_paths
+        @dir_stat.index
 
         print $local_content_data.instance_variable_get(:@instances_info)
         print "\n"
@@ -93,18 +95,18 @@ module FileMonitoring
         Params.stub(:[]).with('manual_file_changes').and_return(false)
         print "##### Monitor last time (standard) #####\n"
         # Third round monitoring with manual_file_changes as false but with file_attr_to_checksum
-        dir_stat.monitor
-        dir_stat.removed_unmarked_paths
-        dir_stat.index
+        @dir_stat.monitor
+        @dir_stat.removed_unmarked_paths
+        @dir_stat.index
 
         # check that files were added to Dir
-        files = dir_stat.instance_variable_get(:@files)
+        files = @dir_stat.instance_variable_get(:@files)
         print files
         print "\n"
         files.has_key?('temp_path/const_file').should be(true)
         files.has_key?('temp_path/will_be_deleted_file').should be(false)
         files.has_key?('temp_path/will_be_moved').should be(false)
-        dirs = dir_stat.instance_variable_get(:@dirs)
+        dirs = @dir_stat.instance_variable_get(:@dirs)
         print dirs
         print "\n"
         dirs.has_key?('temp_path/a_dir').should be(true)
@@ -127,25 +129,48 @@ module FileMonitoring
       #   1st file is a regular file. 2nd file is a symlink file.
       # Test will check that regular file added to dir
       # Test will check the symlink file was ignored (not added to dir)
-      it 'should ignore symlink files during monitoring' do
-        # create the directory
-        dir_stat = DirStat.new('temp_path')
-
+      it 'should add a regular file and a symlink file during monitoring' do
         # define stubs for: glob, symlink checks and file status object(lstat).
         Dir.stub(:glob).with('temp_path/*').and_return(['regular_file','symlink_file'])
         File.stub(:symlink?).with('regular_file').and_return(false)
         File.stub(:symlink?).with('symlink_file').and_return(true)
         return_lstat = File.lstat(__FILE__)
         File.stub(:lstat).with(any_args).and_return(return_lstat)
+        File.stub(:readlink).with('symlink_file').and_return('symlink_target')
+        # Perform monitoring
+        @dir_stat.monitor
+
+        # check that 'regular_file' was added to @files map under DirStat
+        @dir_stat.instance_variable_get(:@files).has_key?('regular_file').should be(true)
+        # check that 'symlink_file' was not added to @files map under DirStat
+        @dir_stat.instance_variable_get(:@files).has_key?('symlink_file').should be(false)
+        # check that 'symlink_file' was added to @symlinks map under DirStat
+        expect(@dir_stat.instance_variable_get(:@symlinks)['symlink_file']).to eq('symlink_target')
+        # check that 'symlink file' was added to content data object
+        symlink_key = [`hostname`.strip, 'symlink_file']
+        expect($local_content_data.instance_variable_get(:@symlinks_info)[symlink_key]).to eq('symlink_target')
+      end
+
+      # Test will setup regular_file for glob from previous test.
+      # Test will check the symlink file was deleted from dir
+      it 'should delete the symlink file from previous test' do
+        # define stubs for: glob, symlink checks and file status object(lstat).
+        Dir.stub(:glob).with('temp_path/*').and_return(['regular_file'])
+        File.stub(:symlink?).with('regular_file').and_return(false)
+        return_lstat = File.lstat(__FILE__)
+        File.stub(:lstat).with(any_args).and_return(return_lstat)
+
+        # check that 'symlink file' exists before monitoring
+        symlink_key = [`hostname`.strip, 'symlink_file']
+        $local_content_data.instance_variable_get(:@symlinks_info).has_key?(symlink_key).should be(true)
 
         # Perform monitoring
-        dir_stat.monitor
+        @dir_stat.monitor
 
-        # check that 'regular_file' was added to Dir
-        dir_stat.instance_eval{@files}['regular_file'].nil?.should be(false)
-        # check that 'symlink_file' was ignored( not added to Dir)
-        dir_stat.instance_eval{@files}['symlink_file'].nil?.should be(true)
-
+        # check that 'symlink_file' was deleted from @symlinks map under DirStat
+        @dir_stat.instance_variable_get(:@symlinks).has_key?('symlink_file').should be(false)
+        # check that 'symlink file' was deleted from content data object
+        $local_content_data.instance_variable_get(:@symlinks_info).has_key?(symlink_key).should be(false)
       end
     end
 
