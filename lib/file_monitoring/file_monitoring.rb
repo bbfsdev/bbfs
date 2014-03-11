@@ -11,6 +11,93 @@ module FileMonitoring
   # Manages file monitoring of number of file system locations
   class FileMonitoring
 
+    def create_sub_paths(path)
+      sub_paths=[]
+      while path != '.'
+        sub_paths.push(path)
+        path = File.dirname(path)
+      end
+      sub_paths.reverse!
+    end
+
+    def load_instances(file_attr_to_checksum, dir_stat_array)
+      inst_count = 0
+      # If file is under monitoring path - Add to DirStat tree as stable with path,size,mod_time read from file
+      # If file is NOT under monitoring path - skip (not a valid usage)
+      $local_content_data.each_instance {
+          |checksum, size, _, mod_time, _, path, index_time|
+
+        if Params['manual_file_changes']
+          file_attr_key = [File.basename(path), size, mod_time]
+          ident_file_info = file_attr_to_checksum[file_attr_key]
+          unless ident_file_info
+            #  Add file checksum to map
+            file_attr_to_checksum[file_attr_key] = IdentFileInfo.new(checksum, index_time)
+          else
+            # File already in map. Need to mark as not unique
+            ident_file_info.unique = false  # file will be skipped if found at new location
+          end
+        end
+        # construct sub paths array from full file path:
+        # Example:
+        #   instance path = /dir1/dir2/file_name
+        # sub_paths holds array => ["/dir1","/dir1/dir2","/dir1/dir2/file_name"]
+        # sub paths would create DirStat objs or FileStat(FileStat create using last sub path).
+        sub_paths = create_sub_paths(path)
+
+        # Loop over monitor paths to start build tree under each
+        dir_stat_array.each { | dir_stat|
+          # check if monitor path is one of the sub paths and find it's sub path index
+          # if index is found then it the monitor path
+          # the next index indicates the next sub path to insert to the tree
+          # the index will be raised at each recursive call down the tree
+          sub_paths_index = sub_paths.index(dir_stat[0].path)
+          if sub_paths_index
+            # monitor path was found. Add to tree
+            # start the recursive call with next sub path index
+            ::FileMonitoring.stable_state = dir_stat[1]
+            inst_count += 1
+            dir_stat[0].load_instance(sub_paths, sub_paths_index+1, size, mod_time)
+            break
+          end
+        }
+      }
+      Log.info("loaded instances:#{inst_count}")
+    end
+
+    def load_symlinks(dir_stat_array)
+      # If symlink file is under monitoring path - Add to DirStat tree
+      # If file is NOT under monitoring path - skip (not a valid usage)
+      symlink_count = 0
+      $local_content_data.each_symlink {
+          |_, symlink_path, symlink_target|
+
+        # construct sub paths array from symlink path:
+        # Example:
+        #   symlink path = /dir1/dir2/file_name
+        # sub_paths holds array => ["/dir1","/dir1/dir2","/dir1/dir2/file_name"]
+        # sub paths should match the paths of DirStat objs in the tree to reach the symlink location in Tree.
+        sub_paths = create_sub_paths(path)
+
+        # Loop over monitor paths to start enter tree
+        dir_stat_array.each { | dir_stat|
+          # check if monitor path is one of the sub paths and find it's sub path index
+          # if index is found then it the monitor path
+          # the next index indicates the next sub path to insert to the tree
+          # the index will be raised at each recursive call down the tree
+          sub_paths_index = sub_paths.index(dir_stat[0].path)
+          if sub_paths_index
+            # monitor path was found. Add to tree
+            # start the recursive call with next sub path index
+            ::FileMonitoring.stable_state = dir_stat[1]
+            symlink_count += 1
+            dir_stat[0].load_symlink(sub_paths, sub_paths_index+1, symlink_path, symlink_target)
+            break
+          end
+        }
+      }
+      Log.info("loaded symlinks:#{symlink_count}")
+    end
     # The main method. Loops on all paths, each time span and monitors them.
     #
     # =Algorithm:
@@ -45,7 +132,7 @@ module FileMonitoring
       @log4r.outputters << file_outputter
       ::FileMonitoring::DirStat.set_log(@log4r)
       
-     conf_array = Params['monitoring_paths']
+      conf_array = Params['monitoring_paths']
 
       # create root dirs of monitoring
       dir_stat_array = []
@@ -54,58 +141,15 @@ module FileMonitoring
         dir_stat_array.push([dir_stat, elem['stable_state']])
       }
 
+      # This structure is used to optimize indexing when user specifies a directory was moved.
+      file_attr_to_checksum = {}
+
       #Look over loaded content data if not empty
-      # If file is under monitoring path - Add to DirStat tree as stable with path,size,mod_time read from file
-      # If file is NOT under monitoring path - skip (not a valid usage)
-      file_attr_to_checksum = {}  # This structure is used to optimize indexing when user specifies a directory was moved.
       unless $local_content_data.empty?
         Log.info("Start build data base from loaded file. This could take several minutes")
-        inst_count = 0
-        $local_content_data.each_instance {
-            |checksum, size, _, mod_time, _, path, index_time|
-
-          if Params['manual_file_changes']
-            file_attr_key = [File.basename(path), size, mod_time]
-            ident_file_info = file_attr_to_checksum[file_attr_key]
-            unless ident_file_info
-              #  Add file checksum to map
-              file_attr_to_checksum[file_attr_key] = IdentFileInfo.new(checksum, index_time)
-            else
-              # File already in map. Need to mark as not unique
-              ident_file_info.unique = false  # file will be skipped if found at new location
-            end
-          end
-          # construct sub paths array from full file path:
-          # Example:
-          #   instance path = /dir1/dir2/file_name
-          #   Sub path 1: /dir1
-          #   Sub path 2: /dir1/dir2
-          #   Sub path 3: /dir1/dir2/file_name
-          # sub paths would create DirStat objs or FileStat(FileStat create using last sub path).
-          split_path = path.split(File::SEPARATOR)
-          sub_paths = (0..split_path.size-1).inject([]) { |paths, i|
-            paths.push(File.join(*split_path.values_at(0..i)))
-          }
-          # sub_paths holds array => ["/dir1","/dir1/dir2","/dir1/dir2/file_name"]
-
-          # Loop over monitor paths to start build tree under each
-          dir_stat_array.each { | dir_stat|
-            # check if monitor path is one of the sub paths and find it's sub path index
-            # if index is found then it the monitor path
-            # the next index indicates the next sub path to insert to the tree
-            # the index will be raised at each recursive call down the tree
-            sub_paths_index = sub_paths.index(dir_stat[0].path)
-            next if sub_paths_index.nil?  # monitor path was not found. skip this instance.
-
-            # monitor path was found. Add to tree
-            # start the recursive call with next sub path index
-            ::FileMonitoring.stable_state = dir_stat[1]
-            inst_count += 1
-            dir_stat[0].load_instance(sub_paths, sub_paths_index+1, size, mod_time)
-            break
-          }
-        }
-        Log.info("End build data base from loaded file. loaded instances:#{inst_count}")
+        load_instances(file_attr_to_checksum, dir_stat_array)
+        load_symlinks(dir_stat_array)
+        Log.info("End build data base from loaded file")
         $last_content_data_id = $local_content_data.unique_id
 
         if Params['manual_file_changes']
