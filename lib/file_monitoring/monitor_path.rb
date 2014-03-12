@@ -332,72 +332,63 @@ module FileMonitoring
     end
 
     def handle_existing_file(child_stat, globed_path, globed_path_stat)
-      # -------------- EXISTS in Tree
-      unless Params['manual_file_changes']
-        # --------- NON MANUAL MODE
-        child_stat.marked = true
-        if child_stat.changed?(globed_path_stat)
-          # ---------- STATUS CHANGED
-          # Update changed status
-          child_stat.state = FileStatEnum::CHANGED
-          child_stat.cycles = 0
-          child_stat.size = globed_path_stat.size
-          child_stat.modification_time = globed_path_stat.mtime.to_i
-          write_to_log("CHANGED file: " + globed_path)
-          # remove file with changed checksum. File will be added once indexed
-          $local_content_data_lock.synchronize{
-            $local_content_data.remove_instance(Params['local_server_name'], globed_path)
-          }
-        else  # case child_stat did not change
-          # ---------- SAME STATUS
-          # File status is the same
-          if child_stat.state != FileStatEnum::STABLE
-            child_stat.state = FileStatEnum::UNCHANGED
-            child_stat.cycles += 1
-            if child_stat.cycles >= ::FileMonitoring.stable_state
-              child_stat.state = FileStatEnum::STABLE
-              write_to_log("STABLE file: " + globed_path)
-            else
-              write_to_log("UNCHANGED file: " + globed_path)
-            end
+      if child_stat.changed?(globed_path_stat)
+        # ---------- STATUS CHANGED
+        # Update changed status
+        child_stat.state = FileStatEnum::CHANGED
+        child_stat.cycles = 0
+        child_stat.size = globed_path_stat.size
+        child_stat.modification_time = globed_path_stat.mtime.to_i
+        write_to_log("CHANGED file: " + globed_path)
+        # remove file with changed checksum. File will be added once indexed
+        $local_content_data_lock.synchronize{
+          $local_content_data.remove_instance(Params['local_server_name'], globed_path)
+        }
+      else  # case child_stat did not change
+        # ---------- SAME STATUS
+        # File status is the same
+        if child_stat.state != FileStatEnum::STABLE
+          child_stat.state = FileStatEnum::UNCHANGED
+          child_stat.cycles += 1
+          if child_stat.cycles >= ::FileMonitoring.stable_state
+            child_stat.state = FileStatEnum::STABLE
+            write_to_log("STABLE file: " + globed_path)
+          else
+            write_to_log("UNCHANGED file: " + globed_path)
           end
         end
-      else  # case Params['manual_file_changes']
-        # --------- MANUAL MODE
-        child_stat.marked = true
       end
     end
 
-    def handle_new_file(child_stat, globed_path, globed_path_stat, file_attr_to_checksum)
-      # ---------------------------- NEW FILE ----------
-      unless Params['manual_file_changes']
-        child_stat = FileStat.new(globed_path,
-                                  FileStatEnum::NEW,
-                                  globed_path_stat.size,
-                                  globed_path_stat.mtime.to_i)
-        write_to_log("NEW file: " + globed_path)
-        child_stat.marked = true
-        add_file(child_stat)
-      else  # case Params['manual_file_changes']
-        # --------------------- MANUAL MODE
-        # check if file name and attributes exist in global file attr map
-        file_attr_key = [File.basename(globed_path), globed_path_stat.size, globed_path_stat.mtime.to_i]
-        file_ident_info = file_attr_to_checksum[file_attr_key]
-        # If not found (real new file) or found but not unique then file needs indexing. skip in manual mode.
-        if file_ident_info and file_ident_info.unique
-          Log.debug1("update content data with file:%s  checksum:%s  index_time:%s",
-                     File.basename(globed_path), file_ident_info.checksum, file_ident_info.index_time.to_s)
-          # update content data (no need to update Dir tree)
-          $local_content_data_lock.synchronize{
-            $local_content_data.add_instance(file_ident_info.checksum,
-                                             globed_path_stat.size,
-                                             Params['local_server_name'],
-                                             globed_path,
-                                             globed_path_stat.mtime.to_i,
-                                             file_ident_info.index_time)
-          }
-        end
+    def new_manual_mode_file(globed_path, globed_path_stat, file_attr_to_checksum)
+      # --------------------- MANUAL MODE
+      # check if file name and attributes exist in global file attr map
+      file_attr_key = [File.basename(globed_path), globed_path_stat.size, globed_path_stat.mtime.to_i]
+      file_ident_info = file_attr_to_checksum[file_attr_key]
+      # If not found (real new file) or found but not unique then file needs indexing. skip in manual mode.
+      if file_ident_info and file_ident_info.unique
+        Log.debug1("update content data with file:%s  checksum:%s  index_time:%s",
+                   File.basename(globed_path), file_ident_info.checksum, file_ident_info.index_time.to_s)
+        # update content data (no need to update Dir tree)
+        $local_content_data_lock.synchronize{
+          $local_content_data.add_instance(file_ident_info.checksum,
+                                           globed_path_stat.size,
+                                           Params['local_server_name'],
+                                           globed_path,
+                                           globed_path_stat.mtime.to_i,
+                                           file_ident_info.index_time)
+        }
       end
+    end
+
+    def handle_new_file(child_stat, globed_path, globed_path_stat)
+      child_stat = FileStat.new(globed_path,
+                                FileStatEnum::NEW,
+                                globed_path_stat.size,
+                                globed_path_stat.mtime.to_i)
+      write_to_log("NEW file: " + globed_path)
+      child_stat.marked = true
+      add_file(child_stat)
     end
 
     def handle_dir(globed_path, file_attr_to_checksum)
@@ -477,9 +468,19 @@ module FileMonitoring
           # ----------------------------- FILE -----------------------
           child_stat = @files[globed_path]
           if child_stat
-            handle_existing_file(child_stat, globed_path, globed_path_stat)
+            # Mark that file exists (will not be deleted at end of monitoring)
+            child_stat.marked = true
+            # Handle existing file If we are not in manual mode.
+            # In manual mode do nothing
+            handle_existing_file(child_stat, globed_path, globed_path_stat) unless Params['manual_file_changes']
           else
-            handle_new_file(child_stat, globed_path, globed_path_stat, file_attr_to_checksum)
+            unless Params['manual_file_changes']
+              # Handle regular case of new file.
+              handle_new_file(child_stat, globed_path, globed_path_stat)
+            else
+              # Just copy the existing file stats in manual mode (i.e., file was copied or moved)
+              new_manual_mode_file(globed_path, globed_path_stat, file_attr_to_checksum)
+            end
           end
         else
           handle_dir(globed_path, file_attr_to_checksum)
