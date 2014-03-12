@@ -478,7 +478,7 @@ module FileMonitoring
               # Handle regular case of new file.
               handle_new_file(child_stat, globed_path, globed_path_stat)
             else
-              # Just copy the existing file stats in manual mode (i.e., file was copied or moved)
+              # Only create new content data instance based on copied/moved filed.
               new_manual_mode_file(globed_path, globed_path_stat, file_attr_to_checksum)
             end
           end
