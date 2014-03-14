@@ -137,6 +137,13 @@ module FileMonitoring
       @@log = log
     end
 
+    def write_to_log(msg)
+      if @@log
+        @@log.info(msg)
+        @@log.outputters[0].flush if Params['log_flush_each_message']
+      end
+    end
+
     public_class_method :set_log
 
     #  Initializes new directory monitoring object
@@ -257,7 +264,7 @@ module FileMonitoring
     def to_s(indent = 0)
       indent_increment = 2
       child_indent = indent + indent_increment
-      res = super
+      res = super()
       @files.each_value do |file|
         res += "\n" + file.to_s(child_indent)
       end if @files
@@ -279,10 +286,7 @@ module FileMonitoring
           dir_stat.removed_unmarked_paths
         else
           # directory is not marked. Remove it, since it does not exist.
-          if @@log
-            @@log.info("NON_EXISTING dir: " + dir_stat.path)
-            @@log.outputters[0].flush if Params['log_flush_each_message']
-          end
+          write_to_log("NON_EXISTING dir: " + dir_stat.path)
           # remove file with changed checksum
           $local_content_data_lock.synchronize{
             $local_content_data.remove_directory(dir_stat.path, Params['local_server_name'])
@@ -299,10 +303,7 @@ module FileMonitoring
           file_stat.marked = false  # unset flag for next monitoring\index\remove phase
         else
           # file not marked meaning it is no longer exist. Remove.
-          if @@log
-            @@log.info("NON_EXISTING file: " + file_stat.path)
-            @@log.outputters[0].flush if Params['log_flush_each_message']
-          end
+          write_to_log("NON_EXISTING file: " + file_stat.path)
           # remove file with changed checksum
           $local_content_data_lock.synchronize{
             $local_content_data.remove_instance(Params['local_server_name'], file_stat.path)
@@ -313,14 +314,139 @@ module FileMonitoring
       end
     end
 
-    # Recursively, read files and dirs from file system (using Glob)
-    # Handle new files\dirs.
-    # Change state for existing files\dirs
-    # Index stable files
-    # Remove non existing files\dirs is handled in method: remove_unmarked_paths
+    ################ All monitoring helper methods #################
+    
+    # Checks that the globed path is valid.
+    def is_globed_path_valid(globed_path)
+      # UTF-8 - keep only files with names in
+      return true if @non_utf8_paths[globed_path]
+      check_utf_8_encoding_file = globed_path.clone
+      unless check_utf_8_encoding_file.force_encoding("UTF-8").valid_encoding?
+        Log.warning("Non UTF-8 file name '#{check_utf_8_encoding_file}', skipping.")
+        @non_utf8_paths[globed_path] = true
+        # TODO(bbfsdev): Remove line below and redundant clones of string after
+        # those lines are not a GC problem.
+        check_utf_8_encoding_file = nil
+        return false
+      end
+
+      true
+    end
+
+    def handle_existing_file(child_stat, globed_path, globed_path_stat)
+      if child_stat.changed?(globed_path_stat)
+        # ---------- STATUS CHANGED
+        # Update changed status
+        child_stat.state = FileStatEnum::CHANGED
+        child_stat.cycles = 0
+        child_stat.size = globed_path_stat.size
+        child_stat.modification_time = globed_path_stat.mtime.to_i
+        write_to_log("CHANGED file: " + globed_path)
+        # remove file with changed checksum. File will be added once indexed
+        $local_content_data_lock.synchronize{
+          $local_content_data.remove_instance(Params['local_server_name'], globed_path)
+        }
+      else  # case child_stat did not change
+        # ---------- SAME STATUS
+        # File status is the same
+        if child_stat.state != FileStatEnum::STABLE
+          child_stat.cycles += 1
+          if child_stat.cycles >= ::FileMonitoring.stable_state
+            child_stat.state = FileStatEnum::STABLE
+            write_to_log("STABLE file: " + globed_path)
+          else
+            child_stat.state = FileStatEnum::UNCHANGED
+            write_to_log("UNCHANGED file: " + globed_path)
+          end
+        end
+      end
+    end
+
+    # This method handles the case where we set the 'manual_file_changes' param meaning
+    # some files were moved/copied and no need to reindex them. In that case search "new files"
+    # in old files to get the checksum (skipp the index phase).
+    # The lookup is done via specially prepared file_attr_to_checksum map.
+    def handle_moved_file(globed_path, globed_path_stat, file_attr_to_checksum)
+      # --------------------- MANUAL MODE
+      # check if file name and attributes exist in global file attr map
+      file_attr_key = [File.basename(globed_path), globed_path_stat.size, globed_path_stat.mtime.to_i]
+      file_ident_info = file_attr_to_checksum[file_attr_key]
+      # If not found (real new file) or found but not unique then file needs indexing. skip in manual mode.
+      if file_ident_info && file_ident_info.unique
+        Log.debug1("update content data with file:%s  checksum:%s  index_time:%s",
+                   File.basename(globed_path), file_ident_info.checksum, file_ident_info.index_time.to_s)
+        # update content data (no need to update Dir tree)
+        $local_content_data_lock.synchronize{
+          $local_content_data.add_instance(file_ident_info.checksum,
+                                           globed_path_stat.size,
+                                           Params['local_server_name'],
+                                           globed_path,
+                                           globed_path_stat.mtime.to_i,
+                                           file_ident_info.index_time)
+        }
+      end
+    end
+
+    def handle_new_file(child_stat, globed_path, globed_path_stat)
+      child_stat = FileStat.new(globed_path,
+                                FileStatEnum::NEW,
+                                globed_path_stat.size,
+                                globed_path_stat.mtime.to_i)
+      write_to_log("NEW file: " + globed_path)
+      child_stat.marked = true
+      add_file(child_stat)
+    end
+
+    def handle_dir(globed_path, file_attr_to_checksum)
+      # ------------------------------ DIR -----------------------
+      child_stat = @dirs[globed_path]
+      unless child_stat
+        # ----------- ADD NEW DIR
+        child_stat = DirStat.new(globed_path)
+        add_dir(child_stat)
+        write_to_log("NEW dir: " + globed_path)
+      end
+      child_stat.marked = true
+      # recursive call for dirs
+      child_stat.monitor(file_attr_to_checksum)
+    end
+
+    def add_found_symlinks(globed_path, found_symlinks)
+      # if symlink - add to symlink temporary map and content data (even override).
+      # later all non existing symlinks will be removed from content data
+      pointed_file_name = File.readlink(globed_path)
+      found_symlinks[globed_path] = pointed_file_name
+      # add to content data
+      $local_content_data_lock.synchronize{
+        $local_content_data.add_symlink(Params['local_server_name'], globed_path, pointed_file_name)
+      }
+    end
+
+    def remove_not_found_symlinks(found_symlinks)
+      # check if any symlink was removed and update current symlinks map
+      symlinks_enum = @symlinks.each_key
+      loop {
+        symlink_key = symlinks_enum.next rescue break
+        unless found_symlinks.has_key?(symlink_key)
+          # symlink was removed. remove from content data
+          $local_content_data_lock.synchronize{
+            $local_content_data.remove_symlink(Params['local_server_name'], symlink_key)
+          }
+        end
+      }
+      @symlinks = found_symlinks
+    end
+
+    # Recursively, read files and dirs lists from file system (using Glob)
+    # - Adds new files\dirs.
+    # - Change state for existing files\dirs
+    # - Index stable files
+    # - Remove non existing files\dirs is handled in method: remove_unmarked_paths
+    # - Handles special case for param 'manual_file_changes' where files are moved and
+    #   there is no need to index them
     def monitor(file_attr_to_checksum=nil)
 
-      # Algorithm:
+      # Marking/Removing Algorithm:
       # assume that current dir is present
       # ls (glob) the dir path for child dirs and files
       # if child file is not already present, add it as new, mark it and handle its state
@@ -332,29 +458,14 @@ module FileMonitoring
 
       # ls (glob) the dir path for child dirs and files
       globed_paths_enum = Dir.glob(@path + "/*").to_enum
+      
       found_symlinks = {}  # Store found symlinks under dir
       loop do
         globed_path = globed_paths_enum.next rescue break
 
-        # UTF-8 - keep only files with names in
-        next if @non_utf8_paths[globed_path]
-        check_utf_8_encoding_file = globed_path.clone
-        unless check_utf_8_encoding_file.force_encoding("UTF-8").valid_encoding?
-          Log.warning("Non UTF-8 file name '#{check_utf_8_encoding_file}', skipping.")
-          @non_utf8_paths[globed_path]=true
-          check_utf_8_encoding_file=nil
-          next
-        end
-
-        # if symlink - add to symlink temporary map and content data (even override).
-        # later all removed symlinks will be removed from content data
+        next unless is_globed_path_valid(globed_path)
         if File.symlink?(globed_path)
-          pointed_file_name = File.readlink(globed_path)
-          found_symlinks[globed_path] = pointed_file_name
-          # add to content data
-          $local_content_data_lock.synchronize{
-            $local_content_data.add_symlink(Params['local_server_name'], globed_path, pointed_file_name)
-          }
+          add_found_symlinks(globed_path, found_symlinks)
           next
         end
 
@@ -364,112 +475,26 @@ module FileMonitoring
           # ----------------------------- FILE -----------------------
           child_stat = @files[globed_path]
           if child_stat
-            # -------------- EXISTS in Tree
-            unless Params['manual_file_changes']
-              # --------- NON MANUAL MODE
-              child_stat.marked = true
-              if child_stat.changed?(globed_path_stat)
-                # ---------- STATUS CHANGED
-                # Update changed status
-                child_stat.state = FileStatEnum::CHANGED
-                child_stat.cycles = 0
-                child_stat.size = globed_path_stat.size
-                child_stat.modification_time = globed_path_stat.mtime.to_i
-                if @@log
-                  @@log.info("CHANGED file: " + globed_path)
-                  @@log.outputters[0].flush if Params['log_flush_each_message']
-                end
-                # remove file with changed checksum. File will be added once indexed
-                $local_content_data_lock.synchronize{
-                  $local_content_data.remove_instance(Params['local_server_name'], globed_path)
-                }
-              else  # case child_stat did not change
-                # ---------- SAME STATUS
-                # File status is the same
-                if child_stat.state != FileStatEnum::STABLE
-                  child_stat.state = FileStatEnum::UNCHANGED
-                  child_stat.cycles += 1
-                  if child_stat.cycles >= ::FileMonitoring.stable_state
-                    child_stat.state = FileStatEnum::STABLE
-                    if @@log
-                      @@log.info("STABLE file: " + globed_path)
-                      @@log.outputters[0].flush if Params['log_flush_each_message']
-                    end
-                  else
-                    if @@log
-                      @@log.info("UNCHANGED file: " + globed_path)
-                      @@log.outputters[0].flush if Params['log_flush_each_message']
-                    end
-                  end
-                end
-              end
-            else  # case Params['manual_file_changes']
-              # --------- MANUAL MODE
-              child_stat.marked = true
-            end
+            # Mark that file exists (will not be deleted at end of monitoring)
+            child_stat.marked = true
+            # Handle existing file If we are not in manual mode.
+            # In manual mode do nothing
+            handle_existing_file(child_stat, globed_path, globed_path_stat) unless Params['manual_file_changes']
           else
-            # ---------------------------- NEW FILE ----------
             unless Params['manual_file_changes']
-              child_stat = FileStat.new(globed_path,
-                                        FileStatEnum::NEW,
-                                        globed_path_stat.size,
-                                        globed_path_stat.mtime.to_i)
-              if @@log
-                @@log.info("NEW file: " + globed_path)
-                @@log.outputters[0].flush if Params['log_flush_each_message']
-              end
-              child_stat.marked = true
-              add_file(child_stat)
-            else  # case Params['manual_file_changes']
-              # --------------------- MANUAL MODE
-              # check if file name and attributes exist in global file attr map
-              file_attr_key = [File.basename(globed_path), globed_path_stat.size, globed_path_stat.mtime.to_i]
-              file_ident_info = file_attr_to_checksum[file_attr_key]
-              # If not found (real new file) or found but not unique then file needs indexing. skip in manual mode.
-              next unless (file_ident_info and file_ident_info.unique)
-              Log.debug1("update content data with file:%s  checksum:%s  index_time:%s",
-                         File.basename(globed_path), file_ident_info.checksum, file_ident_info.index_time.to_s)
-              # update content data (no need to update Dir tree)
-              $local_content_data_lock.synchronize{
-                $local_content_data.add_instance(file_ident_info.checksum,
-                                                 globed_path_stat.size,
-                                                 Params['local_server_name'],
-                                                 globed_path,
-                                                 globed_path_stat.mtime.to_i,
-                                                 file_ident_info.index_time)
-              }
+              # Handle regular case of new file.
+              handle_new_file(child_stat, globed_path, globed_path_stat)
+            else
+              # Only create new content data instance based on copied/moved filed.
+              handle_moved_file(globed_path, globed_path_stat, file_attr_to_checksum)
             end
           end
         else
-          # ------------------------------ DIR -----------------------
-          child_stat = @dirs[globed_path]
-          unless child_stat
-            # ----------- ADD NEW DIR
-            child_stat = DirStat.new(globed_path)
-            add_dir(child_stat)
-            if @@log
-              @@log.info("NEW dir: " + globed_path)
-              @@log.outputters[0].flush if Params['log_flush_each_message']
-            end
-          end
-          child_stat.marked = true
-          # recursive call for dirs
-          child_stat.monitor(file_attr_to_checksum)
+          handle_dir(globed_path, file_attr_to_checksum)
         end
       end
 
-      # check if any symlink was removed and update current symlinks map
-      symlinks_enum = @symlinks.each_key
-      loop {
-        symlink_key = symlinks_enum.next rescue break
-        if !found_symlinks.has_key?(symlink_key)
-          # symlink was removed. remove from content data
-          $local_content_data_lock.synchronize{
-            $local_content_data.remove_symlink(Params['local_server_name'], symlink_key)
-          }
-        end
-      }
-      @symlinks = found_symlinks
+      remove_not_found_symlinks(found_symlinks)
 
       GC.start
     end
