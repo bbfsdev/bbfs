@@ -343,7 +343,7 @@ module ContentData
         file.write("#{@symlinks_info.length}\n")
         loop {
           symlink_key = symlinks_info_enum.next rescue break
-          file.write("#{symlink_key[0]},#{symlink_key[1]},#{@symlinks_info[symlink_key]}\n")
+          file.write("#{symlink_key[0]}<#{symlink_key[1]}<#{@symlinks_info[symlink_key]}\n")
         }
       }
     end
@@ -353,7 +353,7 @@ module ContentData
       while chunk_counter < chunk_size
         checksum = contents_enum.next rescue return
         content_info = @contents_info[checksum]
-        file.write("#{checksum},#{content_info[0]},#{content_info[2]}\n")
+        file.write("#{checksum}<#{content_info[0]}<#{content_info[2]}\n")
         chunk_counter += 1
       end
     end
@@ -369,8 +369,8 @@ module ContentData
           # provide the block with: checksum, size, content modification time,instance modification time,
           #   server and path.
           instance_modification_time,instance_index_time = content_info[1][location]
-          file.write("#{checksum},#{content_info[0]},#{location[0]},#{location[1]}," +
-                     "#{instance_modification_time},#{instance_index_time}\n")
+          file.write("#{checksum}<#{content_info[0]}<#{location[0]}<#{location[1]}<" +
+                     "#{instance_modification_time}<#{instance_index_time}\n")
         }
         chunk_counter += 1
         break if chunk_counter == chunk_size
@@ -448,10 +448,10 @@ module ContentData
             raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
                    "Expected to read symlink line but reached EOF")
           end
-          parameters = symlinks_line.split(',')
+          parameters = symlinks_line.split('<')
           if (3 != parameters.length)
             raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
-                  "Expected to read 3 fields (comma separated) but got #{parameters.length}.\nLine:#{symlinks_line}")
+                  "Expected to read 3 fields ('<' separated) but got #{parameters.length}.\nLine:#{symlinks_line}")
           end
 
           @symlinks_info[[parameters[0],parameters[1]]] = parameters[2]
@@ -480,17 +480,11 @@ module ContentData
                 "Expected to read Instance line but reached EOF")
         end
 
-        parameters = instance_line.split(',')
-        # bugfix: if file name consist a comma then parsing based on comma separating fails
-        if (parameters.size > 6)
-          (4..parameters.size-3).each do |i|
-            parameters[3] = [parameters[3], parameters[i]].join(",")
-          end
-          (4..parameters.size-3).each do |i|
-            parameters.delete_at(4)
-          end
+        parameters = instance_line.split('<')
+        if (6 != parameters.length)
+          raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                    "Expected to read 6 fields ('<' separated) but got #{parameters.length}.\nLine:#{instance_line}")
         end
-
         add_instance(parameters[0],        #checksum
                      parameters[1].to_i,   # size
                      parameters[2],        # server
