@@ -316,19 +316,21 @@ module FileMonitoring
 
     ################ All monitoring helper methods #################
     
-    # Checks that the blobed path is valid.
-    def globed_path_not_valid(globed_path)
+    # Checks that the globed path is valid.
+    def is_globed_path_valid(globed_path)
       # UTF-8 - keep only files with names in
       return true if @non_utf8_paths[globed_path]
       check_utf_8_encoding_file = globed_path.clone
       unless check_utf_8_encoding_file.force_encoding("UTF-8").valid_encoding?
         Log.warning("Non UTF-8 file name '#{check_utf_8_encoding_file}', skipping.")
-        @non_utf8_paths[globed_path]=true
-        check_utf_8_encoding_file=nil
-        return true
+        @non_utf8_paths[globed_path] = true
+        # TODO(bbfsdev): Remove line below and redundant clones of string after
+        # those lines are not a GC problem.
+        check_utf_8_encoding_file = nil
+        return false
       end
 
-      return false
+      true
     end
 
     def handle_existing_file(child_stat, globed_path, globed_path_stat)
@@ -348,25 +350,29 @@ module FileMonitoring
         # ---------- SAME STATUS
         # File status is the same
         if child_stat.state != FileStatEnum::STABLE
-          child_stat.state = FileStatEnum::UNCHANGED
           child_stat.cycles += 1
           if child_stat.cycles >= ::FileMonitoring.stable_state
             child_stat.state = FileStatEnum::STABLE
             write_to_log("STABLE file: " + globed_path)
           else
+            child_stat.state = FileStatEnum::UNCHANGED
             write_to_log("UNCHANGED file: " + globed_path)
           end
         end
       end
     end
 
-    def new_manual_mode_file(globed_path, globed_path_stat, file_attr_to_checksum)
+    # This method handles the case where we set the 'manual_file_changes' param meaning
+    # some files were moved/copied and no need to reindex them. In that case search "new files"
+    # in old files to get the checksum (skipp the index phase).
+    # The lookup is done via specially prepared file_attr_to_checksum map.
+    def handle_moved_file(globed_path, globed_path_stat, file_attr_to_checksum)
       # --------------------- MANUAL MODE
       # check if file name and attributes exist in global file attr map
       file_attr_key = [File.basename(globed_path), globed_path_stat.size, globed_path_stat.mtime.to_i]
       file_ident_info = file_attr_to_checksum[file_attr_key]
       # If not found (real new file) or found but not unique then file needs indexing. skip in manual mode.
-      if file_ident_info and file_ident_info.unique
+      if file_ident_info && file_ident_info.unique
         Log.debug1("update content data with file:%s  checksum:%s  index_time:%s",
                    File.basename(globed_path), file_ident_info.checksum, file_ident_info.index_time.to_s)
         # update content data (no need to update Dir tree)
@@ -407,17 +413,13 @@ module FileMonitoring
 
     def add_found_symlinks(globed_path, found_symlinks)
       # if symlink - add to symlink temporary map and content data (even override).
-      # later all removed symlinks will be removed from content data
-      if File.symlink?(globed_path)
-        pointed_file_name = File.readlink(globed_path)
-        found_symlinks[globed_path] = pointed_file_name
-        # add to content data
-        $local_content_data_lock.synchronize{
-          $local_content_data.add_symlink(Params['local_server_name'], globed_path, pointed_file_name)
-        }
-        return true
-      end
-      return false
+      # later all non existing symlinks will be removed from content data
+      pointed_file_name = File.readlink(globed_path)
+      found_symlinks[globed_path] = pointed_file_name
+      # add to content data
+      $local_content_data_lock.synchronize{
+        $local_content_data.add_symlink(Params['local_server_name'], globed_path, pointed_file_name)
+      }
     end
 
     def remove_not_found_symlinks(found_symlinks)
@@ -425,7 +427,7 @@ module FileMonitoring
       symlinks_enum = @symlinks.each_key
       loop {
         symlink_key = symlinks_enum.next rescue break
-        if !found_symlinks.has_key?(symlink_key)
+        unless found_symlinks.has_key?(symlink_key)
           # symlink was removed. remove from content data
           $local_content_data_lock.synchronize{
             $local_content_data.remove_symlink(Params['local_server_name'], symlink_key)
@@ -435,14 +437,16 @@ module FileMonitoring
       @symlinks = found_symlinks
     end
 
-    # Recursively, read files and dirs from file system (using Glob)
-    # Handle new files\dirs.
-    # Change state for existing files\dirs
-    # Index stable files
-    # Remove non existing files\dirs is handled in method: remove_unmarked_paths
+    # Recursively, read files and dirs lists from file system (using Glob)
+    # - Adds new files\dirs.
+    # - Change state for existing files\dirs
+    # - Index stable files
+    # - Remove non existing files\dirs is handled in method: remove_unmarked_paths
+    # - Handles special case for param 'manual_file_changes' where files are moved and
+    #   there is no need to index them
     def monitor(file_attr_to_checksum=nil)
 
-      # Algorithm:
+      # Marking/Removing Algorithm:
       # assume that current dir is present
       # ls (glob) the dir path for child dirs and files
       # if child file is not already present, add it as new, mark it and handle its state
@@ -459,8 +463,11 @@ module FileMonitoring
       loop do
         globed_path = globed_paths_enum.next rescue break
 
-        next if globed_path_not_valid(globed_path)
-        next if add_found_symlinks(globed_path, found_symlinks)
+        next unless is_globed_path_valid(globed_path)
+        if File.symlink?(globed_path)
+          add_found_symlinks(globed_path, found_symlinks)
+          next
+        end
 
         # Get File \ Dir status
         globed_path_stat = File.lstat(globed_path) rescue next  # File or dir removed from OS file system
@@ -479,7 +486,7 @@ module FileMonitoring
               handle_new_file(child_stat, globed_path, globed_path_stat)
             else
               # Only create new content data instance based on copied/moved filed.
-              new_manual_mode_file(globed_path, globed_path_stat, file_attr_to_checksum)
+              handle_moved_file(globed_path, globed_path_stat, file_attr_to_checksum)
             end
           end
         else
