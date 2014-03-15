@@ -13,7 +13,7 @@ module FileMonitoring
 
     def create_sub_paths(path)
       sub_paths=[]
-      while path != '.'
+      while path != '.' && path != '/'
         sub_paths.push(path)
         path = File.dirname(path)
       end
@@ -77,7 +77,7 @@ module FileMonitoring
         #   symlink path = /dir1/dir2/file_name
         # sub_paths holds array => ["/dir1","/dir1/dir2","/dir1/dir2/file_name"]
         # sub paths should match the paths of DirStat objs in the tree to reach the symlink location in Tree.
-        sub_paths = create_sub_paths(path)
+        sub_paths = create_sub_paths(symlink_path)
 
         # Loop over monitor paths to start enter tree
         dir_stat_array.each { | dir_stat|
