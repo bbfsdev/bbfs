@@ -2,6 +2,7 @@ require 'csv'
 require 'content_server/server'
 require 'log'
 require 'params'
+require 'zlib'
 
 module ContentData
   Params.string('instance_check_level', 'shallow', 'Defines check level. Supported levels are: ' \
@@ -326,14 +327,14 @@ module ContentData
     def to_file(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
-      CSV.open(filename, "wb") do |csv|
-        csv << [@instances_info.length]
+      Zlib::GzipWriter.open(filename) do |gz| 
+        gz.write [@instances_info.length].to_csv
         each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path, inst_index_time|
-          csv << [checksum, size, server, path, instance_mod_time, inst_index_time]
+          gz.write [checksum, size, server, path, instance_mod_time, inst_index_time].to_csv
         }
-        csv << [@symlinks_info.length]
+        gz.write [@symlinks_info.length].to_csv
         each_symlink { |file, path, target|
-          csv << [file, path, target]
+          gz.write [file, path, target].to_csv
         }
       end
     end
@@ -345,45 +346,47 @@ module ContentData
 
       number_of_instances = nil
       number_of_symlinks = nil
-      CSV.foreach(filename) do |row|
-        if number_of_instances == nil
-          # get number of instances
-          number_of_instances = row[0]
-          unless (number_of_instances and number_of_instances.match(/^[\d]+$/))  # check that line is of Number format
-            raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
-                  "number of instances should be a Number. We got:#{number_of_instances}")
+      Zlib::GzipReader.open(filename) { |gz|
+        gz.each_line do |line|
+          row = line.parse_csv
+          if number_of_instances == nil
+            # get number of instances
+            number_of_instances = row[0]
+            unless (number_of_instances and number_of_instances.match(/^[\d]+$/))  # check that line is of Number format
+              raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                    "number of instances should be a Number. We got:#{number_of_instances}")
+            end
+            number_of_instances = number_of_instances.to_i
+          elsif number_of_instances > 0
+            if (6 != row.length)
+              raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                        "Expected to read 6 fields ('<' separated) but got #{row.length}.\nLine:#{instance_line}")
+            end
+            add_instance(row[0],        #checksum
+                         row[1].to_i,   # size
+                         row[2],        # server
+                         row[3],        # path
+                         row[4].to_i,   # mod time
+                         row[5].to_i)   # index time
+            number_of_instances -= 1
+          elsif number_of_symlinks == nil
+            # get number of symlinks
+            number_of_symlinks = row[0]
+            unless (number_of_symlinks and number_of_symlinks.match(/^[\d]+$/))  # check that line is of Number format
+              raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                    "number of symlinks should be a Number. We got:#{number_of_symlinks}")
+            end
+            number_of_symlinks = number_of_symlinks.to_i
+          elsif number_of_symlinks > 0
+            if (3 != row.length)
+              raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                    "Expected to read 3 fields ('<' separated) but got #{row.length}.\nLine:#{symlinks_line}")
+            end
+            @symlinks_info[[row[0], row[1]]] = row[2]
+            number_of_symlinks -= 1 
           end
-          number_of_instances = number_of_instances.to_i
-        elsif number_of_instances > 0
-          if (6 != row.length)
-            raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
-                      "Expected to read 6 fields ('<' separated) but got #{row.length}.\nLine:#{instance_line}")
-          end
-          add_instance(row[0],        #checksum
-                       row[1].to_i,   # size
-                       row[2],        # server
-                       row[3],        # path
-                       row[4].to_i,   # mod time
-                       row[5].to_i)   # index time
-          number_of_instances -= 1
-        elsif number_of_symlinks == nil
-          # get number of symlinks
-          number_of_symlinks = row[0]
-          unless (number_of_symlinks and number_of_symlinks.match(/^[\d]+$/))  # check that line is of Number format
-            raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
-                  "number of symlinks should be a Number. We got:#{number_of_symlinks}")
-          end
-          number_of_symlinks = number_of_symlinks.to_i
-        elsif number_of_symlinks > 0
-          if (3 != row.length)
-            raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
-                  "Expected to read 3 fields ('<' separated) but got #{row.length}.\nLine:#{symlinks_line}")
-          end
-
-          @symlinks_info[[row[0], row[1]]] = row[2]
-          number_of_symlinks -= 1 
         end
-      end
+      }
     end
 
     ############## DEPRECATED: Old deprecated from/to file methods still needed for migration purposes
