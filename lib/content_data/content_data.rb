@@ -1,3 +1,4 @@
+require 'csv'
 require 'content_server/server'
 require 'log'
 require 'params'
@@ -306,6 +307,15 @@ module ContentData
       return_str << contents_str
       return_str << "%d\n" % [@instances_info.length]
       return_str << instances_str
+
+
+      symlinks_str = ""
+      symlinks_info_enum = @symlinks_info.each_key
+      each_symlink { |file, path, target|
+        symlinks_str << "%s,%s,%s\n" % [file, path, target]
+      }
+      return_str << symlinks_str
+
       return_str
     end
 
@@ -316,6 +326,74 @@ module ContentData
     def to_file(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
+      CSV.open(filename, "wb") do |csv|
+        csv << [@instances_info.length]
+        each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path, inst_index_time|
+          csv << [checksum, size, server, path, instance_mod_time, inst_index_time]
+        }
+        csv << [@symlinks_info.length]
+        each_symlink { |file, path, target|
+          csv << [file, path, target]
+        }
+      end
+    end
+
+    def from_file(filename)
+      unless File.exists? filename
+        raise ArgumentError.new "No such a file #{filename}"
+      end
+
+      number_of_instances = nil
+      number_of_symlinks = nil
+      CSV.foreach(filename) do |row|
+        if number_of_instances == nil
+          # get number of instances
+          number_of_instances = row[0]
+          unless (number_of_instances and number_of_instances.match(/^[\d]+$/))  # check that line is of Number format
+            raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                  "number of instances should be a Number. We got:#{number_of_instances}")
+          end
+          number_of_instances = number_of_instances.to_i
+        elsif number_of_instances > 0
+          if (6 != row.length)
+            raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                      "Expected to read 6 fields ('<' separated) but got #{row.length}.\nLine:#{instance_line}")
+          end
+          add_instance(row[0],        #checksum
+                       row[1].to_i,   # size
+                       row[2],        # server
+                       row[3],        # path
+                       row[4].to_i,   # mod time
+                       row[5].to_i)   # index time
+          number_of_instances -= 1
+        elsif number_of_symlinks == nil
+          # get number of symlinks
+          number_of_symlinks = row[0]
+          unless (number_of_symlinks and number_of_symlinks.match(/^[\d]+$/))  # check that line is of Number format
+            raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                  "number of symlinks should be a Number. We got:#{number_of_symlinks}")
+          end
+          number_of_symlinks = number_of_symlinks.to_i
+        elsif number_of_symlinks > 0
+          if (3 != row.length)
+            raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                  "Expected to read 3 fields ('<' separated) but got #{row.length}.\nLine:#{symlinks_line}")
+          end
+
+          @symlinks_info[[row[0], row[1]]] = row[2]
+          number_of_symlinks -= 1 
+        end
+      end
+    end
+
+    ############## DEPRECATED: Old deprecated from/to file methods still needed for migration purposes
+    # Write content data to file.
+    # Write is using chunks (for both content chunks and instances chunks)
+    # Chunk is used to maximize GC affect. The temporary memory of each chunk is GCed.
+    # Without the chunks used in a dipper stack level, GC keeps the temporary objects as part of the stack context.
+    def to_file_old(filename)
+      content_data_dir = File.dirname(filename)
+      FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
       File.open(filename, 'w') { |file|
         # Write contents
         file.write("#{@contents_info.length}\n")
@@ -323,7 +401,7 @@ module ContentData
         content_chunks = @contents_info.length / CHUNK_SIZE + 1
         chunks_counter = 0
         while chunks_counter < content_chunks
-          to_file_contents_chunk(file,contents_enum, CHUNK_SIZE)
+          to_old_file_contents_chunk(file,contents_enum, CHUNK_SIZE)
           GC.start
           chunks_counter += 1
         end
@@ -333,7 +411,7 @@ module ContentData
         contents_enum = @contents_info.each_key
         chunks_counter = 0
         while chunks_counter < content_chunks
-          to_file_instances_chunk(file,contents_enum, CHUNK_SIZE)
+          to_old_file_instances_chunk(file,contents_enum, CHUNK_SIZE)
           GC.start
           chunks_counter += 1
         end
@@ -343,22 +421,22 @@ module ContentData
         file.write("#{@symlinks_info.length}\n")
         loop {
           symlink_key = symlinks_info_enum.next rescue break
-          file.write("#{symlink_key[0]}<#{symlink_key[1]}<#{@symlinks_info[symlink_key]}\n")
+          file.write("#{symlink_key[0]},#{symlink_key[1]},#{@symlinks_info[symlink_key]}\n")
         }
       }
     end
 
-    def to_file_contents_chunk(file, contents_enum, chunk_size)
+    def to_old_file_contents_chunk(file, contents_enum, chunk_size)
       chunk_counter = 0
       while chunk_counter < chunk_size
         checksum = contents_enum.next rescue return
         content_info = @contents_info[checksum]
-        file.write("#{checksum}<#{content_info[0]}<#{content_info[2]}\n")
+        file.write("#{checksum},#{content_info[0]},#{content_info[2]}\n")
         chunk_counter += 1
       end
     end
 
-    def to_file_instances_chunk(file, contents_enum, chunk_size)
+    def to_old_file_instances_chunk(file, contents_enum, chunk_size)
       chunk_counter = 0
       while chunk_counter < chunk_size
         checksum = contents_enum.next rescue return
@@ -369,8 +447,8 @@ module ContentData
           # provide the block with: checksum, size, content modification time,instance modification time,
           #   server and path.
           instance_modification_time,instance_index_time = content_info[1][location]
-          file.write("#{checksum}<#{content_info[0]}<#{location[0]}<#{location[1]}<" +
-                     "#{instance_modification_time}<#{instance_index_time}\n")
+          file.write("#{checksum},#{content_info[0]},#{location[0]},#{location[1]}," +
+                     "#{instance_modification_time},#{instance_index_time}\n")
         }
         chunk_counter += 1
         break if chunk_counter == chunk_size
@@ -380,7 +458,7 @@ module ContentData
     # TODO validation that file indeed contains ContentData missing
     # TODO class level method?
     # Loading db from file using chunks for better memory performance
-    def from_file(filename)
+    def from_file_old(filename)
       # read first line (number of contents)
       # calculate line number (number of instances)
       # read number of instances.
@@ -409,7 +487,7 @@ module ContentData
             # update last chunk size
             chunk_size = number_of_contents - (chunk_index * CHUNK_SIZE)
           end
-          return unless read_contents_chunk(filename, file, chunk_size)
+          return unless read_old_contents_chunk(filename, file, chunk_size)
           GC.start
           chunk_index += 1
         end
@@ -431,7 +509,7 @@ module ContentData
             # update last chunk size
             chunk_size = number_of_instances - (chunk_index * CHUNK_SIZE)
           end
-          return unless read_instances_chunk(filename, file, chunk_size)
+          return unless read_old_instances_chunk(filename, file, chunk_size)
           GC.start
           chunk_index += 1
         end
@@ -443,15 +521,15 @@ module ContentData
                     "number of symlinks should be a Number. We got:#{number_of_symlinks}")
         end
         number_of_symlinks.to_i.times {
-          symlinks_line = file.gets
+          symlinks_line = file.gets.strip
           unless symlinks_line
             raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
                    "Expected to read symlink line but reached EOF")
           end
-          parameters = symlinks_line.split('<')
+          parameters = symlinks_line.split(',')
           if (3 != parameters.length)
             raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
-                  "Expected to read 3 fields ('<' separated) but got #{parameters.length}.\nLine:#{symlinks_line}")
+                  "Expected to read 3 fields (comma separated) but got #{parameters.length}.\nLine:#{symlinks_line}")
           end
 
           @symlinks_info[[parameters[0],parameters[1]]] = parameters[2]
@@ -459,7 +537,7 @@ module ContentData
       }
     end
 
-    def read_contents_chunk(filename, file, chunk_size)
+    def read_old_contents_chunk(filename, file, chunk_size)
       chunk_index = 0
       while chunk_index < chunk_size
         unless file.gets
@@ -471,7 +549,7 @@ module ContentData
       true
     end
 
-    def read_instances_chunk(filename, file, chunk_size)
+    def read_old_instances_chunk(filename, file, chunk_size)
       chunk_index = 0
       while chunk_index < chunk_size
         instance_line = file.gets
@@ -480,11 +558,17 @@ module ContentData
                 "Expected to read Instance line but reached EOF")
         end
 
-        parameters = instance_line.split('<')
-        if (6 != parameters.length)
-          raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
-                    "Expected to read 6 fields ('<' separated) but got #{parameters.length}.\nLine:#{instance_line}")
+        parameters = instance_line.split(',')
+        # bugfix: if file name consist a comma then parsing based on comma separating fails
+        if (parameters.size > 6)
+          (4..parameters.size-3).each do |i|
+            parameters[3] = [parameters[3], parameters[i]].join(",")
+          end
+          (4..parameters.size-3).each do |i|
+            parameters.delete_at(4)
+          end
         end
+
         add_instance(parameters[0],        #checksum
                      parameters[1].to_i,   # size
                      parameters[2],        # server
@@ -495,6 +579,7 @@ module ContentData
       end
       true
     end
+    ########################## END OF DEPRECATED PART #######################
 
     # for each content, all time fields (content and instances) are replaced with the
     # min time found, while going through all time fields.
