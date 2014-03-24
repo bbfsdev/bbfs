@@ -25,7 +25,7 @@ describe 'Content Data Performance Test' do
   end
 
   context 'IO operations' do
-    it 'should create ContentData object in acceptable amount of time' do
+    it 'should create ContentData object in acceptable period of time' do
       LIMIT_TIME = 10*60;  # 10 minutes
 
       build_thread = Thread.new do
@@ -59,8 +59,41 @@ describe 'Content Data Performance Test' do
       # checks that test was correct
       if is_succeeded
         @cd1.should be
+        @cd1.instances_size.should == NUMBER_INSTANCES
       end
+    end
 
+    it 'should init new ContentData object from exist one in acceptable period of time' do
+      LIMIT_TIME = 10*60;  # 10 minutes
+
+      init_thread = Thread.new { @cd2 = ContentData::ContentData.new(@cd1) }
+
+      timer = 0
+      timer_thread = Thread.new do
+        while (timer < LIMIT_TIME && init_thread.alive?)
+          timer += 1
+          sleep 1
+        end
+        if (init_thread.alive?)
+          Thread.kill(init_thread)
+        end
+      end
+      [init_thread, timer_thread].each { |th| th.join }
+
+      is_succeeded = timer < LIMIT_TIME
+      msg = "ContentData build for #{NUMBER_INSTANCES} " +
+        (is_succeeded ? "" : "do not ") + "finished in #{timer} seconds"
+
+      # main check
+      #timer.should be < LIMIT_TIME, msg
+      is_succeeded.should be_true
+      puts msg if is_succeeded
+
+      # checks that test was correct
+      if is_succeeded
+        @cd2.should be
+        @cd2.instances_size.should == NUMBER_INSTANCES
+      end
     end
   end
 
