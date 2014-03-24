@@ -162,12 +162,6 @@ describe 'Content Data Test' do
     content_data_a = ContentData::ContentData.new
     content_data_a.add_instance("A1", 50, "server_1",
 				"/home/file_1", 22222222222)
-  end
-
-  it 'test merge' do
-    content_data_a = ContentData::ContentData.new
-    content_data_a.add_instance("A1", 50, "server_1",
-				"/home/file_1", 22222222222)
 
     content_data_b = ContentData::ContentData.new
     content_data_b.add_instance("B1", 60, "server_1",

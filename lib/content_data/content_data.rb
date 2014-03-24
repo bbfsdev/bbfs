@@ -294,6 +294,7 @@ module ContentData
       end
     end
 
+    # Don't use in production, only for testing.
     def to_s
       return_str = ""
       contents_str = ""
@@ -311,9 +312,8 @@ module ContentData
 
 
       symlinks_str = ""
-      symlinks_info_enum = @symlinks_info.each_key
-      each_symlink { |file, path, target|
-        symlinks_str << "%s,%s,%s\n" % [file, path, target]
+      each_symlink { |server, path, target|
+        symlinks_str << "%s,%s,%s\n" % [server, path, target]
       }
       return_str << symlinks_str
 
@@ -321,9 +321,6 @@ module ContentData
     end
 
     # Write content data to file.
-    # Write is using chunks (for both content chunks and instances chunks)
-    # Chunk is used to maximize GC affect. The temporary memory of each chunk is GCed.
-    # Without the chunks used in a dipper stack level, GC keeps the temporary objects as part of the stack context.
     def to_file(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
@@ -339,6 +336,8 @@ module ContentData
       end
     end
 
+    # Imports content data from file.
+    # This method will throw an exception if the file is not in correct format.
     def from_file(filename)
       unless File.exists? filename
         raise ArgumentError.new "No such a file #{filename}"
@@ -350,13 +349,13 @@ module ContentData
         gz.each_line do |line|
           row = line.parse_csv
           if number_of_instances == nil
-            # get number of instances
-            number_of_instances = row[0]
-            unless (number_of_instances and number_of_instances.match(/^[\d]+$/))  # check that line is of Number format
+            begin
+              # get number of instances
+              number_of_instances = row[0].to_i
+            rescue ArgumentError
               raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
                     "number of instances should be a Number. We got:#{number_of_instances}")
             end
-            number_of_instances = number_of_instances.to_i
           elsif number_of_instances > 0
             if (6 != row.length)
               raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
@@ -370,13 +369,13 @@ module ContentData
                          row[5].to_i)   # index time
             number_of_instances -= 1
           elsif number_of_symlinks == nil
-            # get number of symlinks
-            number_of_symlinks = row[0]
-            unless (number_of_symlinks and number_of_symlinks.match(/^[\d]+$/))  # check that line is of Number format
+            begin
+              # get number of symlinks
+              number_of_symlinks = row[0].to_i
+            rescue ArgumentError
               raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
                     "number of symlinks should be a Number. We got:#{number_of_symlinks}")
             end
-            number_of_symlinks = number_of_symlinks.to_i
           elsif number_of_symlinks > 0
             if (3 != row.length)
               raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
@@ -394,6 +393,7 @@ module ContentData
     # Write is using chunks (for both content chunks and instances chunks)
     # Chunk is used to maximize GC affect. The temporary memory of each chunk is GCed.
     # Without the chunks used in a dipper stack level, GC keeps the temporary objects as part of the stack context.
+    # @deprecated
     def to_file_old(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
