@@ -22,12 +22,13 @@ describe 'Content Data Performance Test' do
     SERVER = "server"
     PATH = "file_"
     MTIME = 1000
+
+    LIMIT_TIME = 10*60;  # 10 minutes
+    LIMIT_MEMORY = 100*1024
   end
 
   context 'IO operations' do
     it 'should create ContentData object in acceptable period of time' do
-      LIMIT_TIME = 10*60;  # 10 minutes
-
       build_thread = Thread.new do
         @cd1 = ContentData::ContentData.new
         NUMBER_INSTANCES.times do |i|
@@ -64,8 +65,6 @@ describe 'Content Data Performance Test' do
     end
 
     it 'should init new ContentData object from exist one in acceptable period of time' do
-      LIMIT_TIME = 10*60;  # 10 minutes
-
       init_thread = Thread.new { @cd2 = ContentData::ContentData.new(@cd1) }
 
       timer = 0
@@ -110,7 +109,6 @@ describe 'Content Data Performance Test' do
 
     pending 'should consume acceptable amount of memory' do
       puts "Memory usage test"
-      LIMIT_MEMORY = 100*1024
 
       minus_thread = Thread.new { res_cd = ContentData.remove(@cd1, @cd2) }
 
