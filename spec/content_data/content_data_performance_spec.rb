@@ -162,9 +162,9 @@ describe 'Content Data Performance Test' do
       NUMBER_INSTANCES.times do |i|
         @cd1.add_instance(i.to_s, INSTANCE_SIZE, SERVER, PATH + i.to_s, MTIME)
       end
-      @cd1 = ContentData::ContentData.new
+      @cd2 = ContentData::ContentData.new
       NUMBER_INSTANCES.times do |i|
-        @cd1.add_instance(i.to_s, INSTANCE_SIZE, SERVER, PATH + i.to_s, MTIME)
+        @cd2.add_instance(i.to_s, INSTANCE_SIZE, SERVER, PATH + i.to_s, MTIME)
       end
       @cd2.add_instance((MAX_CHECKSUM+1).to_s, INSTANCE_SIZE, SERVER, PATH + "new", MTIME)
     end
