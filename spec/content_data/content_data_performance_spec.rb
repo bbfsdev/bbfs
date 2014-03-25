@@ -12,7 +12,7 @@ require_relative '../../lib/content_data/content_data.rb'
 describe 'Content Data Performance Test' do
 
   NUMBER_INSTANCES = 350_000
-  MAX_CHECKSUM = NUMBER_INSTANCES  #1000
+  MAX_CHECKSUM = NUMBER_INSTANCES
   INSTANCE_SIZE = 1000
   SERVER = "server"
   PATH = "file_"
@@ -55,7 +55,7 @@ describe 'Content Data Performance Test' do
         [build_thread, timer_thread].each { |th| th.join }
 
         is_succeeded = timer < LIMIT_TIME
-        msg = "ContentData build for #{NUMBER_INSTANCES} " +
+        msg = "ContentData init for #{NUMBER_INSTANCES} " +
           (is_succeeded ? "" : "do not ") + "finished in #{timer} seconds"
 
         # main check
@@ -91,7 +91,7 @@ describe 'Content Data Performance Test' do
         [init_thread, timer_thread].each { |th| th.join }
 
         is_succeeded = timer < LIMIT_TIME
-        msg = "ContentData build for #{NUMBER_INSTANCES} " +
+        msg = "ContentData init from exist object of #{NUMBER_INSTANCES} " +
           (is_succeeded ? "" : "do not ") + "finished in #{timer} seconds"
 
         # main check
@@ -136,8 +136,8 @@ describe 'Content Data Performance Test' do
         [build_thread, timer_thread].each { |th| th.join }
 
         is_succeeded = timer < LIMIT_TIME
-        msg = "ContentData build for #{NUMBER_INSTANCES} " +
-          (is_succeeded ? "" : "do not ") + "finished in #{timer} seconds"
+        msg = "Init of 2 ContentData of #{NUMBER_INSTANCES} instances each " +
+          (is_succeeded ? "" : "not ") + "finished in #{timer} seconds"
 
         # main check
         #timer.should be < LIMIT_TIME, msg
