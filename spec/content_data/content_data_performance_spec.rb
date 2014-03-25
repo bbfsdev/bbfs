@@ -156,7 +156,7 @@ describe 'Content Data Performance Test' do
     end
   end
 
-  pending 'Set operations' do
+  context 'Set operations' do
     before :all do
       @cd1 = ContentData::ContentData.new
       NUMBER_INSTANCES.times do |i|
