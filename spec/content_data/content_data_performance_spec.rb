@@ -31,6 +31,29 @@ describe 'Content Data Performance Test' do
     Log.init
   end
 
+  class TimerThread
+    def initialize
+      @timer = 0
+    end
+
+    def get_timer_thread(watched_thread)
+      Thread.new do
+        while (@timer < LIMIT_TIME && watched_thread.alive?)
+          @timer += 1
+          sleep 1
+        end
+        if (watched_thread.alive?)
+          Thread.kill(watched_thread)
+        end
+      end
+    end
+
+    # @return [Integer] elapsed time in seconds since timer was run or zero
+    def get_elapsed_time
+      @timer.to_i
+    end
+  end
+
   context 'Object initialization' do
     context 'Init one object' do
       it "#{NUMBER_INSTANCES} instances in less then #{LIMIT_TIME} seconds" do
@@ -91,7 +114,7 @@ describe 'Content Data Performance Test' do
         [init_thread, timer_thread].each { |th| th.join }
 
         is_succeeded = timer < LIMIT_TIME
-        msg = "ContentData init from exist object of #{NUMBER_INSTANCES} " +
+        msg = "ContentData init from exist object of #{NUMBER_INSTANCES} instances " +
           (is_succeeded ? "" : "do not ") + "finished in #{timer} seconds"
 
         # main check
@@ -153,6 +176,59 @@ describe 'Content Data Performance Test' do
 
         Log.debug1(msg)
       end
+    end
+  end
+
+  context 'File operations' do
+    before :all do
+      @cd1 = ContentData::ContentData.new
+      NUMBER_INSTANCES.times do |i|
+        @cd1.add_instance(i.to_s, INSTANCE_SIZE, SERVER, PATH + i.to_s, MTIME)
+      end
+      @file = Tempfile.new('to_file_test')
+    end
+
+    it "save to file #{NUMBER_INSTANCES} in less then #{LIMIT_TIME} seconds" do
+      timer = 0
+      begin
+        to_file_thread = Thread.new do
+          path = @file.path
+          @cd1.to_file(path)
+        end
+
+        timer_thread = Thread.new do
+          while (timer < LIMIT_TIME && to_file_thread.alive?)
+            timer += 1
+            sleep 1
+          end
+          if (to_file_thread.alive?)
+            Thread.kill(to_file_thread)
+          end
+        end
+        [to_file_thread, timer_thread].each { |th| th.join }
+      ensure
+        @file.close
+        @file.unlink
+      end
+
+      is_succeeded = timer < LIMIT_TIME
+      msg = "To file for #{NUMBER_INSTANCES} " +
+        (is_succeeded ? "" : "do not ") + "finished in #{timer} seconds"
+
+      # main check
+      #timer.should be < LIMIT_TIME, msg
+      is_succeeded.should be_true
+
+      # checks that test was correct
+      if is_succeeded
+        # TODO
+      end
+
+      Log.debug1(msg)
+    end
+
+    it "read and init #{NUMBER_INSTANCES} instances in less then #{LIMIT_TIME} seconds" do
+
     end
   end
 
