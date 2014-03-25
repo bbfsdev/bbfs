@@ -32,25 +32,23 @@ describe 'Content Data Performance Test' do
   end
 
   class TimerThread
+    # elapsed time in seconds since timer was run or zero
+    attr_reader :elapsed_time
+
     def initialize
-      @timer = 0
+      @elapsed_time = 0
     end
 
     def get_timer_thread(watched_thread)
       Thread.new do
-        while (@timer < LIMIT_TIME && watched_thread.alive?)
-          @timer += 1
+        while (@elapsed_time < LIMIT_TIME && watched_thread.alive?)
+          @elapsed_time += 1
           sleep 1
         end
         if (watched_thread.alive?)
           Thread.kill(watched_thread)
         end
       end
-    end
-
-    # @return [Integer] elapsed time in seconds since timer was run or zero
-    def get_elapsed_time
-      @timer.to_i
     end
   end
 
@@ -78,7 +76,7 @@ describe 'Content Data Performance Test' do
         [build_thread, timer_thread].each { |th| th.join }
 
         is_succeeded = timer < LIMIT_TIME
-        msg = "ContentData init for #{NUMBER_INSTANCES} " +
+        msg = "ContentData init for #{NUMBER_INSTANCES} instances" +
           (is_succeeded ? "" : "do not ") + "finished in #{timer} seconds"
 
         # main check
@@ -234,13 +232,13 @@ describe 'Content Data Performance Test' do
         end
 
 
-        timer_thread = timer.get_timer_thread()
+        timer_thread = timer.get_timer_thread(from_file_thread)
         [from_file_thread, timer_thread].each { |th| th.join }
       ensure
         @file.close
       end
 
-      is_succeeded = timer.get_elapsed_time < LIMIT_TIME
+      is_succeeded = timer.elapsed_time < LIMIT_TIME
       msg = "From file for #{NUMBER_INSTANCES} " +
         (is_succeeded ? "" : "do not ") + "finished in #{timer.get_elapsed_time} seconds"
 
