@@ -188,7 +188,12 @@ describe 'Content Data Performance Test' do
       @file = Tempfile.new('to_file_test')
     end
 
-    it "save to file #{NUMBER_INSTANCES} in less then #{LIMIT_TIME} seconds" do
+    after :all do
+      @file.close!
+    end
+
+    it "save/load on #{NUMBER_INSTANCES} instances in less then #{LIMIT_TIME} seconds" do
+      # Checking to_file
       timer = 0
       begin
         to_file_thread = Thread.new do
@@ -208,7 +213,6 @@ describe 'Content Data Performance Test' do
         [to_file_thread, timer_thread].each { |th| th.join }
       ensure
         @file.close
-        @file.unlink
       end
 
       is_succeeded = timer < LIMIT_TIME
@@ -218,16 +222,38 @@ describe 'Content Data Performance Test' do
       # main check
       #timer.should be < LIMIT_TIME, msg
       is_succeeded.should be_true
+      Log.debug1(msg)
+
+      # checking from_file
+      timer = TimerThread.new
+      cd2 = ContentData::ContentData.new
+      begin
+        from_file_thread = Thread.new do
+          path = @file.path
+          cd2.from_file(path)
+        end
+
+
+        timer_thread = timer.get_timer_thread()
+        [from_file_thread, timer_thread].each { |th| th.join }
+      ensure
+        @file.close
+      end
+
+      is_succeeded = timer.get_elapsed_time < LIMIT_TIME
+      msg = "From file for #{NUMBER_INSTANCES} " +
+        (is_succeeded ? "" : "do not ") + "finished in #{timer.get_elapsed_time} seconds"
+
+      # main check
+      #timer.should be < LIMIT_TIME, msg
+      is_succeeded.should be_true
 
       # checks that test was correct
       if is_succeeded
-        # TODO
+        @cd1.instances_size.should == cd2.instances_size
       end
 
       Log.debug1(msg)
-    end
-
-    it "read and init #{NUMBER_INSTANCES} instances in less then #{LIMIT_TIME} seconds" do
 
     end
   end
