@@ -18,7 +18,7 @@ describe 'Content Data Performance Test' do
   PATH = "file_"
   MTIME = 1000
 
-  LIMIT_MEMORY = 100*1024
+  LIMIT_MEMORY = 1024**3  # 1 GB
   LIMIT_TIME = 10*60;  # 10 minutes
 
   before :all do
@@ -70,7 +70,7 @@ describe 'Content Data Performance Test' do
         Log.debug1(msg)
       end
 
-      xit "from exist object of #{NUMBER_INSTANCES} in less thes #{LIMIT_TIME} seconds" do
+      it "from exist object of #{NUMBER_INSTANCES} in less thes #{LIMIT_TIME} seconds" do
         cd1 = ContentData::ContentData.new
         NUMBER_INSTANCES.times do |i|
           cd1.add_instance(i.to_s, INSTANCE_SIZE, SERVER, PATH + i.to_s, MTIME)
@@ -109,7 +109,7 @@ describe 'Content Data Performance Test' do
     end
 
     context 'Init more then one object' do
-      it "Two object each of #{NUMBER_INSTANCES} instances in less then #{2*LIMIT_TIME} seconds" do
+      it "two object each of #{NUMBER_INSTANCES} instances in less then #{2*LIMIT_TIME} seconds" do
         cd1 = nil
         cd2 = nil
         build_thread = Thread.new do
@@ -162,79 +162,82 @@ describe 'Content Data Performance Test' do
       NUMBER_INSTANCES.times do |i|
         @cd1.add_instance(i.to_s, INSTANCE_SIZE, SERVER, PATH + i.to_s, MTIME)
       end
-      @cd2 = ContentData::ContentData.new(@cd1)
+      @cd1 = ContentData::ContentData.new
+      NUMBER_INSTANCES.times do |i|
+        @cd1.add_instance(i.to_s, INSTANCE_SIZE, SERVER, PATH + i.to_s, MTIME)
+      end
       @cd2.add_instance((MAX_CHECKSUM+1).to_s, INSTANCE_SIZE, SERVER, PATH + "new", MTIME)
     end
 
+    context "minus of two objects with #{NUMBER_INSTANCES} instances each" do
+      it "finish in less then #{LIMIT_TIME} seconds" do
+        res_cd = nil
+        minus_thread = Thread.new { res_cd = ContentData.remove(@cd1, @cd2) }
 
-    pending 'should consume acceptable amount of memory' do
-      puts "Memory usage test"
-
-      minus_thread = Thread.new { res_cd = ContentData.remove(@cd1, @cd2) }
-
-      memory_of_process = 0
-      memory_usage_thread = Thread.new do
-        while (memory_of_process < LIMIT_MEMORY && minus_thread.alive?)
-          memory_of_process = if Gem::win_platform?
-                                `tasklist /FI \"PID eq #{Process.pid}\" /NH /FO \"CSV\"`.split(',')[4]
-                              else
-                                `ps -o rss= -p #{Process.pid}`.to_i / 1000
-                              end
-          puts Process.pid + " => " + memory_of_process
-          sleep 1
+        timer = 0
+        timer_thread = Thread.new do
+          while (timer < LIMIT_TIME && minus_thread.alive?)
+            timer += 1
+            sleep 1
+          end
+          if (minus_thread.alive?)
+            Thread.kill(minus_thread)
+          end
         end
-        if (minus_thread.alive?)
-          Thread.kill(minus_thread)
+        [minus_thread, timer_thread].each { |th| th.join }
+
+        is_succeeded = timer < LIMIT_TIME
+        msg = "ContentData minus for #{NUMBER_INSTANCES} " +
+          (is_succeeded ? "" : "do not ") + "finished in #{timer} seconds"
+
+        # main check
+        #timer.should be < LIMIT_TIME, msg
+        is_succeeded.should be_true
+
+        # checks that test was correct
+        if is_succeeded
+          res_cd.should be
+          res_cd.instances_size.should == 1
         end
+
+        Log.debug1(msg)
       end
 
-      is_succeeded = memory_of_process
-      msg = "ContentData minus for #{NUMBER_INSTANCES} " +
-        (is_succeeded ? "" : "do not ") + "consume #{memory_of_process} bytes"
+      pending "consume less then #{LIMIT_MEMORY} bytes" do
 
-      # main check
-      #timer.should be < LIMIT_TIME, msg
-      is_succeeded.should be_true
-      puts msg if is_succeeded
+        minus_thread = Thread.new { res_cd = ContentData.remove(@cd1, @cd2) }
 
-      # checks that test was correct
-      if is_succeeded
-        res_cd.should be
-        res_cd.instances_size.should == 1
-      end
-    end
-
-    it 'should finish in acceptable time' do
-      res_cd = nil
-      minus_thread = Thread.new { res_cd = ContentData.remove(@cd1, @cd2) }
-
-      timer = 0
-      timer_thread = Thread.new do
-        while (timer < LIMIT_TIME && minus_thread.alive?)
-          timer += 1
-          sleep 1
+        memory_of_process = 0
+        memory_usage_thread = Thread.new do
+          while (memory_of_process < LIMIT_MEMORY && minus_thread.alive?)
+            memory_of_process = if Gem::win_platform?
+                                  `tasklist /FI \"PID eq #{Process.pid}\" /NH /FO \"CSV\"`.split(',')[4]
+                                else
+                                  `ps -o rss= -p #{Process.pid}`.to_i / 1000
+                                end
+            puts Process.pid + " => " + memory_of_process
+            sleep 1
+          end
+          if (minus_thread.alive?)
+            Thread.kill(minus_thread)
+          end
         end
-        if (minus_thread.alive?)
-          Thread.kill(minus_thread)
+
+        is_succeeded = memory_of_process
+        msg = "ContentData minus for #{NUMBER_INSTANCES} " +
+          (is_succeeded ? "" : "do not ") + "consume #{memory_of_process} bytes"
+
+        # main check
+        #timer.should be < LIMIT_TIME, msg
+        is_succeeded.should be_true
+        puts msg if is_succeeded
+
+        # checks that test was correct
+        if is_succeeded
+          res_cd.should be
+          res_cd.instances_size.should == 1
         end
       end
-      [minus_thread, timer_thread].each { |th| th.join }
-
-      is_succeeded = timer < LIMIT_TIME
-      msg = "ContentData minus for #{NUMBER_INSTANCES} " +
-        (is_succeeded ? "" : "do not ") + "finished in #{timer} seconds"
-
-      # main check
-      #timer.should be < LIMIT_TIME, msg
-      is_succeeded.should be_true
-
-      # checks that test was correct
-      if is_succeeded
-        res_cd.should be
-        res_cd.instances_size.should == 1
-      end
-
-      puts msg if is_succeeded
     end
   end
 end
