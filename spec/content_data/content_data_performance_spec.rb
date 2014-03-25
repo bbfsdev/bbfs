@@ -10,93 +10,153 @@ require 'tempfile'
 require_relative '../../lib/content_data/content_data.rb'
 
 describe 'Content Data Performance Test' do
+
+  NUMBER_INSTANCES = 350_000
+  MAX_CHECKSUM = NUMBER_INSTANCES  #1000
+  INSTANCE_SIZE = 1000
+  SERVER = "server"
+  PATH = "file_"
+  MTIME = 1000
+
+  LIMIT_MEMORY = 100*1024
+  LIMIT_TIME = 10*60;  # 10 minutes
+
   before :all do
     Params.init Array.new
+    Params['print_params_to_stdout'] = false
     # must preced Log.init, otherwise log containing default values will be created
     Params['log_write_to_file'] = false
+    Params['log_write_to_console'] = true
+    Params['log_debug_level'] = 1  # set it > 0 to enable print-outs of used time/memory
     Log.init
-
-    NUMBER_INSTANCES = 350_000
-    MAX_CHECKSUM = NUMBER_INSTANCES  #1000
-    INSTANCE_SIZE = 1000
-    SERVER = "server"
-    PATH = "file_"
-    MTIME = 1000
-
-    LIMIT_TIME = 10*60;  # 10 minutes
-    LIMIT_MEMORY = 100*1024
   end
 
-  context 'IO operations' do
-    it 'should create ContentData object in acceptable period of time' do
-      build_thread = Thread.new do
-        @cd1 = ContentData::ContentData.new
+  context 'Object initialization' do
+    context 'Init one object' do
+      it "#{NUMBER_INSTANCES} instances in less then #{LIMIT_TIME} seconds" do
+        cd1 = nil
+        build_thread = Thread.new do
+          cd1 = ContentData::ContentData.new
+          NUMBER_INSTANCES.times do |i|
+            cd1.add_instance(i.to_s, INSTANCE_SIZE, SERVER, PATH + i.to_s, MTIME)
+          end
+        end
+
+        timer = 0
+        timer_thread = Thread.new do
+          while (timer < LIMIT_TIME && build_thread.alive?)
+            timer += 1
+            sleep 1
+          end
+          if (build_thread.alive?)
+            Thread.kill(build_thread)
+          end
+        end
+        [build_thread, timer_thread].each { |th| th.join }
+
+        is_succeeded = timer < LIMIT_TIME
+        msg = "ContentData build for #{NUMBER_INSTANCES} " +
+          (is_succeeded ? "" : "do not ") + "finished in #{timer} seconds"
+
+        # main check
+        #timer.should be < LIMIT_TIME, msg
+        is_succeeded.should be_true
+
+        # checks that test was correct
+        if is_succeeded
+          cd1.should be
+          cd1.instances_size.should == NUMBER_INSTANCES
+        end
+        Log.debug1(msg)
+      end
+
+      xit "from exist object of #{NUMBER_INSTANCES} in less thes #{LIMIT_TIME} seconds" do
+        cd1 = ContentData::ContentData.new
         NUMBER_INSTANCES.times do |i|
-          @cd1.add_instance(i.to_s, INSTANCE_SIZE, SERVER, PATH + i.to_s, MTIME)
+          cd1.add_instance(i.to_s, INSTANCE_SIZE, SERVER, PATH + i.to_s, MTIME)
         end
-      end
+        cd2 = nil
+        init_thread = Thread.new { cd2 = ContentData::ContentData.new(cd1) }
 
-      timer = 0
-      timer_thread = Thread.new do
-        while (timer < LIMIT_TIME && build_thread.alive?)
-          timer += 1
-          sleep 1
+        timer = 0
+        timer_thread = Thread.new do
+          while (timer < LIMIT_TIME && init_thread.alive?)
+            timer += 1
+            sleep 1
+          end
+          if (init_thread.alive?)
+            Thread.kill(init_thread)
+          end
         end
-        if (build_thread.alive?)
-          Thread.kill(build_thread)
+        [init_thread, timer_thread].each { |th| th.join }
+
+        is_succeeded = timer < LIMIT_TIME
+        msg = "ContentData build for #{NUMBER_INSTANCES} " +
+          (is_succeeded ? "" : "do not ") + "finished in #{timer} seconds"
+
+        # main check
+        #timer.should be < LIMIT_TIME, msg
+        is_succeeded.should be_true
+
+        # checks that test was correct
+        if is_succeeded
+          cd2.should be
+          cd2.instances_size.should == NUMBER_INSTANCES
         end
-      end
-      [build_thread, timer_thread].each { |th| th.join }
 
-      is_succeeded = timer < LIMIT_TIME
-      msg = "ContentData build for #{NUMBER_INSTANCES} " +
-        (is_succeeded ? "" : "do not ") + "finished in #{timer} seconds"
-
-      # main check
-      #timer.should be < LIMIT_TIME, msg
-      is_succeeded.should be_true
-      puts msg if is_succeeded
-
-      # checks that test was correct
-      if is_succeeded
-        @cd1.should be
-        @cd1.instances_size.should == NUMBER_INSTANCES
+        Log.debug1(msg)
       end
     end
 
-    it 'should init new ContentData object from exist one in acceptable period of time' do
-      init_thread = Thread.new { @cd2 = ContentData::ContentData.new(@cd1) }
-
-      timer = 0
-      timer_thread = Thread.new do
-        while (timer < LIMIT_TIME && init_thread.alive?)
-          timer += 1
-          sleep 1
+    context 'Init more then one object' do
+      it "Two object each of #{NUMBER_INSTANCES} instances in less then #{2*LIMIT_TIME} seconds" do
+        cd1 = nil
+        cd2 = nil
+        build_thread = Thread.new do
+          cd1 = ContentData::ContentData.new
+          NUMBER_INSTANCES.times do |i|
+            cd1.add_instance(i.to_s, INSTANCE_SIZE, SERVER, PATH + i.to_s, MTIME)
+          end
+          cd2 = ContentData::ContentData.new
+          NUMBER_INSTANCES.times do |i|
+            cd2.add_instance(i.to_s, INSTANCE_SIZE, SERVER, PATH + i.to_s, MTIME)
+          end
         end
-        if (init_thread.alive?)
-          Thread.kill(init_thread)
+
+        timer = 0
+        timer_thread = Thread.new do
+          while (timer < LIMIT_TIME && build_thread.alive?)
+            timer += 1
+            sleep 1
+          end
+          if (build_thread.alive?)
+            Thread.kill(build_thread)
+          end
         end
-      end
-      [init_thread, timer_thread].each { |th| th.join }
+        [build_thread, timer_thread].each { |th| th.join }
 
-      is_succeeded = timer < LIMIT_TIME
-      msg = "ContentData build for #{NUMBER_INSTANCES} " +
-        (is_succeeded ? "" : "do not ") + "finished in #{timer} seconds"
+        is_succeeded = timer < LIMIT_TIME
+        msg = "ContentData build for #{NUMBER_INSTANCES} " +
+          (is_succeeded ? "" : "do not ") + "finished in #{timer} seconds"
 
-      # main check
-      #timer.should be < LIMIT_TIME, msg
-      is_succeeded.should be_true
-      puts msg if is_succeeded
+        # main check
+        #timer.should be < LIMIT_TIME, msg
+        is_succeeded.should be_true
 
-      # checks that test was correct
-      if is_succeeded
-        @cd2.should be
-        @cd2.instances_size.should == NUMBER_INSTANCES
+        # checks that test was correct
+        if is_succeeded
+          cd1.should be
+          cd1.instances_size.should == NUMBER_INSTANCES
+          cd2.should be
+          cd2.instances_size.should == NUMBER_INSTANCES
+        end
+
+        Log.debug1(msg)
       end
     end
   end
 
-  context 'Set operations' do
+  pending 'Set operations' do
     before :all do
       @cd1 = ContentData::ContentData.new
       NUMBER_INSTANCES.times do |i|
@@ -145,8 +205,6 @@ describe 'Content Data Performance Test' do
     end
 
     it 'should finish in acceptable time' do
-      LIMIT_TIME = 10*60;  # 10 minutes
-
       res_cd = nil
       minus_thread = Thread.new { res_cd = ContentData.remove(@cd1, @cd2) }
 
@@ -169,13 +227,14 @@ describe 'Content Data Performance Test' do
       # main check
       #timer.should be < LIMIT_TIME, msg
       is_succeeded.should be_true
-      puts msg if is_succeeded
 
       # checks that test was correct
       if is_succeeded
         res_cd.should be
         res_cd.instances_size.should == 1
       end
+
+      puts msg if is_succeeded
     end
   end
 end
