@@ -91,7 +91,7 @@ describe 'Content Data Performance Test' do
         Log.debug1(msg)
       end
 
-      it "from exist object of #{NUMBER_INSTANCES} in less thes #{LIMIT_TIME} seconds" do
+      it "clone from exist object of #{NUMBER_INSTANCES} in less thes #{LIMIT_TIME} seconds" do
         cd1 = ContentData::ContentData.new
         NUMBER_INSTANCES.times do |i|
           cd1.add_instance(i.to_s, INSTANCE_SIZE, SERVER, PATH + i.to_s, MTIME)
@@ -112,7 +112,7 @@ describe 'Content Data Performance Test' do
         [init_thread, timer_thread].each { |th| th.join }
 
         is_succeeded = timer < LIMIT_TIME
-        msg = "ContentData init from exist object of #{NUMBER_INSTANCES} instances " +
+        msg = "Clone from exist object of #{NUMBER_INSTANCES} instances " +
           (is_succeeded ? "" : "do not ") + "finished in #{timer} seconds"
 
         # main check
@@ -130,7 +130,7 @@ describe 'Content Data Performance Test' do
     end
 
     context 'Init more then one object' do
-      it "two object each of #{NUMBER_INSTANCES} instances in less then #{2*LIMIT_TIME} seconds" do
+      it "two object of #{NUMBER_INSTANCES} instances each in less then #{2*LIMIT_TIME} seconds" do
         cd1 = nil
         cd2 = nil
         build_thread = Thread.new do
@@ -170,6 +170,58 @@ describe 'Content Data Performance Test' do
           cd1.instances_size.should == NUMBER_INSTANCES
           cd2.should be
           cd2.instances_size.should == NUMBER_INSTANCES
+        end
+
+        Log.debug1(msg)
+      end
+
+      it "three object of #{NUMBER_INSTANCES} instances each in less then #{3*LIMIT_TIME} seconds" do
+        cd1 = nil
+        cd2 = nil
+        cd3 = nil
+        build_thread = Thread.new do
+          cd1 = ContentData::ContentData.new
+          NUMBER_INSTANCES.times do |i|
+            cd1.add_instance(i.to_s, INSTANCE_SIZE, SERVER, PATH + i.to_s, MTIME)
+          end
+          cd2 = ContentData::ContentData.new
+          NUMBER_INSTANCES.times do |i|
+            cd2.add_instance(i.to_s, INSTANCE_SIZE, SERVER, PATH + i.to_s, MTIME)
+          end
+          cd3 = ContentData::ContentData.new
+          NUMBER_INSTANCES.times do |i|
+            cd3.add_instance(i.to_s, INSTANCE_SIZE, SERVER, PATH + i.to_s, MTIME)
+          end
+        end
+
+        timer = 0
+        timer_thread = Thread.new do
+          while (timer < LIMIT_TIME && build_thread.alive?)
+            timer += 1
+            sleep 1
+          end
+          if (build_thread.alive?)
+            Thread.kill(build_thread)
+          end
+        end
+        [build_thread, timer_thread].each { |th| th.join }
+
+        is_succeeded = timer < LIMIT_TIME
+        msg = "Init of 3 ContentData of #{NUMBER_INSTANCES} instances each " +
+          (is_succeeded ? "" : "not ") + "finished in #{timer} seconds"
+
+        # main check
+        #timer.should be < LIMIT_TIME, msg
+        is_succeeded.should be_true
+
+        # checks that test was correct
+        if is_succeeded
+          cd1.should be
+          cd1.instances_size.should == NUMBER_INSTANCES
+          cd2.should be
+          cd2.instances_size.should == NUMBER_INSTANCES
+          cd3.should be
+          cd3.instances_size.should == NUMBER_INSTANCES
         end
 
         Log.debug1(msg)
@@ -214,7 +266,7 @@ describe 'Content Data Performance Test' do
       end
 
       is_succeeded = timer < LIMIT_TIME
-      msg = "To file for #{NUMBER_INSTANCES} " +
+      msg = "To file for #{NUMBER_INSTANCES} instances " +
         (is_succeeded ? "" : "do not ") + "finished in #{timer} seconds"
 
       # main check
@@ -239,7 +291,7 @@ describe 'Content Data Performance Test' do
       end
 
       is_succeeded = timer.elapsed_time < LIMIT_TIME
-      msg = "From file for #{NUMBER_INSTANCES} " +
+      msg = "From file for #{NUMBER_INSTANCES} instances " +
         (is_succeeded ? "" : "do not ") + "finished in #{timer.elapsed_time} seconds"
 
       # main check
@@ -287,7 +339,7 @@ describe 'Content Data Performance Test' do
         [minus_thread, timer_thread].each { |th| th.join }
 
         is_succeeded = timer < LIMIT_TIME
-        msg = "ContentData minus for #{NUMBER_INSTANCES} " +
+        msg = "ContentData minus for #{NUMBER_INSTANCES} instances " +
           (is_succeeded ? "" : "do not ") + "finished in #{timer} seconds"
 
         # main check
