@@ -240,7 +240,7 @@ describe 'Content Data Performance Test' do
 
       is_succeeded = timer.elapsed_time < LIMIT_TIME
       msg = "From file for #{NUMBER_INSTANCES} " +
-        (is_succeeded ? "" : "do not ") + "finished in #{timer.get_elapsed_time} seconds"
+        (is_succeeded ? "" : "do not ") + "finished in #{timer.elapsed_time} seconds"
 
       # main check
       #timer.should be < LIMIT_TIME, msg
