@@ -1,0 +1,11 @@
+#!/usr/bin/env ruby
+
+# Get two file names, one is source content data other is destinations.
+# Converts source content data old format to new format and writes it to
+# destination file.
+
+require 'content_data/content_data'
+
+cd = ContentData::ContentData.new
+cd.from_file_old(ARGV[0])
+cd.to_file(ARGV[1])
