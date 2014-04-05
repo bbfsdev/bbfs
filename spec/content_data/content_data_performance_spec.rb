@@ -39,12 +39,12 @@ describe 'Content Data Performance Test' do
     @test_cd = get_initialized
   end
 
-  let (:limit) { Limit.new(LIMIT_TIME) }
+  let (:terminator) { Limit.new(LIMIT_TIME, LIMIT_MEMORY) }
 
   # Print-out status messages, taken from module variable.
   after :each do
-    unless (limit.nil?)
-      Log.debug1("#{self.class.description} #{example.description}: #{limit.msg}")
+    unless (terminator.nil?)
+      Log.debug1("#{self.class.description} #{example.description}: #{terminator.msg}")
     end
     GC.start
   end
@@ -59,19 +59,23 @@ describe 'Content Data Performance Test' do
     initialized_cd
   end
 
+  # TODO consider separate it to 2 derived classes: one for memory, one for time monitoring
   class Limit
     # elapsed time in seconds since timer was run or zero
-    attr_reader :elapsed_time, :msg
+    attr_reader :elapsed_time, :memory_usage, :msg
 
-    def initialize(limit)
+    def initialize(time_limit, memory_limit)
       @elapsed_time = 0
+      @memory_usage = 0
       @msg = String.new
-      @limit = limit
+      @time_limit = time_limit
+      @memory_limit = memory_limit
     end
 
+    # TODO consider usage of Process::setrlimit
     def get_timer_thread(watched_thread)
       Thread.new do
-        while (@elapsed_time < @limit && watched_thread.alive?)
+        while (@elapsed_time < @time_limit && watched_thread.alive?)
           @elapsed_time += 1
           sleep 1
         end
@@ -84,25 +88,26 @@ describe 'Content Data Performance Test' do
       end
     end
 
+    # TODO consider usage of Process::setrlimit
     def get_memory_limit_thread(watched_thread)
       Thread.new do
         init_memory_usage = Process.get_memory_usage
-        memory_of_process = 0
-        while (memory_of_process < LIMIT_MEMORY && watched_thread.alive?)
+        while (@memory_usage < @memory_limit && watched_thread.alive?)
           cur_memory_usage = Process.get_memory_usage - init_memory_usage
-          if (cur_memory_usage > memory_of_process)
-            memory_of_process = cur_memory_usage
+          if (cur_memory_usage > @memory_usage)
+            @memory_usage = cur_memory_usage
           end
           sleep 1
         end
         if (watched_thread.alive?)
           Thread.kill(watched_thread)
         end
-        @msg = "memory usage: #{memory_of_process}"
+        @msg = "memory usage: #{@memory_usage}"
       end
     end
   end
 
+  # TODO consider adding more general method call_with_limit
   class Proc
     # Run a procedure.
     # Terminate it if it is running more then a time limit
@@ -152,25 +157,48 @@ describe 'Content Data Performance Test' do
       it "#{NUMBER_INSTANCES} instances in less then #{LIMIT_TIME} seconds" do
         cd1 = nil
         init_proc = Proc.new { cd1 = get_initialized }
-        init_proc.call_with_timer(limit)
-        limit.elapsed_time.should < LIMIT_TIME
+        init_proc.call_with_timer(terminator)
+        terminator.elapsed_time.should < LIMIT_TIME
 
         # checks that test was correct
         cd1.should be
         cd1.instances_size.should == NUMBER_INSTANCES
       end
 
-      it "clone from exist object of #{NUMBER_INSTANCES} in less thes #{LIMIT_TIME} seconds" do
+      it "#{NUMBER_INSTANCES} instances consumes less then #{LIMIT_MEMORY} bytes" do
+        cd1 = nil
+        init_proc = Proc.new { cd1 = get_initialized }
+        init_proc.call_with_memory_limit(terminator)
+        terminator.memory_usage.should < LIMIT_MEMORY
+
+        # checks that test was correct
+        cd1.should be
+        cd1.instances_size.should == NUMBER_INSTANCES
+      end
+
+      it "clone of #{NUMBER_INSTANCES} in less thes #{LIMIT_TIME} seconds" do
         cd2 = nil
         clone_proc = Proc.new { cd2 = ContentData::ContentData.new(@test_cd) }
-        clone_proc.call_with_timer(limit)
-        limit.elapsed_time.should < LIMIT_TIME
+        clone_proc.call_with_timer(terminator)
+        terminator.elapsed_time.should < LIMIT_TIME
 
         # checks that test
         cd2.should be
         cd2.instances_size.should == @test_cd.instances_size
       end
+
+      it "clone of #{NUMBER_INSTANCES} consumes less then #{LIMIT_MEMORY} bytes" do
+        cd2 = nil
+        clone_proc = Proc.new { cd2 = ContentData::ContentData.new(@test_cd) }
+        clone_proc.call_with_memory_limit(terminator)
+        terminator.memory_usage.should < LIMIT_MEMORY
+
+        # checks that test was correct
+        cd2.should be
+        cd2.instances_size.should == @test_cd.instances_size
+      end
     end
+
 
     context 'Init more then one object' do
       it "two object of #{NUMBER_INSTANCES} instances each in less then #{2*LIMIT_TIME} seconds" do
@@ -180,8 +208,8 @@ describe 'Content Data Performance Test' do
           cd1 = get_initialized
           cd2 = get_initialized
         end
-        build_proc.call_with_timer(limit)
-        limit.elapsed_time.should < LIMIT_TIME
+        build_proc.call_with_timer(terminator)
+        terminator.elapsed_time.should < LIMIT_TIME
 
         # checks that test was correct
         cd1.should be
@@ -199,8 +227,8 @@ describe 'Content Data Performance Test' do
           cd2 = get_initialized
           cd3 = get_initialized
         end
-        build_proc.call_with_timer(limit)
-        limit.elapsed_time.should < LIMIT_TIME
+        build_proc.call_with_timer(terminator)
+        terminator.elapsed_time.should < LIMIT_TIME
 
         # checks that test was correct
         cd1.should be
@@ -216,12 +244,12 @@ describe 'Content Data Performance Test' do
   context 'Iteration' do
     it "each instance on #{NUMBER_INSTANCES} instances in less then #{LIMIT_TIME}" do
       each_thread = Proc.new { @test_cd.each_instance { |ch,_,_,_,_,_,_| ch } }
-      each_thread.call_with_timer(limit)
-      limit.elapsed_time.should < LIMIT_TIME
+      each_thread.call_with_timer(terminator)
+      terminator.elapsed_time.should < LIMIT_TIME
     end
   end
 
-  pending 'File operations' do
+  context 'File operations' do
     before :all do
       @file = Tempfile.new('to_file_test')
       @path = @file.path
@@ -240,8 +268,8 @@ describe 'Content Data Performance Test' do
           @file.close
         end
       end
-      to_file_proc.call_with_timer(limit)
-      limit.elapsed_time.should < LIMIT_TIME
+      to_file_proc.call_with_timer(terminator)
+      terminator.elapsed_time.should < LIMIT_TIME
 
       # checking from_file
       cd2 = ContentData::ContentData.new
@@ -252,9 +280,9 @@ describe 'Content Data Performance Test' do
           @file.close
         end
       end
-      limit = Limit.new(LIMIT_TIME)
-      from_file_proc.call_with_timer(limit)
-      limit.elapsed_time.should < LIMIT_TIME
+      terminator = Limit.new(LIMIT_TIME, LIMIT_MEMORY)
+      from_file_proc.call_with_timer(terminator)
+      terminator.elapsed_time.should < LIMIT_TIME
 
       # checks that test was correct
       cd2.instances_size.should == @test_cd.instances_size
@@ -271,97 +299,23 @@ describe 'Content Data Performance Test' do
       it "finish in less then #{LIMIT_TIME} seconds" do
         res_cd = nil
         minus_proc = Proc.new { res_cd = ContentData.remove(@test_cd, @cd2) }
-        minus_proc.call_with_timer(limit)
-        limit.elapsed_time.should < LIMIT_TIME
+        minus_proc.call_with_timer(terminator)
+        terminator.elapsed_time.should < LIMIT_TIME
 
         # checks that test was correct
         res_cd.should be
         res_cd.instances_size.should == 1
       end
 
-      xit "consume less then #{LIMIT_MEMORY} bytes" do
+      it "consume less then #{LIMIT_MEMORY} bytes" do
         res_cd = nil
-        memory_of_process = 0
-        init_memory_usage = Process.get_memory_usage
-        minus_thread = Thread.new { res_cd = ContentData.remove(@test_cd, @cd2) }
+        minus_proc = Proc.new { res_cd = ContentData.remove(@test_cd, @cd2) }
+        minus_proc.call_with_memory_limit(terminator)
+        terminator.memory_usage.should < LIMIT_MEMORY
 
-        Log.debug1("Memory before: #{init_memory_usage}")
-        memory_usage_thread = Thread.new do
-          Log.debug1("Current: #{Process.pid}")
-          begin
-            memory_of_process = Process.get_memory_usage - init_memory_usage
-            sleep 1
-          end while (memory_of_process < LIMIT_MEMORY && minus_thread.alive?)
-          if (minus_thread.alive?)
-            Thread.kill(minus_thread)
-          end
-          Log.debug1("memory usage: #{memory_of_process}")
-        end
-        [minus_thread, memory_usage_thread].each { |th| th.join }
-        Log.debug1("Memory after: #{init_memory_usage + memory_of_process}")
-        memory_of_process.should < LIMIT_MEMORY
-
+        # checks that test was correct
         res_cd.should be
         res_cd.instances_size.should == 1
-      end
-
-      xit "(no cloning) consume less then #{LIMIT_MEMORY} bytes" do
-        res_cd = nil
-        memory_of_process = 0
-        GC.start
-        init_memory_usage = Process.get_memory_usage
-        minus_thread = Thread.new { res_cd = ContentData.remove_no_cloning(@test_cd, @cd2) }
-
-        Log.debug1("Memory before: #{init_memory_usage}")
-        memory_usage_thread = Thread.new do
-          Log.debug1("Current: #{Process.pid}")
-          begin
-            memory_of_process = Process.get_memory_usage - init_memory_usage
-            sleep 1
-          end while (memory_of_process < LIMIT_MEMORY && minus_thread.alive?)
-          if (minus_thread.alive?)
-            Thread.kill(minus_thread)
-          end
-          Log.debug1("memory usage: #{memory_of_process}")
-        end
-        [minus_thread, memory_usage_thread].each { |th| th.join }
-        Log.debug1("Memory after: #{init_memory_usage + memory_of_process}")
-        memory_of_process.should < LIMIT_MEMORY
-
-        res_cd.should be
-        res_cd.instances_size.should == 1
-      end
-
-      xit "(no cloning, using Process) consume less then #{LIMIT_MEMORY} bytes" do
-        res_cd = nil
-        minus_pid = Process.fork do
-          res_cd = ContentData.remove_no_cloning(@test_cd, @cd2)
-          res_cd.should be
-          res_cd.instances_size.should == 1
-          exit(0)
-        end
-        Process.detach(minus_pid)
-        memory_of_process = 0
-        init_memory_usage = Process.get_memory_usage(minus_pid)
-        cur_memory_usage = init_memory_usage
-        Log.debug1("Current: #{Process.pid}")
-        Log.debug1("Minus PID: #{minus_pid}")
-        Log.debug1("Memory usage before #{init_memory_usage}")
-        #is_minus_process_alive = true
-        #is_monitoring_failed = false
-        begin
-          cur_memory_usage = Process.get_memory_usage(minus_pid)
-          memory_of_process = cur_memory_usage - init_memory_usage if cur_memory_usage > 0
-          sleep 1
-        end while (memory_of_process < LIMIT_MEMORY && Process.alive?(minus_pid))
-
-        if (Process.alive?(minus_pid))
-          Process.kill(2, minus_pid)
-        end
-
-        Log.debug1("Memory usage after: #{cur_memory_usage}")
-        Log.debug1("Memory of process: #{memory_of_process}")
-        memory_of_process.should < LIMIT_MEMORY
       end
     end
   end
