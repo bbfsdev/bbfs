@@ -143,8 +143,22 @@ require_relative '../../#{src_rel_pathname}'
 end
 
 require 'rspec/core/rake_task'
-desc "Run specs"
+desc "Run specs (excluding performance)"
 RSpec::Core::RakeTask.new do |t|
+  t.rspec_opts = "--tag ~perf"
   t.pattern = ["./test/**/*_spec.rb", "./spec/**/*_spec.rb"]
 end
 
+# Run performance tests.
+# NOTE performance tests tagged with ':tag => true' tag.
+# NOTE can take a while to finish
+desc "Run performance specs"
+RSpec::Core::RakeTask.new(:perf) do |t|
+  t.rspec_opts = "--tag perf"
+  t.pattern = ["./test/**/*_spec.rb", "./spec/**/*_spec.rb"]
+end
+
+desc "Run all specs (including performance)"
+RSpec::Core::RakeTask.new(:all_specs) do |t|
+  t.pattern = ["./test/**/*_spec.rb", "./spec/**/*_spec.rb"]
+end
