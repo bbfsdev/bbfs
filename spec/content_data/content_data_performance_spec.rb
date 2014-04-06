@@ -14,7 +14,7 @@ require_relative '../../lib/content_data/content_data.rb'
 # NOTE the results are not exact cause they do not run in a clean environment and influenced from
 # monitoring, testing code, but they give a good approximation
 # Supposition: monitoring code penalty is neglectable against time/memory usage of testsed code
-describe 'Content Data Performance Test' do
+describe 'Content Data Performance Test', :perf =>true do
 
   NUMBER_INSTANCES = 350_000
   MAX_CHECKSUM = NUMBER_INSTANCES
@@ -23,7 +23,9 @@ describe 'Content Data Performance Test' do
   PATH = "file_"
   MTIME = 1000
 
-  LIMIT_MEMORY = 50*(1024**2)  # 50 MB
+  # in kilobytes
+  LIMIT_MEMORY = 50*(1024)  # 50 MB
+  # in seconds
   LIMIT_TIME = 5*60;  # 10 minutes
 
   before :all do
@@ -143,6 +145,7 @@ describe 'Content Data Performance Test' do
 
     # Get memory consumed my the process
     # @param [Integer] pid, default is current pid
+    # @return [Integer] memory usage in kilobytes
     def Process.get_memory_usage(pid = Process.pid)
       if Gem::win_platform?
         `tasklist /FI \"PID eq #{pid}\" /NH /FO \"CSV\"`.split(',')[4]
@@ -154,7 +157,7 @@ describe 'Content Data Performance Test' do
 
   context 'Object initialization' do
     context 'Init one object' do
-      it "#{NUMBER_INSTANCES} instances in less then #{LIMIT_TIME} seconds", :perf => true do
+      it "#{NUMBER_INSTANCES} instances in less then #{LIMIT_TIME} seconds" do
         cd1 = nil
         init_proc = Proc.new { cd1 = get_initialized }
         init_proc.call_with_timer(terminator)
@@ -165,7 +168,7 @@ describe 'Content Data Performance Test' do
         cd1.instances_size.should == NUMBER_INSTANCES
       end
 
-      it "#{NUMBER_INSTANCES} instances consumes less then #{LIMIT_MEMORY} bytes", :perf => true do
+      it "#{NUMBER_INSTANCES} instances consumes less then #{LIMIT_MEMORY} KB" do
         cd1 = nil
         init_proc = Proc.new { cd1 = get_initialized }
         init_proc.call_with_memory_limit(terminator)
@@ -176,7 +179,7 @@ describe 'Content Data Performance Test' do
         cd1.instances_size.should == NUMBER_INSTANCES
       end
 
-      it "clone of #{NUMBER_INSTANCES} in less thes #{LIMIT_TIME} seconds", :perf => true do
+      it "clone of #{NUMBER_INSTANCES} in less thes #{LIMIT_TIME} seconds" do
         cd2 = nil
         clone_proc = Proc.new { cd2 = ContentData::ContentData.new(@test_cd) }
         clone_proc.call_with_timer(terminator)
@@ -187,7 +190,7 @@ describe 'Content Data Performance Test' do
         cd2.instances_size.should == @test_cd.instances_size
       end
 
-      it "clone of #{NUMBER_INSTANCES} consumes less then #{LIMIT_MEMORY} bytes", :perf => true do
+      it "clone of #{NUMBER_INSTANCES} consumes less then #{LIMIT_MEMORY} KB" do
         cd2 = nil
         clone_proc = Proc.new { cd2 = ContentData::ContentData.new(@test_cd) }
         clone_proc.call_with_memory_limit(terminator)
@@ -201,8 +204,7 @@ describe 'Content Data Performance Test' do
 
 
     context 'Init more then one object' do
-      it "two object of #{NUMBER_INSTANCES} instances each in less then #{2*LIMIT_TIME} seconds",
-        :perf => true do
+      it "two object of #{NUMBER_INSTANCES} instances each in less then #{2*LIMIT_TIME} seconds" do
         cd1 = nil
         cd2 = nil
         build_proc = Proc.new do
@@ -219,8 +221,7 @@ describe 'Content Data Performance Test' do
         cd2.instances_size.should == NUMBER_INSTANCES
       end
 
-      it "three object of #{NUMBER_INSTANCES} instances each in less then #{3*LIMIT_TIME} seconds",
-        :perf => true do
+      it "three object of #{NUMBER_INSTANCES} instances each in less then #{3*LIMIT_TIME} seconds" do
         cd1 = nil
         cd2 = nil
         cd3 = nil
@@ -244,8 +245,7 @@ describe 'Content Data Performance Test' do
   end
 
   context 'Iteration' do
-    it "each instance on #{NUMBER_INSTANCES} instances in less then #{LIMIT_TIME}",
-      :perf => true do
+    it "each instance on #{NUMBER_INSTANCES} instances in less then #{LIMIT_TIME}" do
       each_thread = Proc.new { @test_cd.each_instance { |ch,_,_,_,_,_,_| ch } }
       each_thread.call_with_timer(terminator)
       terminator.elapsed_time.should < LIMIT_TIME
@@ -262,8 +262,7 @@ describe 'Content Data Performance Test' do
       @file.close!
     end
 
-    it "save/load on #{NUMBER_INSTANCES} instances in less then #{LIMIT_TIME} seconds",
-      :perf => true do
+    it "save/load on #{NUMBER_INSTANCES} instances in less then #{LIMIT_TIME} seconds" do
       # Checking to_file
       to_file_proc = Proc.new do
         begin
@@ -300,7 +299,7 @@ describe 'Content Data Performance Test' do
     end
 
     context "minus of two objects with #{NUMBER_INSTANCES} instances each" do
-      it "finish in less then #{LIMIT_TIME} seconds", :perf => true do
+      it "finish in less then #{LIMIT_TIME} seconds" do
         res_cd = nil
         minus_proc = Proc.new { res_cd = ContentData.remove(@test_cd, @cd2) }
         minus_proc.call_with_timer(terminator)
@@ -311,7 +310,7 @@ describe 'Content Data Performance Test' do
         res_cd.instances_size.should == 1
       end
 
-      it "consume less then #{LIMIT_MEMORY} bytes", :perf => true do
+      it "consume less then #{LIMIT_MEMORY} KB" do
         res_cd = nil
         minus_proc = Proc.new { res_cd = ContentData.remove(@test_cd, @cd2) }
         minus_proc.call_with_memory_limit(terminator)
