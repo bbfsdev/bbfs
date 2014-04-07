@@ -40,7 +40,7 @@ describe 'Content Data Performance Test', :perf =>true do
 
   let (:terminator) { Limit.new(LIMIT_TIME, LIMIT_MEMORY) }
 
-  # Print-out status messages, taken from module variable.
+  # Print-out status messages
   after :each do
     unless (terminator.nil?)
       Log.debug1("#{self.class.description} #{example.description}: #{terminator.msg}")
@@ -58,9 +58,8 @@ describe 'Content Data Performance Test', :perf =>true do
     initialized_cd
   end
 
-  # TODO consider separate it to 2 derived classes: one for memory, one for time monitoring
+  # TODO consider to separate it to 2 derived classes: one for memory, one for time monitoring
   class Limit
-    # elapsed time in seconds since timer was run or zero
     attr_reader :elapsed_time, :memory_usage, :msg
 
     def initialize(time_limit, memory_limit)
@@ -71,7 +70,6 @@ describe 'Content Data Performance Test', :perf =>true do
       @memory_limit = memory_limit
     end
 
-    # TODO consider usage of Process::setrlimit
     def get_timer_thread(watched_thread)
       Thread.new do
         while (@elapsed_time < @time_limit && watched_thread.alive?)
@@ -87,7 +85,6 @@ describe 'Content Data Performance Test', :perf =>true do
       end
     end
 
-    # TODO consider usage of Process::setrlimit
     def get_memory_limit_thread(watched_thread)
       Thread.new do
         init_memory_usage = Process.get_memory_usage
@@ -106,10 +103,11 @@ describe 'Content Data Performance Test', :perf =>true do
     end
   end
 
-  # TODO consider adding more general method call_with_limit
+  # TODO consider more general public method call_with_limit
   class Proc
     # Run a procedure.
     # Terminate it if it is running more then a time limit
+    # TODO consider usage of Process::setrlimit
     # @param [Limit] limit object
     def call_with_timer(limit)
       call_thread = Thread.new { self.call }
@@ -119,6 +117,7 @@ describe 'Content Data Performance Test', :perf =>true do
 
     # Run a procedure.
     # Terminate it if it is running more then a memory limit
+    # TODO consider usage of Process::setrlimit
     # @param [Limit] limit object
     def call_with_memory_limit(limit)
       call_thread = Thread.new { self.call }
