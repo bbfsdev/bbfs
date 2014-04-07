@@ -175,7 +175,7 @@ describe 'Content Data Performance Test', :perf =>true do
         cd1.instances_size.should == NUMBER_INSTANCES
       end
 
-      it "clone of #{NUMBER_INSTANCES} in less thes #{LIMIT_TIME} seconds" do
+      it "clone of #{NUMBER_INSTANCES} in less then #{LIMIT_TIME} seconds" do
         cd2 = nil
         clone_proc = Proc.new { cd2 = ContentData::ContentData.new(@test_cd) }
         clone_proc.call_with_timer(terminator)
