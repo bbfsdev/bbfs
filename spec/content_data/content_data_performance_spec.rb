@@ -10,7 +10,7 @@ require_relative '../../lib/content_data/content_data.rb'
 
 # NOTE the results are not exact cause they do not run in a clean environment and influenced from
 # monitoring, testing code, but they give a good approximation
-# Supposition: monitoring code penalty is neglectable against time/memory usage of testsed code
+# Supposition: monitoring code penalty is insignificant against time/memory usage of tested code
 describe 'Content Data Performance Test', :perf =>true do
 
   NUMBER_INSTANCES = 350_000
