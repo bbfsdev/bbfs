@@ -38,6 +38,8 @@ module ContentData
 
     CHUNK_SIZE = 5000
 
+    # NOTE Cloning is time/memory expensive operation.
+    # It is highly recomended to avoid it.
     def initialize(other = nil)
       if other.nil?
         @contents_info = GoogleHashSparseRubyToRuby.new  # Checksum --> [size, paths-->time(instance), time(content)]
@@ -770,11 +772,17 @@ module ContentData
   def self.remove(a, b)
     return nil if b.nil?
     return ContentData.new(b) if a.nil?
-    c = ContentData.new(b)  # create new cloned content C from B
-    # remove contents of A from newly cloned content A
-    a.each_content { |checksum, size, content_mod_time|
-      c.remove_content(checksum)
-    }
+    c = ContentData.new
+    b.each_instance do |checksum, size, _, instance_mtime, server, path, index_time|
+      unless (a.instance_exists(path, server))
+              c.add_instance(checksum,
+                             size,
+                             server,
+                             path,
+                             instance_mtime,
+                             index_time)
+      end
+    end
     c
   end
 
