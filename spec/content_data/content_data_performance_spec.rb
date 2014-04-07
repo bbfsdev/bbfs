@@ -6,9 +6,6 @@ end
 
 require 'rspec'
 require 'tempfile'
-#require 'random'
-require 'benchmark'
-#require 'ruby-prof'
 require_relative '../../lib/content_data/content_data.rb'
 
 # NOTE the results are not exact cause they do not run in a clean environment and influenced from
