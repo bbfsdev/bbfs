@@ -24,9 +24,9 @@ describe 'Content Data Performance Test', :perf =>true do
   MTIME = 1000
 
   # in kilobytes
-  LIMIT_MEMORY = 50*(1024)  # 50 MB
+  LIMIT_MEMORY = 150*(1024)  # 150 MB
   # in seconds
-  LIMIT_TIME = 5*60;  # 10 minutes
+  LIMIT_TIME = 5*60;  # 5 minutes
 
   before :all do
     Params.init Array.new
