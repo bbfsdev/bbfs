@@ -24,7 +24,7 @@ describe 'Content Data Performance Test', :perf =>true do
   MTIME = 1000
 
   # in kilobytes
-  LIMIT_MEMORY = 200*(1024)  # 200 MB
+  LIMIT_MEMORY = 250*(1024)  # 250 MB
   # in seconds
   LIMIT_TIME = 5*60;  # 5 minutes
 
