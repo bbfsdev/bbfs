@@ -1,6 +1,13 @@
 require 'content_server/server'
 require 'log'
 require 'params'
+require 'google_hash'
+
+class GoogleHashSparseRubyToRuby
+  def each_key &block
+    keys.each &block
+  end
+end
 
 module ContentData
   Params.string('instance_check_level', 'shallow', 'Defines check level. Supported levels are: ' \
@@ -33,9 +40,9 @@ module ContentData
 
     def initialize(other = nil)
       if other.nil?
-        @contents_info = {}  # Checksum --> [size, paths-->time(instance), time(content)]
-        @instances_info = {}  # location --> checksum to optimize instances query
-        @symlinks_info = {}  # [server,symlink path] -> target
+        @contents_info = GoogleHashSparseRubyToRuby.new  # Checksum --> [size, paths-->time(instance), time(content)]
+        @instances_info = GoogleHashSparseRubyToRuby.new  # location --> checksum to optimize instances query
+        @symlinks_info = GoogleHashSparseRubyToRuby.new  # [server,symlink path] -> target
       else
         @contents_info = other.clone_contents_info
         @instances_info = other.clone_instances_info  # location --> checksum to optimize instances query
@@ -50,7 +57,7 @@ module ContentData
     end
 
     def clone_instances_info
-      clone_instances_info = {}
+      clone_instances_info = GoogleHashSparseRubyToRuby.new
       instances_info_enum = @instances_info.each_key
       loop {
         location = instances_info_enum.next rescue break
@@ -60,7 +67,7 @@ module ContentData
     end
 
     def clone_contents_info
-      clone_contents_info = {}
+      clone_contents_info = GoogleHashSparseRubyToRuby.new
       contents_info_enum = @contents_info.each_key
       loop {
         checksum = contents_info_enum.next rescue break
@@ -68,7 +75,7 @@ module ContentData
         size = instances[0]
         content_time = instances[2]
         instances_db = instances[1]
-        instances_db_cloned = {}
+        instances_db_cloned = GoogleHashSparseRubyToRuby.new
         instances_db_enum = instances_db.each_key
         loop {
           location =  instances_db_enum.next rescue break
@@ -87,7 +94,7 @@ module ContentData
 
     def clone_symlinks_info
       symlinks_info_enum = @symlinks_info.each_key
-      cloned_symlinks = {}
+      cloned_symlinks = GoogleHashSparseRubyToRuby.new
       loop {
         symlink_key = symlinks_info_enum.next rescue break
         cloned_symlinks[[symlink_key[0].clone, symlink_key[0].clone]] = @symlinks_info[symlink_key].clone
