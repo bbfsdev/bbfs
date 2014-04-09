@@ -6,14 +6,11 @@ end
 
 require 'rspec'
 require 'tempfile'
-#require 'random'
-require 'benchmark'
-#require 'ruby-prof'
 require_relative '../../lib/content_data/content_data.rb'
 
 # NOTE the results are not exact cause they do not run in a clean environment and influenced from
-# monitoring, testing code, but they give a good approximation
-# Supposition: monitoring code penalty is neglectable against time/memory usage of testsed code
+# monitoring/testing code, but they give a good approximation
+# Supposition: monitoring code penalty is insignificant against time/memory usage of the tested code
 describe 'Content Data Performance Test', :perf =>true do
 
   NUMBER_INSTANCES = 35000
@@ -24,9 +21,9 @@ describe 'Content Data Performance Test', :perf =>true do
   MTIME = 1000
 
   # in kilobytes
-  LIMIT_MEMORY = 50*(1024)  # 50 MB
+  LIMIT_MEMORY = 250*(1024)  # 250 MB
   # in seconds
-  LIMIT_TIME = 5*60;  # 10 minutes
+  LIMIT_TIME = 5*60;  # 5 minutes
 
   before :all do
     Params.init Array.new
@@ -43,7 +40,7 @@ describe 'Content Data Performance Test', :perf =>true do
 
   let (:terminator) { Limit.new(LIMIT_TIME, LIMIT_MEMORY) }
 
-  # Print-out status messages, taken from module variable.
+  # Print-out status messages
   after :each do
     unless (terminator.nil?)
       Log.debug1("#{self.class.description} #{example.description}: #{terminator.msg}")
@@ -61,9 +58,8 @@ describe 'Content Data Performance Test', :perf =>true do
     initialized_cd
   end
 
-  # TODO consider separate it to 2 derived classes: one for memory, one for time monitoring
+  # TODO consider to separate it to 2 derived classes: one for memory, one for time monitoring
   class Limit
-    # elapsed time in seconds since timer was run or zero
     attr_reader :elapsed_time, :memory_usage, :msg
 
     def initialize(time_limit, memory_limit)
@@ -74,7 +70,6 @@ describe 'Content Data Performance Test', :perf =>true do
       @memory_limit = memory_limit
     end
 
-    # TODO consider usage of Process::setrlimit
     def get_timer_thread(watched_thread)
       Thread.new do
         while (@elapsed_time < @time_limit && watched_thread.alive?)
@@ -90,7 +85,6 @@ describe 'Content Data Performance Test', :perf =>true do
       end
     end
 
-    # TODO consider usage of Process::setrlimit
     def get_memory_limit_thread(watched_thread)
       Thread.new do
         init_memory_usage = Process.get_memory_usage
@@ -109,10 +103,11 @@ describe 'Content Data Performance Test', :perf =>true do
     end
   end
 
-  # TODO consider adding more general method call_with_limit
+  # TODO consider more general public method call_with_limit
   class Proc
     # Run a procedure.
     # Terminate it if it is running more then a time limit
+    # TODO consider usage of Process::setrlimit
     # @param [Limit] limit object
     def call_with_timer(limit)
       call_thread = Thread.new { self.call }
@@ -122,6 +117,7 @@ describe 'Content Data Performance Test', :perf =>true do
 
     # Run a procedure.
     # Terminate it if it is running more then a memory limit
+    # TODO consider usage of Process::setrlimit
     # @param [Limit] limit object
     def call_with_memory_limit(limit)
       call_thread = Thread.new { self.call }
@@ -179,7 +175,7 @@ describe 'Content Data Performance Test', :perf =>true do
         cd1.instances_size.should == NUMBER_INSTANCES
       end
 
-      it "clone of #{NUMBER_INSTANCES} in less thes #{LIMIT_TIME} seconds" do
+      it "clone of #{NUMBER_INSTANCES} in less then #{LIMIT_TIME} seconds" do
         cd2 = nil
         clone_proc = Proc.new { cd2 = ContentData::ContentData.new(@test_cd) }
         clone_proc.call_with_timer(terminator)
