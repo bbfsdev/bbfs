@@ -60,107 +60,139 @@ module ContentData
 
     def clone_instances_info
       clone_instances_info = GoogleHashSparseRubyToRuby.new
-      instances_info_enum = @instances_info.each_key
-      loop {
-        location = instances_info_enum.next rescue break
-        clone_instances_info[[location[0].clone, location[1].clone]] = @instances_info[location].clone
+      @instances_info.each { |key, value|
+        clone_instances_info[key] = value
       }
+      #instances_info_enum = @instances_info.each_key
+      #loop {
+      #  location = instances_info_enum.next rescue break
+      #  clone_instances_info[[location[0].clone, location[1].clone]] = @instances_info[location].clone
+      #}
       clone_instances_info
     end
 
     def clone_contents_info
       clone_contents_info = GoogleHashSparseRubyToRuby.new
-      contents_info_enum = @contents_info.each_key
-      loop {
-        checksum = contents_info_enum.next rescue break
-        instances = @contents_info[checksum]
-        size = instances[0]
-        content_time = instances[2]
-        instances_db = instances[1]
-        instances_db_cloned = GoogleHashSparseRubyToRuby.new
-        instances_db_enum = instances_db.each_key
-        loop {
-          location =  instances_db_enum.next rescue break
-          inst_mod_times = instances_db[location]
-          # we use deep clone for location since map key is using shallow clone.
-          # we dont want references between new content data
-          # and orig object. This will help the GC dispose the orig object if not used any more.
-          instances_db_cloned[[location[0].clone,location[1].clone]] = inst_mod_times.clone
-        }
-        clone_contents_info[checksum] = [size,
-                              instances_db_cloned,
-                              content_time]
+      @contents_info.each { |key, value|
+        clone_contents_info[key] = value
       }
+      #contents_info_enum = @contents_info.each_key
+      #loop {
+      #  checksum = contents_info_enum.next rescue break
+      #  instances = @contents_info[checksum]
+      #  size = instances[0]
+      #  content_time = instances[2]
+      #  instances_db = instances[1]
+      #  instances_db_cloned = GoogleHashSparseRubyToRuby.new
+      #  instances_db_enum = instances_db.each_key
+      #  loop {
+      #    location =  instances_db_enum.next rescue break
+      #    inst_mod_times = instances_db[location]
+      #    # we use deep clone for location since map key is using shallow clone.
+      #    # we dont want references between new content data
+      #    # and orig object. This will help the GC dispose the orig object if not used any more.
+      #    instances_db_cloned[[location[0].clone,location[1].clone]] = inst_mod_times.clone
+      #  }
+      #  clone_contents_info[checksum] = [size,
+      #                        instances_db_cloned,
+      #                        content_time]
+      #}
       clone_contents_info
     end
 
     def clone_symlinks_info
-      symlinks_info_enum = @symlinks_info.each_key
       cloned_symlinks = GoogleHashSparseRubyToRuby.new
-      loop {
-        symlink_key = symlinks_info_enum.next rescue break
-        cloned_symlinks[[symlink_key[0].clone, symlink_key[0].clone]] = @symlinks_info[symlink_key].clone
+      @symlinks_info.each{ |key, value|
+        cloned_symlinks[ket] = value
       }
+      #symlinks_info_enum = @symlinks_info.each_key
+      #cloned_symlinks = GoogleHashSparseRubyToRuby.new
+      #loop {
+      #  symlink_key = symlinks_info_enum.next rescue break
+      #  cloned_symlinks[[symlink_key[0].clone, symlink_key[0].clone]] = @symlinks_info[symlink_key].clone
+      #}
       cloned_symlinks
     end
 
     # iterator over @contents_info data structure (not including instances)
     # block is provided with: checksum, size and content modification time
     def each_content(&block)
-      contents_enum = @contents_info.each_key
-      loop {
-        checksum = contents_enum.next rescue break
-        content_val = @contents_info[checksum]
-        # provide checksum, size and content modification time to the block
-        block.call(checksum,content_val[0], content_val[2])
+      @contents_info.each { |checksum, content_info|
+        block.call(checksum, content_info[0], content_info[2])
       }
+      #contents_enum = @contents_info.each_key
+      #loop {
+      #  checksum = contents_enum.next rescue break
+      #  content_val = @contents_info[checksum]
+      #  # provide checksum, size and content modification time to the block
+      #  block.call(checksum,content_val[0], content_val[2])
+      #}
     end
 
     # iterator over @contents_info data structure (including instances)
     # block is provided with: checksum, size, content modification time,
     #   instance modification time, server and file path
     def each_instance(&block)
-      contents_enum = @contents_info.each_key
-      loop {
-        checksum = contents_enum.next rescue break
-        content_info = @contents_info[checksum]
-        content_info_enum = content_info[1].each_key
-        loop {
-          location = content_info_enum.next rescue break
-          # provide the block with: checksum, size, content modification time,instance modification time,
-          #   server and path.
-          inst_mod_time, inst_index_time = content_info[1][location]
-          block.call(checksum,content_info[0], content_info[2], inst_mod_time,
-                     location[0], location[1], inst_index_time)
+      @contents_info.each { |checksum, content_info|
+        content_info[1].each { |location, stats|
+          inst_mod_time, inst_index_time = stats
+          content_info[1].each { |location|
+            block.call(checksum,content_info[0], content_info[2], inst_mod_time,
+                       location[0], location[1], inst_index_time)
+          }
         }
       }
+      #contents_enum = @contents_info.each_key
+      #loop {
+      #  checksum = contents_enum.next rescue break
+      #  content_info = @contents_info[checksum]
+      #  content_info_enum = content_info[1].each_key
+      #  loop {
+      #    location = content_info_enum.next rescue break
+      #    # provide the block with: checksum, size, content modification time,instance modification time,
+      #    #   server and path.
+      #    inst_mod_time, inst_index_time = content_info[1][location]
+      #    block.call(checksum,content_info[0], content_info[2], inst_mod_time,
+      #               location[0], location[1], inst_index_time)
+      #  }
+      #}
     end
 
     # iterator of instances over specific content
     # block is provided with: checksum, size, content modification time,
     #   instance modification time, server and file path
     def content_each_instance(checksum, &block)
-      content_info = @contents_info[checksum]
-      instances_db_enum = content_info[1].each_key
-      loop {
-        location = instances_db_enum.next rescue break
-        # provide the block with: checksum, size, content modification time,instance modification time,
-        #   server and path.
+      @content_info.each { |checksum, content_info|
         inst_mod_time,_ = content_info[1][location]
-        block.call(checksum,content_info[0], content_info[2], inst_mod_time,
-                   location[0], location[1])
+        content_info[1].each { |location|
+          block.call(checksum,content_info[0], content_info[2], inst_mod_time,
+                     location[0], location[1])
+        }
       }
+      #content_info = @contents_info[checksum]
+      #instances_db_enum = content_info[1].each_key
+      #loop {
+      #  location = instances_db_enum.next rescue break
+      #  # provide the block with: checksum, size, content modification time,instance modification time,
+      #  #   server and path.
+      #  inst_mod_time,_ = content_info[1][location]
+      #  block.call(checksum,content_info[0], content_info[2], inst_mod_time,
+      #             location[0], location[1])
+      #}
     end
 
     # iterator over @symlinks_info data structure
     # block is provided with: server, file path and target
     def each_symlink(&block)
-      symlink_enum = @symlinks_info.each_key
-      loop {
-        symlink_key = symlink_enum.next rescue break
-        symlink_target = @symlinks_info[symlink_key]
-        block.call(symlink_key[0], symlink_key[1], symlink_target)
+      @symlinks_info.each { |key, target|
+        block.call(key[0], key[1], target)
       }
+      #symlink_enum = @symlinks_info.each_key
+      #loop {
+      #  symlink_key = symlink_enum.next rescue break
+      #  symlink_target = @symlinks_info[symlink_key]
+      #  block.call(symlink_key[0], symlink_key[1], symlink_target)
+      #}
     end
 
     def contents_size()

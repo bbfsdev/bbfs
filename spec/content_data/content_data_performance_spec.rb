@@ -16,7 +16,7 @@ require_relative '../../lib/content_data/content_data.rb'
 # Supposition: monitoring code penalty is neglectable against time/memory usage of testsed code
 describe 'Content Data Performance Test', :perf =>true do
 
-  NUMBER_INSTANCES = 350_000
+  NUMBER_INSTANCES = 35000
   MAX_CHECKSUM = NUMBER_INSTANCES
   INSTANCE_SIZE = 1000
   SERVER = "server"
