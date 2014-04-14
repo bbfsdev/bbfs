@@ -55,7 +55,7 @@ module ContentData
     # Content Data unique identification
     # @return [ID] hash identification
     def unique_id
-      [@contents_info.hash,@symlinks_info.hash]
+      [@contents_info.hash, @symlinks_info.hash]
     end
 
     def clone_instances_info
@@ -162,12 +162,11 @@ module ContentData
     # block is provided with: checksum, size, content modification time,
     #   instance modification time, server and file path
     def content_each_instance(checksum, &block)
-      @content_info.each { |checksum, content_info|
-        inst_mod_time,_ = content_info[1][location]
-        content_info[1].each { |location|
-          block.call(checksum,content_info[0], content_info[2], inst_mod_time,
-                     location[0], location[1])
-        }
+      content_info = @contents_info[checksum]
+      content_info[1].each { |location, stats|
+        inst_mod_time, _ = stats
+        block.call(checksum, content_info[0], content_info[2], inst_mod_time,
+                   location[0], location[1])
       }
       #content_info = @contents_info[checksum]
       #instances_db_enum = content_info[1].each_key
@@ -293,29 +292,52 @@ module ContentData
     # input params: server & dir_to_remove - are used to check each instance unique key (called location)
     # removes also content\s, if a content\s become\s empty after removing instance\s
     def remove_directory(dir_to_remove, server)
-      contents_enum = @contents_info.each_key
-      loop {
-        checksum = contents_enum.next rescue break
-        instances =  @contents_info[checksum][1]
-        instances_enum = instances.each_key
-        loop {
-          location = instances_enum.next rescue break
+      @contents_info.each { |checksum, content_info|
+        locations_to_delete = []
+        content_info[1].each { |location, stats|
           if location[0] == server and location[1].scan(dir_to_remove).size > 0
-            instances.delete(location)
-            @instances_info.delete(location)
+            locations_to_delete.push(location)
           end
+          locations_to_delete.each { |location|
+            content_info[1].delete(location)
+            @instances_info.delete(location)
+          }
         }
-        @contents_info.delete(checksum) if instances.empty?
+        @contents_info.delete(checksum) if content_info[1].empty?
       }
 
+      #contents_enum = @contents_info.each_key
+      #loop {
+      #  checksum = contents_enum.next rescue break
+      #  instances =  @contents_info[checksum][1]
+      #  instances_enum = instances.each_key
+      #  loop {
+      #    location = instances_enum.next rescue break
+      #    if location[0] == server and location[1].scan(dir_to_remove).size > 0
+      #      instances.delete(location)
+      #      @instances_info.delete(location)
+      #    end
+      #  }
+      #  @contents_info.delete(checksum) if instances.empty?
+      #}
+
       # handle symlinks
-      symlinks_enum = @symlinks_info.each_key
-      loop {
-        symlink_key = symlinks_enum.next rescue break
-        if symlink_key[0] == server and symlink_key[1].scan(dir_to_remove).size > 0
-          @symlinks_info.delete(symlink_key)
+      @symlinks_info.each { |key, _|
+        keys_to_delete = []
+        if key[0] == server and key[1].scan(dir_to_remove).size > 0
+          keys_to_delete.push(key)
         end
+        keys_to_delete.each { |key|
+          @symlinks_info.delete(key)
+        }
       }
+      #symlinks_enum = @symlinks_info.each_key
+      #loop {
+      #  symlink_key = symlinks_enum.next rescue break
+      #  if symlink_key[0] == server and symlink_key[1].scan(dir_to_remove).size > 0
+      #    @symlinks_info.delete(symlink_key)
+      #  end
+      #}
     end
 
     def ==(other)
@@ -326,7 +348,7 @@ module ContentData
     def remove_content(checksum)
       content_info = @contents_info[checksum]
       if content_info
-        content_info[1].each_key { |location|
+        content_info[1].each { |location, stats|
           @instances_info.delete(location)
         }
         @contents_info.delete(checksum)
