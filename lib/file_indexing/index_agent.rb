@@ -7,7 +7,6 @@ require 'content_data'
 require 'file_indexing/indexer_patterns'
 require 'log'
 
-
 module FileIndexing
 ####################
 # Index Agent

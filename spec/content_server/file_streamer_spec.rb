@@ -15,7 +15,7 @@ Params['log_write_to_console'] = false
 Params['log_write_to_file'] = false
 Params['log_debug_level'] = 0
 Params['streaming_chunk_size'] = 5
-Params.init ARGV
+Params.init Array.new
 Params['log_write_to_file'] = false
 Params['log_write_to_console'] = false
 Params['enable_monitoring'] = false
