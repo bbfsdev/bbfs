@@ -44,8 +44,6 @@ Gem::Specification.new do |s|
 
   s.executables = ['content_server', 'backup_server', 'file_utils', 'testing_server', 'testing_memory']
 
-  # used by content_server, run_in_background
-  s.add_runtime_dependency('rake', '0.9.2.2')
   # used by file_monitoring
   s.add_runtime_dependency('algorithms')
   # used by log
@@ -59,7 +57,6 @@ Gem::Specification.new do |s|
   # used by process_monitoring
   s.add_runtime_dependency('thin')
 
-  s.add_dependency('rake', '0.9.2.2')
   s.add_dependency('algorithms')
   s.add_dependency('log4r')
   s.add_dependency('eventmachine')

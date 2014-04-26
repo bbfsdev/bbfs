@@ -17,7 +17,7 @@ Backup server requests new/changed contents (files) from the Content server.
   If needed, requests and copy required files from content server to backup (store in destination dir).
 
 Installing:
-  Install Ruby 1.9.3
+  Install Ruby 2.1.1
   Instal RubyGems
   Install application gems:
     gem install content_server
