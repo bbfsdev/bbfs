@@ -1,13 +1,19 @@
+require 'csv'
 require 'content_server/server'
 require 'log'
 require 'params'
 require 'google_hash'
+require 'zlib'
 
-#class GoogleHashSparseRubyToRuby
-#  def each_key &block
-#    keys.each &block
-#  end
-#end
+class GoogleHashSparseRubyToRuby
+  def size
+    length
+  end
+
+  def empty?
+    length == 0
+  end
+end
 
 module ContentData
   Params.string('instance_check_level', 'shallow', 'Defines check level. Supported levels are: ' \
@@ -36,6 +42,8 @@ module ContentData
   #      instances which was added to @contents_info
   class ContentData
 
+    attr_reader :contents_info, :symlinks_info, :instances_info
+
     CHUNK_SIZE = 5000
 
     # NOTE Cloning is time/memory expensive operation.
@@ -59,19 +67,23 @@ module ContentData
     end
 
     def clone_instances_info
-      clone_instances_info = GoogleHashSparseRubyToRuby.new
+      new_instances_info = GoogleHashSparseRubyToRuby.new
       @instances_info.each { |key, value|
-        clone_instances_info[key] = value
+        new_instances_info[key] = value
       }
-      clone_instances_info
+      new_instances_info
     end
 
     def clone_contents_info
-      clone_contents_info = GoogleHashSparseRubyToRuby.new
-      @contents_info.each { |key, value|
-        clone_contents_info[key] = value
+      new_contents_info = GoogleHashSparseRubyToRuby.new
+      @contents_info.each { |checksum, content_info|
+        new_content_info = [content_info[0], GoogleHashSparseRubyToRuby.new, content_info[2]]
+        new_contents_info[checksum] = new_content_info
+        content_info[1].each { |location, stat|
+          new_content_info[1][location] = stat
+        }
       }
-      clone_contents_info
+      new_contents_info
     end
 
     def clone_symlinks_info
@@ -97,10 +109,8 @@ module ContentData
       @contents_info.each { |checksum, content_info|
         content_info[1].each { |location, stats|
           inst_mod_time, inst_index_time = stats
-          content_info[1].each { |location|
-            block.call(checksum,content_info[0], content_info[2], inst_mod_time,
-                       location[0], location[1], inst_index_time)
-          }
+          block.call(checksum, content_info[0], content_info[2], inst_mod_time,
+                     location[0], location[1], inst_index_time)
         }
       }
     end
@@ -138,15 +148,16 @@ module ContentData
     end
 
     def checksum_instances_size(checksum)
+      return 0 unless @contents_info.key?(checksum)
       content_info = @contents_info[checksum]
-      return 0 if content_info.nil?
       content_info[1].length
     end
 
     def get_instance_mod_time(checksum, location)
+      return nil unless @contents_info.key?(checksum)
       content_info = @contents_info[checksum]
-      return nil if content_info.nil?
       instances = content_info[1]
+      return nil 
       instance_time,_ = instances[location]
       instance_time
     end
@@ -160,12 +171,8 @@ module ContentData
         remove_instance(server, path)
       end
 
-      content_info = @contents_info[checksum]
-      if content_info.nil?
-        @contents_info[checksum] = [size,
-                                    {location => [modification_time,index_time]},
-                                    modification_time]
-      else
+      if @contents_info.key?(checksum)
+        content_info = @contents_info[checksum]
         if size != content_info[0]
           Log.warning('File size different from content size while same checksum')
           Log.warning("instance location:server:'#{location[0]}'  path:'#{location[1]}'")
@@ -175,6 +182,13 @@ module ContentData
         content_info[0] = size
         instances = content_info[1]
         instances[location] = [modification_time, index_time]
+        if content_info[2] > modification_time
+          content_info[2] = modification_time
+        end
+      else
+        instances = GoogleHashSparseRubyToRuby.new 
+        instances[location] = [modification_time, index_time]
+        @contents_info[checksum] = [size, instances, modification_time]
       end
       @instances_info[location] = checksum
     end
@@ -210,8 +224,8 @@ module ContentData
     def remove_instance(server, path)
       location = [server, path]
       checksum = @instances_info[location]
+      return nil unless @contents_info.key?(checksum)
       content_info = @contents_info[checksum]
-      return nil if content_info.nil?
       instances = content_info[1]
       instances.delete(location)
       @contents_info.delete(checksum) if instances.empty?
@@ -250,8 +264,30 @@ module ContentData
     end
 
     def ==(other)
-      return nil if other.nil?  # for this case: content_data == nil
-      unique_id  == other.unique_id
+      return false if other.nil?  # for the case where other content_data == nil
+      return false if @contents_info.size != other.contents_info.size
+      return false if @symlinks_info.size != other.symlinks_info.size
+      return false if @instances_info.size != other.instances_info.size
+      @contents_info.each { |checksum, content_info|
+        return false unless other.contents_info.key?(checksum)
+        other_content_info = other.contents_info[checksum]
+        return false if content_info[0] != other_content_info[0]
+        return false if content_info[2] != other_content_info[2]
+        return false if content_info[1].size != other_content_info[1].size
+        content_info[1].each { |location, stats|
+          return false unless other_content_info[1].key?(location)
+          return false if stats != other_content_info[1][location]
+        }
+      }
+      @symlinks_info.each { |key, target|
+        return false unless other.symlinks_info.key?(key)
+        return false if other.symlinks_info[key] != target
+      }
+      @instances_info.each { |location, checksum|
+        return false unless other.instances_info.key?(location)
+        return false if other.instances_info[location] != checksum
+      }
+      return true
     end
 
     def remove_content(checksum)
@@ -264,85 +300,164 @@ module ContentData
       end
     end
 
+    # Don't use in production, only for testing.
     def to_s
       return_str = ""
-      contents_str = ""
-      instances_str = ""
+      contents = []
+      instances = []
       each_content { |checksum, size, content_mod_time|
-        contents_str << "%s,%d,%d\n" % [checksum, size, content_mod_time]
+        contents << "%s,%d,%d" % [checksum, size, content_mod_time]
       }
       each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
-        instances_str <<  "%s,%d,%s,%s,%d\n" % [checksum, size, server, path, instance_mod_time]
+        instances <<  "%s,%d,%s,%s,%d" % [checksum, size, server, path, instance_mod_time]
       }
       return_str << "%d\n" % [@contents_info.length]
-      return_str << contents_str
-      return_str << "%d\n" % [@instances_info.length]
-      return_str << instances_str
+      return_str << contents.sort.join("\n")
+      return_str << "\n%d\n" % [@instances_info.length]
+      return_str << instances.sort.join("\n") << "\n"
+
+
+      symlinks = []
+      each_symlink { |server, path, target|
+        symlinks << "%s,%s,%s\n" % [server, path, target]
+      }
+      return_str << symlinks.sort.join("\n")
+
       return_str
     end
 
     # Write content data to file.
+    def to_file(filename)
+      content_data_dir = File.dirname(filename)
+      FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
+      Zlib::GzipWriter.open(filename) do |gz| 
+        gz.write [@instances_info.length].to_csv
+        each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path, inst_index_time|
+          gz.write [checksum, size, server, path, instance_mod_time, inst_index_time].to_csv
+        }
+        gz.write [@symlinks_info.length].to_csv
+        each_symlink { |file, path, target|
+          gz.write [file, path, target].to_csv
+        }
+      end
+    end
+
+    # Imports content data from file.
+    # This method will throw an exception if the file is not in correct format.
+    def from_file(filename)
+      unless File.exists? filename
+        raise ArgumentError.new "No such a file #{filename}"
+      end
+
+      number_of_instances = nil
+      number_of_symlinks = nil
+      Zlib::GzipReader.open(filename) { |gz|
+        gz.each_line do |line|
+          row = line.parse_csv
+          if number_of_instances == nil
+            begin
+              # get number of instances
+              number_of_instances = row[0].to_i
+            rescue ArgumentError
+              raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                    "number of instances should be a Number. We got:#{number_of_instances}")
+            end
+          elsif number_of_instances > 0
+            if (6 != row.length)
+              raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                        "Expected to read 6 fields ('<' separated) but got #{row.length}.\nLine:#{instance_line}")
+            end
+            add_instance(row[0],        #checksum
+                         row[1].to_i,   # size
+                         row[2],        # server
+                         row[3],        # path
+                         row[4].to_i,   # mod time
+                         row[5].to_i)   # index time
+            number_of_instances -= 1
+          elsif number_of_symlinks == nil
+            begin
+              # get number of symlinks
+              number_of_symlinks = row[0].to_i
+            rescue ArgumentError
+              raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                    "number of symlinks should be a Number. We got:#{number_of_symlinks}")
+            end
+          elsif number_of_symlinks > 0
+            if (3 != row.length)
+              raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                    "Expected to read 3 fields ('<' separated) but got #{row.length}.\nLine:#{symlinks_line}")
+            end
+            @symlinks_info[[row[0], row[1]]] = row[2]
+            number_of_symlinks -= 1 
+          end
+        end
+      }
+    end
+
+    ############## DEPRECATED: Old deprecated from/to file methods still needed for migration purposes
+    # Write content data to file.
     # Write is using chunks (for both content chunks and instances chunks)
     # Chunk is used to maximize GC affect. The temporary memory of each chunk is GCed.
     # Without the chunks used in a dipper stack level, GC keeps the temporary objects as part of the stack context.
-    def to_file(filename)
+    # @deprecated
+    def to_file_old(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
       File.open(filename, 'w') { |file|
         # Write contents
         file.write("#{@contents_info.length}\n")
-        contents_enum = @contents_info.each_key
+        contents_enum = @contents_info.keys.each
         content_chunks = @contents_info.length / CHUNK_SIZE + 1
         chunks_counter = 0
         while chunks_counter < content_chunks
-          to_file_contents_chunk(file,contents_enum, CHUNK_SIZE)
+          to_old_file_contents_chunk(file,contents_enum, CHUNK_SIZE)
           GC.start
           chunks_counter += 1
         end
 
         # Write instances
         file.write("#{@instances_info.length}\n")
-        contents_enum = @contents_info.each_key
+        contents_enum = @contents_info.keys.each
         chunks_counter = 0
         while chunks_counter < content_chunks
-          to_file_instances_chunk(file,contents_enum, CHUNK_SIZE)
+          to_old_file_instances_chunk(file,contents_enum, CHUNK_SIZE)
           GC.start
           chunks_counter += 1
         end
 
         # Write symlinks
-        symlinks_info_enum = @symlinks_info.each_key
+        symlinks_info_enum = @symlinks_info.keys.each
         file.write("#{@symlinks_info.length}\n")
         loop {
           symlink_key = symlinks_info_enum.next rescue break
-          file.write("#{symlink_key[0]}<#{symlink_key[1]}<#{@symlinks_info[symlink_key]}\n")
+          file.write("#{symlink_key[0]},#{symlink_key[1]},#{@symlinks_info[symlink_key]}\n")
         }
       }
     end
 
-    def to_file_contents_chunk(file, contents_enum, chunk_size)
+    def to_old_file_contents_chunk(file, contents_enum, chunk_size)
       chunk_counter = 0
       while chunk_counter < chunk_size
         checksum = contents_enum.next rescue return
         content_info = @contents_info[checksum]
-        file.write("#{checksum}<#{content_info[0]}<#{content_info[2]}\n")
+        file.write("#{checksum},#{content_info[0]},#{content_info[2]}\n")
         chunk_counter += 1
       end
     end
 
-    def to_file_instances_chunk(file, contents_enum, chunk_size)
+    def to_old_file_instances_chunk(file, contents_enum, chunk_size)
       chunk_counter = 0
       while chunk_counter < chunk_size
         checksum = contents_enum.next rescue return
         content_info = @contents_info[checksum]
-        instances_db_enum = content_info[1].each_key
+        instances_db_enum = content_info[1].keys.each
         loop {
           location = instances_db_enum.next rescue break
           # provide the block with: checksum, size, content modification time,instance modification time,
           #   server and path.
           instance_modification_time,instance_index_time = content_info[1][location]
-          file.write("#{checksum}<#{content_info[0]}<#{location[0]}<#{location[1]}<" +
-                     "#{instance_modification_time}<#{instance_index_time}\n")
+          file.write("#{checksum},#{content_info[0]},#{location[0]},#{location[1]}," +
+                     "#{instance_modification_time},#{instance_index_time}\n")
         }
         chunk_counter += 1
         break if chunk_counter == chunk_size
@@ -352,7 +467,7 @@ module ContentData
     # TODO validation that file indeed contains ContentData missing
     # TODO class level method?
     # Loading db from file using chunks for better memory performance
-    def from_file(filename)
+    def from_file_old(filename)
       # read first line (number of contents)
       # calculate line number (number of instances)
       # read number of instances.
@@ -381,7 +496,7 @@ module ContentData
             # update last chunk size
             chunk_size = number_of_contents - (chunk_index * CHUNK_SIZE)
           end
-          return unless read_contents_chunk(filename, file, chunk_size)
+          return unless read_old_contents_chunk(filename, file, chunk_size)
           GC.start
           chunk_index += 1
         end
@@ -403,7 +518,7 @@ module ContentData
             # update last chunk size
             chunk_size = number_of_instances - (chunk_index * CHUNK_SIZE)
           end
-          return unless read_instances_chunk(filename, file, chunk_size)
+          return unless read_old_instances_chunk(filename, file, chunk_size)
           GC.start
           chunk_index += 1
         end
@@ -415,15 +530,15 @@ module ContentData
                     "number of symlinks should be a Number. We got:#{number_of_symlinks}")
         end
         number_of_symlinks.to_i.times {
-          symlinks_line = file.gets
+          symlinks_line = file.gets.strip
           unless symlinks_line
             raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
                    "Expected to read symlink line but reached EOF")
           end
-          parameters = symlinks_line.split('<')
+          parameters = symlinks_line.split(',')
           if (3 != parameters.length)
             raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
-                  "Expected to read 3 fields ('<' separated) but got #{parameters.length}.\nLine:#{symlinks_line}")
+                  "Expected to read 3 fields (comma separated) but got #{parameters.length}.\nLine:#{symlinks_line}")
           end
 
           @symlinks_info[[parameters[0],parameters[1]]] = parameters[2]
@@ -431,7 +546,7 @@ module ContentData
       }
     end
 
-    def read_contents_chunk(filename, file, chunk_size)
+    def read_old_contents_chunk(filename, file, chunk_size)
       chunk_index = 0
       while chunk_index < chunk_size
         unless file.gets
@@ -443,7 +558,7 @@ module ContentData
       true
     end
 
-    def read_instances_chunk(filename, file, chunk_size)
+    def read_old_instances_chunk(filename, file, chunk_size)
       chunk_index = 0
       while chunk_index < chunk_size
         instance_line = file.gets
@@ -452,11 +567,17 @@ module ContentData
                 "Expected to read Instance line but reached EOF")
         end
 
-        parameters = instance_line.split('<')
-        if (6 != parameters.length)
-          raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
-                    "Expected to read 6 fields ('<' separated) but got #{parameters.length}.\nLine:#{instance_line}")
+        parameters = instance_line.split(',')
+        # bugfix: if file name consist a comma then parsing based on comma separating fails
+        if (parameters.size > 6)
+          (4..parameters.size-3).each do |i|
+            parameters[3] = [parameters[3], parameters[i]].join(",")
+          end
+          (4..parameters.size-3).each do |i|
+            parameters.delete_at(4)
+          end
         end
+
         add_instance(parameters[0],        #checksum
                      parameters[1].to_i,   # size
                      parameters[2],        # server
@@ -467,33 +588,23 @@ module ContentData
       end
       true
     end
+    ########################## END OF DEPRECATED PART #######################
 
     # for each content, all time fields (content and instances) are replaced with the
     # min time found, while going through all time fields.
     def unify_time()
-      contents_enum = @contents_info.each_key
-      loop {
-        checksum = contents_enum.next rescue break
-        content_info = @contents_info[checksum]
+      @contents_info.each { |checksum, content_info|
         min_time_per_checksum = content_info[2]
-        instances = content_info[1]
-        instances_enum = instances.each_key
-        loop {
-          location = instances_enum.next rescue break
-          instance_mod_time = instances[location][0]
-          if instance_mod_time < min_time_per_checksum
-            min_time_per_checksum = instance_mod_time
+        content_info[1].each { |location, stats|
+          if stats[0] < min_time_per_checksum
+            min_time_per_checksum = stats[0]
           end
         }
-        # update all instances with min time
-        instances_enum = instances.each_key
-        loop {
-          location = instances_enum.next rescue break
-          instances[location][0] = min_time_per_checksum
+        content_info[1].each { |location, stats|
+          stats[0] = min_time_per_checksum
         }
-        # update content time with min time
         content_info[2] = min_time_per_checksum
-      }
+      }  
     end
 
     # Validates index against file system that all instances hold a correct data regarding files
@@ -531,21 +642,16 @@ module ContentData
       end
 
       is_valid = true
-      contents_enum = @contents_info.each_key
-      loop {
-        checksum = contents_enum.next rescue break
-        instances = @contents_info[checksum]
-        content_size = instances[0]
-        content_mtime = instances[2]
-        instances_enum = instances[1].each_key
-        loop {
-          unique_path = instances_enum.next rescue break
-          instance_mtime = instances[1][unique_path][0]
+      @contents_info.each { |checksum, content_info|
+        content_size = content_info[0]
+        content_mtime = content_info[2]
+        instances = content_info[1]
+        instances.each { |location, stats|
+          instance_mtime = stats[0]
           instance_info = [checksum, content_mtime, content_size, instance_mtime]
-          instance_info.concat(unique_path)
+          instance_info.concat(location)
           unless check_instance(instance_info)
             is_valid = false
-
             unless params.nil? || params.empty?
               process_params.call({:details => instance_info})
             end
@@ -737,7 +843,6 @@ module ContentData
     return ContentData.new(b) if a.nil?
     c = ContentData.new
     b.each_instance do |checksum, size, _, instance_mtime, server, path, index_time|
-      #unless (a.instance_exists(path, server))
       unless (a.content_exists(checksum))
               c.add_instance(checksum,
                              size,

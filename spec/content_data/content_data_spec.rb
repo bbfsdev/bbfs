@@ -1,3 +1,4 @@
+# coding: UTF-8
 # NOTE Code Coverage block must be issued before any of your application code is required
 if ENV['BBFS_COVERAGE']
   require_relative '../spec_helper.rb'
@@ -30,7 +31,7 @@ describe 'Content Data Test' do
     content_data_cloned.add_instance("A1", 1242, "server_1",
 				     "/home/file_2", 3333333333)
     #change orig DB - size
-     content_data_cloned.should_not == content_data
+    content_data_cloned.should_not == content_data
   end
 
   it 'test cloning db 2' do
@@ -125,12 +126,35 @@ describe 'Content Data Test' do
 			      "/home/file_2", 44444444444)
     content_data.add_instance("B1", 60, "server_1",
 			      "/home/file_3", 55555555555)
+    content_data.add_symlink("A1", "/home/symlink_1", "home/file_1")
+    content_data.add_symlink("B1", "/home/symlink_2", "home/file_xxx")
+    content_data.add_symlink("B1", "/home/symlink_1", "home/file_3")
     file_moc_object = StringIO.new
     file_moc_object.write(content_data.to_s)
     test_file = Tempfile.new('content_data_spec.test')
     content_data.to_file(test_file)
     content_data_2 = ContentData::ContentData.new
     content_data_2.from_file(test_file)
+    (content_data == content_data_2).should == true
+  end
+
+  it 'test old format with comma' do
+    content_data = ContentData::ContentData.new
+    content_data.add_instance("A1", 50, "server_1",
+  			      "/home/file,<><,ласкдфй_1", 22222222222)
+    content_data.add_instance("B1", 60, "server_1",
+  			      "/home/filךלחת:,!גדכשe_2", 44444444444)
+    content_data.add_instance("B1", 60, "server_1",
+  			      "/home/filкакакаe_3", 55555555555)
+    content_data.add_symlink("A1", "/home/syласдфйmlink_1", "home/file_1")
+    content_data.add_symlink("B1", "/home/symlinkדגכע_2", "home/file_xxx")
+    content_data.add_symlink("B1", "/home/symlinkדכע_1", "home/filкакакаe_3")
+    file_moc_object = StringIO.new
+    file_moc_object.write(content_data.to_s)
+    test_file = Tempfile.new('content_data_spec.test')
+    content_data.to_file_old(test_file)
+    content_data_2 = ContentData::ContentData.new
+    content_data_2.from_file_old(test_file)
     (content_data == content_data_2).should == true
   end
 
@@ -145,19 +169,19 @@ describe 'Content Data Test' do
     content_data_b.add_instance("B1", 60, "server_1",
 				"/home/file_3", 55555555555)
     content_data_merged = ContentData.merge(content_data_a, content_data_b)
-    expected =  "2\nB1,60,44444444444\nA1,50,22222222222\n" + 
-	"3\nB1,60,server_1,/home/file_2,44444444444\nB1,60,server_1,/home/file_3,55555555555\n" + 
-	"A1,50,server_1,/home/file_1,22222222222\n"
+    expected =  "2\nA1,50,22222222222\nB1,60,44444444444\n" + 
+	"3\nA1,50,server_1,/home/file_1,22222222222\nB1,60,server_1,/home/file_2,44444444444\n" +
+        "B1,60,server_1,/home/file_3,55555555555\n"
     content_data_merged.to_s.should == expected
     content_data_a.remove_instance('server_1', '/home/file_1')
-    expected = "2\nB1,60,44444444444\nA1,50,22222222222\n" + 
-	"3\nB1,60,server_1,/home/file_2,44444444444\nB1,60,server_1,/home/file_3,55555555555\n" + 
-	"A1,50,server_1,/home/file_1,22222222222\n"
+    expected = "2\nA1,50,22222222222\nB1,60,44444444444\n" + 
+	"3\nA1,50,server_1,/home/file_1,22222222222\nB1,60,server_1,/home/file_2,44444444444\n" +
+        "B1,60,server_1,/home/file_3,55555555555\n"
     content_data_merged.to_s.should == expected
     content_data_b.remove_instance('server_1', '/home/file_2')
-    expected = "2\nB1,60,44444444444\nA1,50,22222222222\n" + 
-	"3\nB1,60,server_1,/home/file_2,44444444444\nB1,60,server_1,/home/file_3,55555555555\n" + 
-	"A1,50,server_1,/home/file_1,22222222222\n"
+    expected = "2\nA1,50,22222222222\nB1,60,44444444444\n" + 
+	"3\nA1,50,server_1,/home/file_1,22222222222\nB1,60,server_1,/home/file_2,44444444444\n" +
+        "B1,60,server_1,/home/file_3,55555555555\n"
     content_data_merged.to_s.should == expected
   end
 
