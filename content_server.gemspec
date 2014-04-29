@@ -44,19 +44,6 @@ Gem::Specification.new do |s|
 
   s.executables = ['content_server', 'backup_server', 'file_utils', 'testing_server', 'testing_memory']
 
-  # used by file_monitoring
-  s.add_runtime_dependency('algorithms')
-  # used by log
-  s.add_runtime_dependency('log4r')
-  # used by process_monitoring
-  s.add_runtime_dependency('eventmachine')
-  # used by process_monitoring
-  s.add_runtime_dependency('json')
-  # used by process_monitoring
-  s.add_runtime_dependency('sinatra')
-  # used by process_monitoring
-  s.add_runtime_dependency('thin')
-
   s.add_dependency('algorithms')
   s.add_dependency('log4r')
   s.add_dependency('eventmachine')
