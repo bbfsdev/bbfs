@@ -855,7 +855,6 @@ module ContentData
     return ContentData.new(b) if a.nil?
     c = ContentData.new
     b.each_instance do |checksum, size, _, instance_mtime, server, path, index_time|
-      #unless (a.instance_exists(path, server))
       unless (a.content_exists(checksum))
               c.add_instance(checksum,
                              size,
