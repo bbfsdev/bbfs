@@ -56,7 +56,7 @@ module ContentData
       else
         @contents_info = other.clone_contents_info
         @instances_info = other.clone_instances_info  # location --> checksum to optimize instances query
-        @symlinks_info =  other.clone_symlinks_info
+        @symlinks_info = other.clone_symlinks_info
       end
     end
 
@@ -89,7 +89,7 @@ module ContentData
     def clone_symlinks_info
       cloned_symlinks = GoogleHashSparseRubyToRuby.new
       @symlinks_info.each{ |key, value|
-        cloned_symlinks[ket] = value
+        cloned_symlinks[key] = value
       }
       cloned_symlinks
     end

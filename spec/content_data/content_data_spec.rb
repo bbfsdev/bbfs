@@ -23,15 +23,29 @@ describe 'Content Data Test' do
     content_data = ContentData::ContentData.new
     content_data.add_instance("A1", 1242, "server_1",
 			      "/home/file_1", 2222222222)
+    content_data.add_symlink("server_1", "/home/link_1", "/home/file_1")
 
     content_data_cloned = ContentData::ContentData.new(content_data)
     #check that DBs are equal
     content_data_cloned.should == content_data
+    content_data_cloned.get_instance_mod_time("A1", ["server_1", "/home/file_1"]).should == 2222222222
+    content_data_cloned.each_symlink { |server, path, target|
+      [server, path, target].should == ["server_1", "/home/link_1", "/home/file_1"]
+    }
 
-    content_data_cloned.add_instance("A1", 1242, "server_1",
-				     "/home/file_2", 3333333333)
+    content_data.add_instance("A1", 1242, "server_1",
+		              "/home/file_2", 3333333333)
+    content_data.add_symlink("server_1", "/home/link_2", "/home/file_1")
+    content_data.get_instance_mod_time("A1", ["server_1", "/home/file_2"]).should == 3333333333
+
     #change orig DB - size
     content_data_cloned.should_not == content_data
+
+    # Check original have not changed...
+    content_data_cloned.get_instance_mod_time("A1", ["server_1", "/home/file_2"]).should == nil
+    content_data_cloned.each_symlink { |server, path, target|
+      [server, path, target].should_not == ["server_1", "/home/link_2", "/home/file_1"]
+    }
   end
 
   it 'test cloning db 2' do
@@ -46,7 +60,7 @@ describe 'Content Data Test' do
     content_data_cloned.add_instance("A2", 1243, "server_1",
 				     "/home/file_2", 3333333333)
     #change orig DB - size
-     content_data_cloned.should_not == content_data
+    content_data_cloned.should_not == content_data
   end
 
 
