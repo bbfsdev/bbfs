@@ -337,6 +337,14 @@ describe 'Content Data Test' do
     content_data_intersect.to_s.should == expected
   end
 
+  it 'test get mod time' do
+    content_data = ContentData::ContentData.new
+    content_data.add_instance("A", 50, "server_1", "/home/file_1", 123)
+    content_data.get_instance_mod_time("B", ["server_1", "/home/file_1"]).should == nil
+    content_data.get_instance_mod_time("A", ["server_2", "/home/file_1"]).should == nil
+    content_data.get_instance_mod_time("A", ["server_1", "/home/file_1"]).should == 123
+  end
+
   it 'test unify time' do
     content_data_a = ContentData::ContentData.new
     content_data_a.add_instance("A1", 50, "server_1",

@@ -41,6 +41,7 @@ module FileUtils
         # must preced Log.init, otherwise log containing default values will be created
         Params['log_write_to_file'] = false
         Params['log_write_to_console'] = false
+        Params['log_debug_level'] = 1
         Log.init
 
         sizes = [500, 1000, 1500]
@@ -128,14 +129,14 @@ module FileUtils
 
         # checking that files were actually modified
         # TODO(kolman): Decide whether files should be updated or not and change the implementation.
-        #mod_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
-        #  indexer = FileIndexing::IndexAgent.new  # (instance.server_name, instance.device)
-        #  patterns = FileIndexing::IndexerPatterns.new
-        #  patterns.add_pattern(File.dirname(path) + '/*')     # this pattern index all files
-        #  indexer.index(patterns, mod_db)
-        #  mod_db.should == indexer.indexed_content
-        #  break
-        #}
+        mod_db.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
+          indexer = FileIndexing::IndexAgent.new  # (instance.server_name, instance.device)
+          patterns = FileIndexing::IndexerPatterns.new
+          patterns.add_pattern(File.dirname(path) + '/*')     # this pattern index all files
+          indexer.index(patterns, mod_db)
+          mod_db.should == indexer.indexed_content
+          break
+        }
       end
     end
   end

@@ -28,7 +28,7 @@ module ContentData
   # The relationship between content and instances is 1:many meaning that
   # a content can have instances in many servers.
   # content also has time attribute, which has the value of the time of the first instance.
-  # This can be changed by using unify_time method  which sets all time attributes for a content and it's
+  # This can be changed by using unify_time method which sets all time attributes for a content and it's
   # instances to the min time off all.
   # Different files(instances) with same content(checksum), are grouped together under that content.
   # Interface methods include:
@@ -80,7 +80,7 @@ module ContentData
         new_content_info = [content_info[0], GoogleHashSparseRubyToRuby.new, content_info[2]]
         new_contents_info[checksum] = new_content_info
         content_info[1].each { |location, stat|
-          new_content_info[1][location] = stat
+          new_content_info[1][location] = stat.clone
         }
       }
       new_contents_info
@@ -104,7 +104,7 @@ module ContentData
 
     # iterator over @contents_info data structure (including instances)
     # block is provided with: checksum, size, content modification time,
-    #   instance modification time, server and file path
+    #   instance modification time, server, file path and instance index time
     def each_instance(&block)
       @contents_info.each { |checksum, content_info|
         content_info[1].each { |location, stats|
@@ -147,17 +147,20 @@ module ContentData
       @symlinks_info.length
     end
 
+    # Returns number of instances for content coresponding to
+    # given checksum.
     def checksum_instances_size(checksum)
       return 0 unless @contents_info.key?(checksum)
       content_info = @contents_info[checksum]
       content_info[1].length
     end
 
+    # Returns nil if checksum or location does not exists.
     def get_instance_mod_time(checksum, location)
       return nil unless @contents_info.key?(checksum)
       content_info = @contents_info[checksum]
       instances = content_info[1]
-      return nil 
+      return nil unless not instances.nil? && @instances.key?(location)
       instance_time,_ = instances[location]
       instance_time
     end
