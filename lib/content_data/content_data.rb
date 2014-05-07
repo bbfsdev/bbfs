@@ -243,7 +243,12 @@ module ContentData
       @contents_info.each { |checksum, content_info|
         locations_to_delete = []
         content_info[1].each { |location, stats|
-          if location[0] == server and location[1].scan(dir_to_remove).size > 0
+          path_split = location[1].split(File::SEPARATOR)
+          dir_split = dir_to_remove.split(File::SEPARATOR)
+          if path_split[0] != "" || dir_split[0] != ""
+            throw ArgumentError.new "File path (%s or %s) does not start with %s" % [location[1], dir_to_remove, File::SEPARATOR]
+          end
+          if location[0] == server && dir_split.size <= path_split.size && path_split[0..dir_split.size-1] == dir_split
             locations_to_delete.push(location)
           end
           locations_to_delete.each { |location|
@@ -318,7 +323,6 @@ module ContentData
       return_str << contents.sort.join("\n")
       return_str << "\n%d\n" % [@instances_info.length]
       return_str << instances.sort.join("\n") << "\n"
-
 
       symlinks = []
       each_symlink { |server, path, target|

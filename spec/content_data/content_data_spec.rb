@@ -301,32 +301,36 @@ describe 'Content Data Test' do
   end
 
   it 'test remove directory' do
-
     content_data_b = ContentData::ContentData.new
     content_data_b.add_instance("A1", 50, "server_1",
-				"/home/file_1", 22222222222)
+				"/a/b/c/a/b/c/file_1", 22222222222)
     content_data_b.add_instance("A1", 50, "server_1",
-				"extra_inst", 66666666666)
+				"/a/b/c/extra_inst", 66666666666)
     content_data_b.add_instance("B1", 60, "server_1",
-				"/home/file_2", 44444444444)
+				"/stay/b/c/a/b/c/file_2", 44444444444)
     content_data_b.add_instance("B1", 60, "server_1",
-				"/home/file_3", 55555555555)
-    content_data_removed = ContentData.remove_directory(content_data_b, 'home', "server_1")
-    expected = "1\nA1,50,22222222222\n1\nA1,50,server_1,extra_inst,66666666666\n"
+				"/a/b/cc/file_3", 55555555555)
+    content_data_removed = ContentData.remove_directory(content_data_b, '/a/b', "server_1")
+    expected = "1\nB1,60,44444444444\n1\nB1,60,server_1,/stay/b/c/a/b/c/file_2,44444444444\n"
     content_data_removed.to_s.should == expected
 
-    content_data_b.remove_instance('server_1', '/home/file_2')
-    expected = "1\nA1,50,22222222222\n1\nA1,50,server_1,extra_inst,66666666666\n"
+    content_data_b.remove_instance('server_1', '/stay/b/c/a/b/c/file_2')
+    expected = "1\nB1,60,44444444444\n1\nB1,60,server_1,/stay/b/c/a/b/c/file_2,44444444444\n"
     content_data_removed.to_s.should == expected
 
     expected = "2\nA1,50,22222222222\nB1,60,44444444444\n" + 
-	"3\nA1,50,server_1,/home/file_1,22222222222\nA1,50,server_1,extra_inst,66666666666\n" + 
-	"B1,60,server_1,/home/file_3,55555555555\n"
+	"3\n" +
+        "A1,50,server_1,/a/b/c/a/b/c/file_1,22222222222\n" +
+        "A1,50,server_1,/a/b/c/extra_inst,66666666666\n" + 
+	"B1,60,server_1,/a/b/cc/file_3,55555555555\n"
     content_data_b.to_s.should == expected
 
-    content_data_b = ContentData::ContentData.new
-    content_data_removed = ContentData.remove_directory(content_data_b, 'home', "server_1")
-    content_data_removed.contents_size.should == 0
+    expect{content_data_removed = ContentData.remove_directory(content_data_b, 'kuku', "server_1")}.to raise_error(ArgumentError)
+    content_data_removed = ContentData.remove_directory(content_data_b, '/kuku', "server_1")
+    content_data_removed = ContentData.remove_directory(content_data_b, '/a/b/c', "server_1")
+    content_data_removed.contents_size.should == 1
+    content_data_removed.to_s.should == "1\nB1,60,44444444444\n1\nB1,60,server_1,/a/b/cc/file_3,55555555555\n"
+
     content_data_removed = ContentData.remove_directory(nil, 'home', "server_1")
     content_data_removed.should == nil
   end
