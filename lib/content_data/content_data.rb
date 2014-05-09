@@ -240,14 +240,11 @@ module ContentData
     # input params: server & dir_to_remove - are used to check each instance unique key (called location)
     # removes also content\s, if a content\s become\s empty after removing instance\s
     def remove_directory(dir_to_remove, server)
+      dir_split = dir_to_remove.split(File::SEPARATOR)
       @contents_info.each { |checksum, content_info|
         locations_to_delete = []
         content_info[1].each { |location, stats|
           path_split = location[1].split(File::SEPARATOR)
-          dir_split = dir_to_remove.split(File::SEPARATOR)
-          if path_split[0] != "" || dir_split[0] != ""
-            throw ArgumentError.new "File path (%s or %s) does not start with %s" % [location[1], dir_to_remove, File::SEPARATOR]
-          end
           if location[0] == server && dir_split.size <= path_split.size && path_split[0..dir_split.size-1] == dir_split
             locations_to_delete.push(location)
           end
@@ -262,7 +259,8 @@ module ContentData
       # handle symlinks
       @symlinks_info.each { |key, _|
         keys_to_delete = []
-        if key[0] == server and key[1].scan(dir_to_remove).size > 0
+        path_split = key[1].split(File::SEPARATOR)
+        if key[0] == server && dir_split.size <= path_split.size && path_split[0..dir_split.size-1] == dir_split
           keys_to_delete.push(key)
         end
         keys_to_delete.each { |key|
@@ -301,7 +299,7 @@ module ContentData
     def remove_content(checksum)
       content_info = @contents_info[checksum]
       if content_info
-        content_info[1].each { |location, stats|
+        content_info[1].each { |location, unused_stats|
           @instances_info.delete(location)
         }
         @contents_info.delete(checksum)
@@ -314,21 +312,22 @@ module ContentData
       contents = []
       instances = []
       each_content { |checksum, size, content_mod_time|
-        contents << "%s,%d,%d" % [checksum, size, content_mod_time]
+        contents << "%s,%d,%d\n" % [checksum, size, content_mod_time]
       }
       each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
-        instances <<  "%s,%d,%s,%s,%d" % [checksum, size, server, path, instance_mod_time]
+        instances <<  "%s,%d,%s,%s,%d\n" % [checksum, size, server, path, instance_mod_time]
       }
       return_str << "%d\n" % [@contents_info.length]
-      return_str << contents.sort.join("\n")
-      return_str << "\n%d\n" % [@instances_info.length]
-      return_str << instances.sort.join("\n") << "\n"
+      return_str << contents.sort.join("")
+      return_str << "%d\n" % [@instances_info.length]
+      return_str << instances.sort.join("")
 
       symlinks = []
+      return_str << "%d\n" % [@symlinks_info.length]
       each_symlink { |server, path, target|
         symlinks << "%s,%s,%s\n" % [server, path, target]
       }
-      return_str << symlinks.sort.join("\n")
+      return_str << symlinks.sort.join("")
 
       return_str
     end

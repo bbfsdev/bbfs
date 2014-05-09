@@ -74,7 +74,7 @@ describe 'Content Data Test' do
     # size would be overriden should not be added
     content_data.add_instance("A1", 60, "server_1",
 			      "/home/file_2", 2222222222)
-    expected = "1\nA1,60,2222222222\n2\nA1,60,server_1,/home/file_1,2222222222\nA1,60,server_1,/home/file_2,2222222222\n"
+    expected = "1\nA1,60,2222222222\n2\nA1,60,server_1,/home/file_1,2222222222\nA1,60,server_1,/home/file_2,2222222222\n0\n"
     content_data.to_s.should == expected
 
     #Add new instance - new content
@@ -83,7 +83,8 @@ describe 'Content Data Test' do
 			      "/home/file_2", 3333333333)
     expected = "2\nA1,60,2222222222\nA2,60,3333333333\n2\n" +
 	"A1,60,server_1,/home/file_1,2222222222\n" +
-	"A2,60,server_1,/home/file_2,3333333333\n"
+	"A2,60,server_1,/home/file_2,3333333333\n" +
+        "0\n"
     content_data.to_s.should == expected
 
 	#Add new instance - same content
@@ -92,7 +93,8 @@ describe 'Content Data Test' do
     expected = "2\nA1,60,2222222222\nA2,60,3333333333\n3\n" +
 	"A1,60,server_1,/home/file_1,2222222222\n" +
 	"A2,60,server_1,/home/file_2,3333333333\n" +
-	"A2,60,server_1,/home/file_3,4444444444\n"
+	"A2,60,server_1,/home/file_3,4444444444\n" +
+        "0\n"
     content_data.to_s.should == expected
   end
 
@@ -183,19 +185,34 @@ describe 'Content Data Test' do
     content_data_b.add_instance("B1", 60, "server_1",
 				"/home/file_3", 55555555555)
     content_data_merged = ContentData.merge(content_data_a, content_data_b)
-    expected =  "2\nA1,50,22222222222\nB1,60,44444444444\n" + 
-	"3\nA1,50,server_1,/home/file_1,22222222222\nB1,60,server_1,/home/file_2,44444444444\n" +
-        "B1,60,server_1,/home/file_3,55555555555\n"
+    expected = "2\n" +
+        "A1,50,22222222222\n" +
+        "B1,60,44444444444\n" + 
+	"3\n" +
+        "A1,50,server_1,/home/file_1,22222222222\n" +
+        "B1,60,server_1,/home/file_2,44444444444\n" +
+        "B1,60,server_1,/home/file_3,55555555555\n" + 
+        "0\n"
     content_data_merged.to_s.should == expected
     content_data_a.remove_instance('server_1', '/home/file_1')
-    expected = "2\nA1,50,22222222222\nB1,60,44444444444\n" + 
-	"3\nA1,50,server_1,/home/file_1,22222222222\nB1,60,server_1,/home/file_2,44444444444\n" +
-        "B1,60,server_1,/home/file_3,55555555555\n"
+    expected = "2\n" +
+        "A1,50,22222222222\n" +
+        "B1,60,44444444444\n" + 
+	"3\n" +
+        "A1,50,server_1,/home/file_1,22222222222\n" +
+        "B1,60,server_1,/home/file_2,44444444444\n" +
+        "B1,60,server_1,/home/file_3,55555555555\n" +
+        "0\n"
     content_data_merged.to_s.should == expected
     content_data_b.remove_instance('server_1', '/home/file_2')
-    expected = "2\nA1,50,22222222222\nB1,60,44444444444\n" + 
-	"3\nA1,50,server_1,/home/file_1,22222222222\nB1,60,server_1,/home/file_2,44444444444\n" +
-        "B1,60,server_1,/home/file_3,55555555555\n"
+    expected = "2\n" +
+        "A1,50,22222222222\n" +
+        "B1,60,44444444444\n" + 
+	"3\n" +
+        "A1,50,server_1,/home/file_1,22222222222\n" +
+        "B1,60,server_1,/home/file_2,44444444444\n" +
+        "B1,60,server_1,/home/file_3,55555555555\n" +
+        "0\n"
     content_data_merged.to_s.should == expected
   end
 
@@ -212,19 +229,34 @@ describe 'Content Data Test' do
     content_data_b.add_instance("B1", 60, "server_1",
 				"/home/file_3", 55555555555)
     content_data_merged = ContentData.merge_override_b(content_data_a, content_data_b)
-    expected = "2\nA1,50,22222222222\nB1,60,44444444444\n" + 
-	"3\nA1,50,server_1,/home/file_1,22222222222\nB1,60,server_1,/home/file_2,44444444444\n" + 
-	"B1,60,server_1,/home/file_3,55555555555\n"
+    expected = "2\n" +
+        "A1,50,22222222222\n" +
+        "B1,60,44444444444\n" + 
+	"3\n" + 
+        "A1,50,server_1,/home/file_1,22222222222\n" +
+        "B1,60,server_1,/home/file_2,44444444444\n" + 
+	"B1,60,server_1,/home/file_3,55555555555\n" +
+        "0\n"
     content_data_merged.to_s.should == expected
 
     content_data_a.remove_instance('server_1', '/home/file_1')
-    expected = "2\nA1,50,22222222222\nB1,60,44444444444\n" + 
-	"3\nA1,50,server_1,/home/file_1,22222222222\n" + 
-	"B1,60,server_1,/home/file_2,44444444444\nB1,60,server_1,/home/file_3,55555555555\n"
+    expected = "2\n" +
+        "A1,50,22222222222\n" +
+        "B1,60,44444444444\n" + 
+	"3\n" +
+        "A1,50,server_1,/home/file_1,22222222222\n" + 
+	"B1,60,server_1,/home/file_2,44444444444\n" +
+        "B1,60,server_1,/home/file_3,55555555555\n" +
+        "0\n"
     content_data_merged.to_s.should == expected
     content_data_b.remove_instance('server_1', '/home/file_2')
-    expected = "2\nA1,50,22222222222\nB1,60,44444444444\n" + 
-	"2\nA1,50,server_1,/home/file_1,22222222222\nB1,60,server_1,/home/file_3,55555555555\n"
+    expected = "2\n" +
+        "A1,50,22222222222\n" +
+        "B1,60,44444444444\n" + 
+	"2\n" +
+        "A1,50,server_1,/home/file_1,22222222222\n" +
+        "B1,60,server_1,/home/file_3,55555555555\n" +
+        "0\n"
     content_data_b.to_s.should == expected
 
     (content_data_merged == content_data_b).should == true
@@ -245,13 +277,28 @@ describe 'Content Data Test' do
     content_data_b.add_instance("B1", 60, "server_1",
 				"/home/file_3", 55555555555)
     content_data_removed = ContentData.remove(content_data_a, content_data_b)
-    expected =  "1\nB1,60,44444444444\n2\nB1,60,server_1,/home/file_2,44444444444\nB1,60,server_1,/home/file_3,55555555555\n"
+    expected =  "1\n" +
+        "B1,60,44444444444\n" +
+        "2\n" +
+        "B1,60,server_1,/home/file_2,44444444444\n" +
+        "B1,60,server_1,/home/file_3,55555555555\n" +
+        "0\n"
     content_data_removed.to_s.should == expected
     content_data_a.remove_instance('server_1', '/home/file_1')
-    expected =  "1\nB1,60,44444444444\n2\nB1,60,server_1,/home/file_2,44444444444\nB1,60,server_1,/home/file_3,55555555555\n"
+    expected =  "1\n" +
+        "B1,60,44444444444\n" +
+        "2\n" +
+        "B1,60,server_1,/home/file_2,44444444444\n" +
+        "B1,60,server_1,/home/file_3,55555555555\n" +
+        "0\n"
     content_data_removed.to_s.should == expected
     content_data_b.remove_instance('server_1', '/home/file_2')
-    expected =  "1\nB1,60,44444444444\n2\nB1,60,server_1,/home/file_2,44444444444\nB1,60,server_1,/home/file_3,55555555555\n"
+    expected =  "1\n" +
+        "B1,60,44444444444\n" +
+        "2\n" +
+        "B1,60,server_1,/home/file_2,44444444444\n" +
+        "B1,60,server_1,/home/file_3,55555555555\n" +
+        "0\n"
     content_data_removed.to_s.should == expected
 
     #check nil
@@ -276,19 +323,34 @@ describe 'Content Data Test' do
     content_data_b.add_instance("B1", 60, "server_1",
 				"/home/file_3", 55555555555)
     content_data_removed = ContentData.remove_instances(content_data_a, content_data_b)
-    expected = "2\nA1,50,22222222222\nB1,60,44444444444\n" + 
-	"3\nA1,50,server_1,extra_inst,66666666666\nB1,60,server_1,/home/file_2,44444444444\n" + 
-	"B1,60,server_1,/home/file_3,55555555555\n"
+    expected = "2\n" +
+        "A1,50,22222222222\n" +
+        "B1,60,44444444444\n" + 
+	"3\n" +
+        "A1,50,server_1,extra_inst,66666666666\n" +
+        "B1,60,server_1,/home/file_2,44444444444\n" + 
+	"B1,60,server_1,/home/file_3,55555555555\n" +
+        "0\n"
     content_data_removed.to_s.should == expected
     content_data_a.remove_instance('server_1', '/home/file_1')
-    expected = "2\nA1,50,22222222222\nB1,60,44444444444\n" + 
-	"3\nA1,50,server_1,extra_inst,66666666666\nB1,60,server_1,/home/file_2,44444444444\n" + 
-	"B1,60,server_1,/home/file_3,55555555555\n"
+    expected = "2\n" +
+        "A1,50,22222222222\n" +
+        "B1,60,44444444444\n" + 
+	"3\n" +
+        "A1,50,server_1,extra_inst,66666666666\n" +
+        "B1,60,server_1,/home/file_2,44444444444\n" + 
+	"B1,60,server_1,/home/file_3,55555555555\n" +
+        "0\n"
     content_data_removed.to_s.should == expected
     content_data_b.remove_instance('server_1', '/home/file_2')
-    expected = "2\nA1,50,22222222222\nB1,60,44444444444\n" + 
-	"3\nA1,50,server_1,extra_inst,66666666666\nB1,60,server_1,/home/file_2,44444444444\n" + 
-	"B1,60,server_1,/home/file_3,55555555555\n"
+    expected = "2\n" +
+        "A1,50,22222222222\n" +
+        "B1,60,44444444444\n" + 
+	"3\n" +
+        "A1,50,server_1,extra_inst,66666666666\n" +
+        "B1,60,server_1,/home/file_2,44444444444\n" + 
+	"B1,60,server_1,/home/file_3,55555555555\n" +
+        "0\n"
     content_data_removed.to_s.should == expected
 
     #nil.should == content_data_b
@@ -310,26 +372,47 @@ describe 'Content Data Test' do
 				"/stay/b/c/a/b/c/file_2", 44444444444)
     content_data_b.add_instance("B1", 60, "server_1",
 				"/a/b/cc/file_3", 55555555555)
+    content_data_b.add_symlink("server_1", "/a/b/c/a/b/c/symlink_1", "/a/b/cc/file_3")
+    content_data_b.add_symlink("server_1", "/a/b/c/extra_symlink", "/a/b/c/extra_inst")
+    content_data_b.add_symlink("server_1", "/a/a/b/c/stay_symlink", "/a/b/c/extra_inst")
     content_data_removed = ContentData.remove_directory(content_data_b, '/a/b', "server_1")
-    expected = "1\nB1,60,44444444444\n1\nB1,60,server_1,/stay/b/c/a/b/c/file_2,44444444444\n"
+    expected = "1\n" +
+        "B1,60,44444444444\n" +
+        "1\n" +
+        "B1,60,server_1,/stay/b/c/a/b/c/file_2,44444444444\n" +
+        "1\n" +
+        "server_1,/a/a/b/c/stay_symlink,/a/b/c/extra_inst\n"
     content_data_removed.to_s.should == expected
 
     content_data_b.remove_instance('server_1', '/stay/b/c/a/b/c/file_2')
-    expected = "1\nB1,60,44444444444\n1\nB1,60,server_1,/stay/b/c/a/b/c/file_2,44444444444\n"
+    expected = "1\n" +
+        "B1,60,44444444444\n" +
+        "1\n" +
+        "B1,60,server_1,/stay/b/c/a/b/c/file_2,44444444444\n" +
+        "1\n" +
+        "server_1,/a/a/b/c/stay_symlink,/a/b/c/extra_inst\n"
     content_data_removed.to_s.should == expected
 
     expected = "2\nA1,50,22222222222\nB1,60,44444444444\n" + 
 	"3\n" +
         "A1,50,server_1,/a/b/c/a/b/c/file_1,22222222222\n" +
         "A1,50,server_1,/a/b/c/extra_inst,66666666666\n" + 
-	"B1,60,server_1,/a/b/cc/file_3,55555555555\n"
+	"B1,60,server_1,/a/b/cc/file_3,55555555555\n" +
+        "3\n" +
+        "server_1,/a/a/b/c/stay_symlink,/a/b/c/extra_inst\n" +
+        "server_1,/a/b/c/a/b/c/symlink_1,/a/b/cc/file_3\n" +
+        "server_1,/a/b/c/extra_symlink,/a/b/c/extra_inst\n"
     content_data_b.to_s.should == expected
 
-    expect{content_data_removed = ContentData.remove_directory(content_data_b, 'kuku', "server_1")}.to raise_error(ArgumentError)
     content_data_removed = ContentData.remove_directory(content_data_b, '/kuku', "server_1")
     content_data_removed = ContentData.remove_directory(content_data_b, '/a/b/c', "server_1")
     content_data_removed.contents_size.should == 1
-    content_data_removed.to_s.should == "1\nB1,60,44444444444\n1\nB1,60,server_1,/a/b/cc/file_3,55555555555\n"
+    content_data_removed.to_s.should == "1\n" +
+        "B1,60,44444444444\n" +
+        "1\n" +
+        "B1,60,server_1,/a/b/cc/file_3,55555555555\n" +
+        "1\n" +
+        "server_1,/a/a/b/c/stay_symlink,/a/b/c/extra_inst\n"
 
     content_data_removed = ContentData.remove_directory(nil, 'home', "server_1")
     content_data_removed.should == nil
@@ -350,8 +433,12 @@ describe 'Content Data Test' do
 				"/home/file_2", 44444444444)
 
     content_data_intersect = ContentData.intersect(content_data_a, content_data_b)
-    expected =  "1\nA1,50,22222222222\n" + 
-	"2\nA1,50,server_1,/home/file_1,22222222222\nA1,50,server_1,/home/file_5,55555555555\n"
+    expected =  "1\n" +
+        "A1,50,22222222222\n" + 
+	"2\n" +
+        "A1,50,server_1,/home/file_1,22222222222\n" +
+        "A1,50,server_1,/home/file_5,55555555555\n" +
+        "0\n"
     content_data_intersect.to_s.should == expected
   end
 
@@ -372,9 +459,14 @@ describe 'Content Data Test' do
     content_data_a.add_instance("C1", 70, "server_1",
 				"/home/file_5", 33333333333)
     content_data_a.unify_time
-    expected =  "2\nA1,50,22222222222\nC1,70,33333333333\n" + 
-	"3\nA1,50,server_1,/home/file_1,22222222222\nC1,70,server_1,/home/file_4,33333333333\n" + 
-	"C1,70,server_1,/home/file_5,33333333333\n"
+    expected =  "2\n" +
+        "A1,50,22222222222\n" +
+        "C1,70,33333333333\n" + 
+	"3\n" +
+        "A1,50,server_1,/home/file_1,22222222222\n" +
+        "C1,70,server_1,/home/file_4,33333333333\n" + 
+	"C1,70,server_1,/home/file_5,33333333333\n" +
+        "0\n"
     content_data_a.to_s.should == expected
   end
 end
