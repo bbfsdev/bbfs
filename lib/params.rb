@@ -251,15 +251,21 @@ module Params
 
   # Initializes the project parameters.
   # Precedence is: Defined params, file and command line is highest.
-  def Params.init(args)
+  # If no args provided then only default values used.
+  def Params.init(args=nil)
     #define default configuration file
     Params['conf_file'] = "~/.bbfs/etc/config_#{File.basename($PROGRAM_NAME)}.yml"
 
     @init_info_messages = []
     @init_warning_messages = []
 
-    #parse command line argument and set configuration file if provided by user
-    results = parse_command_line_arguments(args)
+    results = Hash.new  # Hash to store parsing results.
+    options = Hash.new  # Hash of parsing options from Params.
+
+    # Parse command line argument and set configuration file if provided by user.
+    unless (args.nil?)
+      results = parse_command_line_arguments(args)
+    end
     if results['conf_file']
       Params['conf_file'] = File.expand_path(results['conf_file'])
       if !File.exist?(Params['conf_file']) or File.directory?(Params['conf_file'])
@@ -320,9 +326,6 @@ module Params
 
   #  Parse command line arguments
   def Params.parse_command_line_arguments(args)
-    results = Hash.new  # Hash to store parsing results.
-    options = Hash.new  # Hash of parsing options from Params.
-
     # Define options switch for parsing
     # Define List of options see example on
     # http://ruby.about.com/od/advancedruby/a/optionparser2.htm

@@ -326,7 +326,7 @@ module ContentData
     def to_file(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
-      Zlib::GzipWriter.open(filename) do |gz| 
+      Zlib::GzipWriter.open(filename) do |gz|
         gz.write [@instances_info.length].to_csv
         each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path, inst_index_time|
           gz.write [checksum, size, server, path, instance_mod_time, inst_index_time].to_csv
@@ -384,7 +384,7 @@ module ContentData
                     "Expected to read 3 fields ('<' separated) but got #{row.length}.\nLine:#{symlinks_line}")
             end
             @symlinks_info[[row[0], row[1]]] = row[2]
-            number_of_symlinks -= 1 
+            number_of_symlinks -= 1
           end
         end
       }
@@ -463,7 +463,9 @@ module ContentData
     # TODO validation that file indeed contains ContentData missing
     # TODO class level method?
     # Loading db from file using chunks for better memory performance
-    def from_file_old(filename)
+    # @param filename [String] filename of the file containing ContentData in obsolete format
+    # @param delimiter [Character] fields separator character, default is ','
+    def from_file_old(filename, delimiter=',')
       # read first line (number of contents)
       # calculate line number (number of instances)
       # read number of instances.
@@ -514,7 +516,7 @@ module ContentData
             # update last chunk size
             chunk_size = number_of_instances - (chunk_index * CHUNK_SIZE)
           end
-          return unless read_old_instances_chunk(filename, file, chunk_size)
+          return unless read_old_instances_chunk(filename, file, chunk_size, delimiter)
           GC.start
           chunk_index += 1
         end
@@ -531,10 +533,10 @@ module ContentData
             raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
                    "Expected to read symlink line but reached EOF")
           end
-          parameters = symlinks_line.split(',')
+          parameters = symlinks_line.split(delimiter)
           if (3 != parameters.length)
             raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
-                  "Expected to read 3 fields (comma separated) but got #{parameters.length}.\nLine:#{symlinks_line}")
+                  "Expected to read 3 fields but got #{parameters.length}.\nLine:#{symlinks_line}")
           end
 
           @symlinks_info[[parameters[0],parameters[1]]] = parameters[2]
@@ -554,7 +556,7 @@ module ContentData
       true
     end
 
-    def read_old_instances_chunk(filename, file, chunk_size)
+    def read_old_instances_chunk(filename, file, chunk_size, delimiter)
       chunk_index = 0
       while chunk_index < chunk_size
         instance_line = file.gets
@@ -563,7 +565,13 @@ module ContentData
                 "Expected to read Instance line but reached EOF")
         end
 
-        parameters = instance_line.split(',')
+        parameters = instance_line.split(delimiter)
+        if (parameters.length < 6)
+          raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                "Expected to read at least 6 fields " +
+                  "but got #{parameters.length}.\nLine:#{instance_line}")
+        end
+
         # bugfix: if file name consist a comma then parsing based on comma separating fails
         if (parameters.size > 6)
           (4..parameters.size-3).each do |i|
