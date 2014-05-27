@@ -1,11 +1,31 @@
 #!/usr/bin/env ruby
 
-# Get two file names, one is source content data other is destinations.
-# Converts source content data old format to new format and writes it to
-# destination file.
-
 require 'content_data/content_data'
+require 'params'
+
+usage = <<END
+Get two file names, one is source content data, other is destination,
+and a delimiter that separates fields in the source content data file
+(optional, default is ',').
+Converts source content data old format to new format and writes it
+to the destination file.
+Usage:
+#{$PROGRAM_NAME} old.cd fixed.cd
+is equivalent to
+#{$PROGRAM_NAME} old.cd fixed.cd ','
+END
+
+unless ARGV.length >= 2
+  puts usage
+  exit
+end
+
+Params.init
 
 cd = ContentData::ContentData.new
-cd.from_file_old(ARGV[0])
+if ARGV.length > 2
+  cd.from_file_old(ARGV[0], ARGV[2])
+else
+  cd.from_file_old(ARGV[0])
+end
 cd.to_file(ARGV[1])
