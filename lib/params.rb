@@ -260,7 +260,6 @@ module Params
     @init_warning_messages = []
 
     results = Hash.new  # Hash to store parsing results.
-    options = Hash.new  # Hash of parsing options from Params.
 
     # Parse command line argument and set configuration file if provided by user.
     unless (args.nil?)
@@ -329,6 +328,10 @@ module Params
     # Define options switch for parsing
     # Define List of options see example on
     # http://ruby.about.com/od/advancedruby/a/optionparser2.htm
+
+    results = Hash.new  # Hash to store parsing results.
+    options = Hash.new  # Hash of parsing options from Params.
+
     opts = OptionParser.new do |opts|
       @params_data_base.values.each do |param|
         tmp_name_long = "--#{param.name} #{param.name.upcase}"  # Define a command with single mandatory parameter
