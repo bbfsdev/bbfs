@@ -42,7 +42,7 @@ Gem::Specification.new do |s|
     'spec/validations/**/*'] \
     & `git ls-files -z`.split("\0")
 
-  s.executables = ['content_server', 'backup_server', 'file_utils', 'testing_server', 'testing_memory']
+  s.executables = ['content_server', 'backup_server', 'file_utils', 'fix_content_data', 'testing_server', 'testing_memory']
 
   s.add_dependency('algorithms')
   s.add_dependency('log4r')

@@ -361,7 +361,7 @@ module ContentData
           elsif number_of_instances > 0
             if (6 != row.length)
               raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
-                        "Expected to read 6 fields ('<' separated) but got #{row.length}.\nLine:#{instance_line}")
+                        "Expected to read 6 fields ('<' separated) but got #{row.length}.")
             end
             add_instance(row[0],        #checksum
                          row[1].to_i,   # size
