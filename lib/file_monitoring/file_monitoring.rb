@@ -170,7 +170,7 @@ module FileMonitoring
             Log.info(log_msg)
             $testing_memory_log.info(log_msg) if $testing_memory_active
             dir_stat[0].removed_unmarked_paths
-            log_msg = 'End monitor path and index'
+            log_msg = 'End monitor path'
             Log.info(log_msg)
             $testing_memory_log.info(log_msg) if $testing_memory_active
           }
@@ -210,22 +210,27 @@ module FileMonitoring
         end
 
         # Start monitor
-        Log.info("Start monitor path:%s ", dir_stat.path)
-        $testing_memory_log.info("Start monitor path:#{dir_stat.path}") if $testing_memory_active
+        msg = "Start monitor path:#{dir_stat.path}"
+        Log.info(msg)
+        $testing_memory_log.info(msg) if $testing_memory_active
         ::FileMonitoring.stable_state=elem['stable_state']
         dir_stat.monitor
 
         # remove non existing (not marked) files\dirs
-        Log.info('Start remove non existing paths')
-        $testing_memory_log.info('Start remove non existing paths') if $testing_memory_active
+        msg = 'Start remove non existing paths'
+        Log.info(msg)
+        $testing_memory_log.info(msg) if $testing_memory_active
         dir_stat.removed_unmarked_paths
-        Log.info('End monitor path and index')
-        $testing_memory_log.info('End monitor path and index') if $testing_memory_active
 
         # Start index
-        Log.info("Start index path:%s ", dir_stat.path)
-        $testing_memory_log.info("Start index path:#{dir_stat.path}") if $testing_memory_active
+        msg = "Start index path:#{dir_stat.path}"
+        Log.info(msg)
+        $testing_memory_log.info(msg) if $testing_memory_active
         dir_stat.index
+
+        msg = 'End monitor path and index'
+        Log.info(msg)
+        $testing_memory_log.info(msg) if $testing_memory_active
 
         # print number of indexed files
         Log.debug1("indexed file count:%s", $indexed_file_count)
