@@ -424,19 +424,17 @@ module ContentData
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
       File.open(filename, 'w') { |file|
-        # Write contents
-        file.write("#{@contents_info.length}\n")
+        # Calculate chunks size
         contents_enum = @contents_info.each_key
-        content_chunks = @contents_info.length / CHUNK_SIZE + 1
+        content_chunks_size = @contents_info.length / CHUNK_SIZE + 1
 
         # Write instances
         file.write("#{@instances_info.length}\n")
         contents_enum = @contents_info.each_key
-        chunks_counter = 0
-        while chunks_counter < content_chunks
+        while content_chunks_size > 0
           to_file_instances_chunk_no_zip(file,contents_enum, CHUNK_SIZE)
           GC.start
-          chunks_counter += 1
+          content_chunks_size -= 1
         end
 
         # Write symlinks
