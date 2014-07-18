@@ -417,24 +417,13 @@ module ContentData
     end
 
     # Write content data to file.
-    # Write is using chunks (for both content chunks and instances chunks)
+    # Write is using chunks
     # Chunk is used to maximize GC affect. The temporary memory of each chunk is GCed.
     # Without the chunks used in a dipper stack level, GC keeps the temporary objects as part of the stack context.
     def to_file_not_compressed(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
       File.open(filename, 'w') { |file|
-        # Write contents
-        file.write("#{@contents_info.length}\n")
-        contents_enum = @contents_info.each_key
-        content_chunks = @contents_info.length / CHUNK_SIZE + 1
-        chunks_counter = 0
-        while chunks_counter < content_chunks
-          to_file_contents_chunk_no_zip(file,contents_enum, CHUNK_SIZE)
-          GC.start
-          chunks_counter += 1
-        end
-
         # Write instances
         file.write("#{@instances_info.length}\n")
         contents_enum = @contents_info.each_key
@@ -453,16 +442,6 @@ module ContentData
           file.write("#{symlink_key[0]},#{symlink_key[1]},#{@symlinks_info[symlink_key]}\n")
         }
       }
-    end
-
-    def to_file_contents_chunk_no_zip(file, contents_enum, chunk_size)
-      chunk_counter = 0
-      while chunk_counter < chunk_size
-        checksum = contents_enum.next rescue return
-        content_info = @contents_info[checksum]
-        file.write("#{checksum},#{content_info[0]},#{content_info[2]}\n")
-        chunk_counter += 1
-      end
     end
 
     def to_file_instances_chunk_no_zip(file, contents_enum, chunk_size)
@@ -554,7 +533,7 @@ module ContentData
       end
     end
 
-    # Loading db from file using chunks (for both content chunks and instances chunks)
+    # Loading db from file using chunks
     # Chunk is used to maximize GC affect. The temporary memory of each chunk is GCed.
     # Without the chunks used in a dipper stack level, GC keeps the temporary objects as part of the stack context.
     # @param filename [String] filename of the file containing ContentData in obsolete format
@@ -570,30 +549,6 @@ module ContentData
       end
 
       File.open(filename, 'r') { |file|
-        # Get number of contents (at first line)
-        number_of_contents = file.gets  # this gets the next line or return nil at EOF
-        begin
-          number_of_contents = number_of_contents.to_i
-        rescue
-          raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
-                    "Expecting line with number of contents with a number format. We got:#{number_of_contents}")
-        end
-        # advance file lines over all contents. We need only the instances data to build the content data object
-        # use chunks and GC
-        contents_chunks = number_of_contents / CHUNK_SIZE
-        contents_chunks += 1 if (contents_chunks * CHUNK_SIZE < number_of_contents)
-        chunk_index = 0
-        while chunk_index < contents_chunks
-          chunk_size = CHUNK_SIZE
-          if chunk_index + 1 == contents_chunks
-            # update last chunk size
-            chunk_size = number_of_contents - (chunk_index * CHUNK_SIZE)
-          end
-          return unless read_contents_chunk_no_zip(filename, file, chunk_size)
-          GC.start
-          chunk_index += 1
-        end
-
         # get number of instances
         number_of_instances = file.gets
         begin
@@ -638,18 +593,6 @@ module ContentData
           @symlinks_info[[parameters[0],parameters[1]]] = parameters[2]
         }
       }
-    end
-
-    def read_contents_chunk_no_zip(filename, file, chunk_size)
-      chunk_index = 0
-      while chunk_index < chunk_size
-        unless file.gets
-          raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
-                    "Expecting content line but reached end of file")
-        end
-        chunk_index += 1
-      end
-      true
     end
 
     def read_instances_chunk_no_zip(filename, file, chunk_size, delimiter)
