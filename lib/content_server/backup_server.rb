@@ -60,8 +60,10 @@ module ContentServer
 
     # check if local content data file name indicates compression (ends with '.gz')
     if Params['local_content_data_path'].match(/\.gz$/)
+      $local_content_data_compressed = true
       Log.info('Content data file:%s ends with .gz and will be compressed', Params['local_content_data_path'])
     else
+      $local_content_data_compressed = false
       Log.info('File %s does not end with .gz and will not be compressed', Params['local_content_data_path'])
     end
 
