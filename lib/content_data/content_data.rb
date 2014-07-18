@@ -324,13 +324,11 @@ module ContentData
 
     # Write content data to file.
     def to_file(filename)
-
-      # check if file compressed and direct to corresponding method
-      if filename.match(/\.gz$/)  # file name ends with '.gz'
-        Log.info('File %s ends with .gz and will be compressed', filename)
+      if $local_content_data_compressed
+        Log.debu1('File %s ends with .gz and will be compressed', filename)
         to_file_compressed(filename)
       else
-        Log.info('File %s does not end with .gz and will not be compressed', filename)
+        Log.debu1('File %s does not end with .gz and will not be compressed', filename)
         to_file_not_compressed(filename)
       end
     end
@@ -358,13 +356,12 @@ module ContentData
         raise ArgumentError.new "No such a file #{filename}"
       end
 
-      # check if file compressed and direct to corresponding method
-      if filename.match(/\.gz$/)  # file name ends with '.gz'
+      if $local_content_data_compressed
         from_file_compressed(filename)
-        Log.info('File %s ends with .gz and will be compressed', filename)
+        Log.debug1('File %s ends with .gz and will be compressed', filename)
       else
         from_file_not_compressed(filename)
-        Log.info('File %s does no end with .gz and will not be compressed', filename)
+        Log.debug1('File %s does no end with .gz and will not be compressed', filename)
       end
     end
 

@@ -58,6 +58,13 @@ module ContentServer
     $local_content_data = ContentData::ContentData.new
     $last_content_data_id = $local_content_data.unique_id
 
+    # check if local content data file name indicates compression (ends with '.gz')
+    if Params['local_content_data_path'].match(/\.gz$/)
+      Log.info('Content data file:%s ends with .gz and will be compressed', Params['local_content_data_path'])
+    else
+      Log.info('File %s does not end with .gz and will not be compressed', Params['local_content_data_path'])
+    end
+
     # Read here for initial content data that exist from previous system run
     content_data_path = Params['local_content_data_path']
     if File.exists?(content_data_path) and !File.directory?(content_data_path)
