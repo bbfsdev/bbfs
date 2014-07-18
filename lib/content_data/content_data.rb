@@ -325,10 +325,10 @@ module ContentData
     # Write content data to file.
     def to_file(filename)
       if $local_content_data_compressed
-        Log.debu1('File %s ends with .gz and will be compressed', filename)
+        Log.debug1('File %s ends with .gz and will be compressed', filename)
         to_file_compressed(filename)
       else
-        Log.debu1('File %s does not end with .gz and will not be compressed', filename)
+        Log.debug1('File %s does not end with .gz and will not be compressed', filename)
         to_file_not_compressed(filename)
       end
     end
