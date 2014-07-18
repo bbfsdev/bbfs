@@ -417,13 +417,18 @@ module ContentData
     end
 
     # Write content data to file.
-    # Write is using chunks
+    # Write is using chunks (for both content chunks and instances chunks)
     # Chunk is used to maximize GC affect. The temporary memory of each chunk is GCed.
     # Without the chunks used in a dipper stack level, GC keeps the temporary objects as part of the stack context.
     def to_file_not_compressed(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
       File.open(filename, 'w') { |file|
+        # Write contents
+        file.write("#{@contents_info.length}\n")
+        contents_enum = @contents_info.each_key
+        content_chunks = @contents_info.length / CHUNK_SIZE + 1
+
         # Write instances
         file.write("#{@instances_info.length}\n")
         contents_enum = @contents_info.each_key
@@ -445,8 +450,7 @@ module ContentData
     end
 
     def to_file_instances_chunk_no_zip(file, contents_enum, chunk_size)
-      chunk_counter = 0
-      while chunk_counter < chunk_size
+      while chunk_size > 0
         checksum = contents_enum.next rescue return
         content_info = @contents_info[checksum]
         instances_db_enum = content_info[1].each_key
@@ -458,8 +462,7 @@ module ContentData
           file.write("#{checksum},#{content_info[0]},#{location[0]},#{location[1]}," +
                          "#{instance_modification_time},#{instance_index_time}\n")
         }
-        chunk_counter += 1
-        break if chunk_counter == chunk_size
+        chunk_size -= 1
       end
     end
 
