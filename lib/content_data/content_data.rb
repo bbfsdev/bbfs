@@ -327,8 +327,10 @@ module ContentData
 
       # check if file compressed and direct to corresponding method
       if filename.match(/\.gz$/)  # file name ends with '.gz'
+        Log.info('File %s ends with .gz and will be compressed', filename)
         to_file_compressed(filename)
       else
+        Log.info('File %s ends with .gz and will be compressed', filename)
         to_file_not_compressed(filename)
       end
     end
