@@ -42,7 +42,7 @@ module ContentServer
       $process_vars.set('server_name', 'backup_server')
     end
 
-    # check format of backup_destination_floder param to be array of map of 3 items
+    # check format of backup_destination_folder param to be array of hashes of 3 items
     backup_destination_folder_struct_ok = true
     if Params['backup_destination_folder'].kind_of?(Array)
       if Params['backup_destination_folder'][0].kind_of?(Hash)
@@ -61,6 +61,34 @@ module ContentServer
       msg += "  - path: 'some_path' # Directory path to monitor.\n"
       msg += "    scan_period: 200 # Number of seconds before initiating another directory scan.\n"
       msg += "    stable_state: 2 # Number of scan times for a file to be unchanged before his state becomes stable."
+      raise(msg)
+    end
+
+    # check format of monitoring_paths param to be array of hashes of 3 items
+    monitoring_paths_struct_ok = true
+    if Params['monitoring_paths'].kind_of?(Array)
+      Params['monitoring_paths'].each { |path|
+        if path.kind_of?(Hash)
+          if 3 != path.size
+            monitoring_paths_struct_ok = false
+          end
+        else
+          monitoring_paths_struct_ok = false
+        end
+      }
+    else
+      monitoring_paths_struct_ok = false
+    end
+
+    if not monitoring_paths_struct_ok
+      msg  = "monitoring_paths parameter bad format\n"
+      msg += "Parsed structure:\n#{Params['monitoring_paths']}\nFormat example:\nmonitoring_paths:\n"
+      msg += "  - path: 'some_path' # Directory path to monitor.\n"
+      msg += "    scan_period: 200 # Number of seconds before initiating another directory scan.\n"
+      msg += "    stable_state: 2 # Number of scan times for a file to be unchanged before his state becomes stable.\n"
+      msg += "  - path: 'some_other_path' # Directory path to monitor.\n"
+      msg += "    scan_period: 300 # Number of seconds before initiating another directory scan.\n"
+      msg += "    stable_state: 4 # Number of scan times for a file to be unchanged before his state becomes stable."
       raise(msg)
     end
 
