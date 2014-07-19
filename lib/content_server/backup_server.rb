@@ -56,7 +56,8 @@ module ContentServer
       backup_destination_folder_struct_ok = false
     end
     if not backup_destination_folder_struct_ok
-      msg  = "backup_destination_folder parameter bad format. Format example:\nbackup_destination_folder:\n"
+      msg  = "backup_destination_folder parameter bad format\n"
+      msg += "Found:\n#{Params['backup_destination_folder']}\nFormat example:\nbackup_destination_folder:\n"
       msg += "  - path: 'some_path' # Directory path to monitor.\n"
       msg += "    scan_period: 200 # Number of seconds before initiating another directory scan.\n"
       msg += "    stable_state: 2 # Number of scan times for a file to be unchanged before his state becomes stable."
