@@ -49,7 +49,7 @@ Gem::Specification.new do |s|
   s.add_dependency('eventmachine')
   s.add_dependency('json')
   s.add_dependency('sinatra')
-  s.add_dependency('thin')
+  s.add_dependency('thin','=1.6.2')
 
 #  Add platform dependant gems via extension (used by run_in_background).
 #    Linux dependencies: daemons
