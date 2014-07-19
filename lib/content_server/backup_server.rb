@@ -42,6 +42,27 @@ module ContentServer
       $process_vars.set('server_name', 'backup_server')
     end
 
+    # check format of backup_destination_floder param to be array of map of 3 items
+    backup_destination_folder_struct_ok = true
+    if Params['backup_destination_folder'].kind_of?(Array)
+      if Params['backup_destination_folder'][0].kind_of?(Hash)
+        if 3 != Params['backup_destination_folder'][0].size
+          backup_destination_folder_struct_ok = false
+        end
+      else
+        backup_destination_folder_struct_ok = false
+      end
+    else
+      backup_destination_folder_struct_ok = false
+    end
+    if not backup_destination_folder_struct_ok
+      msg  = "backup_destination_folder:\n"
+      msg += "  - path: 'some_path' # Directory path to monitor.\n"
+      msg += "    scan_period: 200 # Number of seconds before initiating another directory scan.\n"
+      msg += "    stable_state: 2 # Number of scan times for a file to be unchanged before his state becomes stable."
+      raise(msg)
+    end
+
     # # # # # # # # # # # #
     # Initialize/start monitoring and destination folder
     Params['backup_destination_folder'][0]['path']=File.expand_path(Params['backup_destination_folder'][0]['path'])
