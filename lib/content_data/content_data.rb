@@ -334,6 +334,17 @@ module ContentData
 
     # Write content data to file.
     def to_file(filename)
+      if $local_content_data_compressed
+        Log.debug1('File %s ends with .gz and will be compressed', filename)
+        to_file_compressed(filename)
+      else
+        Log.debug1('File %s does not end with .gz and will not be compressed', filename)
+        to_file_not_compressed(filename)
+      end
+    end
+
+    # Write content data to file.
+    def to_file_compressed(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
       Zlib::GzipWriter.open(filename) do |gz|
@@ -355,6 +366,22 @@ module ContentData
         raise ArgumentError.new "No such a file #{filename}"
       end
 
+      if $local_content_data_compressed
+        from_file_compressed(filename)
+        Log.debug1('File %s ends with .gz and will be compressed', filename)
+      else
+        from_file_not_compressed(filename)
+        Log.debug1('File %s does no end with .gz and will not be compressed', filename)
+      end
+    end
+
+    # Imports content data from file.
+    # This method will throw an exception if the file is not in correct format.
+    def from_file_compressed(filename)
+      unless File.exists? filename
+        raise ArgumentError.new "No such a file #{filename}"
+      end
+
       number_of_instances = nil
       number_of_symlinks = nil
       Zlib::GzipReader.open(filename) { |gz|
@@ -371,7 +398,7 @@ module ContentData
           elsif number_of_instances > 0
             if (6 != row.length)
               raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
-                        "Expected to read 6 fields ('<' separated) but got #{row.length}.")
+                        "Expected to read 6 fields (',' separated) but got #{row.length}.")
             end
             add_instance(row[0],        #checksum
                          row[1].to_i,   # size
@@ -391,13 +418,61 @@ module ContentData
           elsif number_of_symlinks > 0
             if (3 != row.length)
               raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
-                    "Expected to read 3 fields ('<' separated) but got #{row.length}.\nLine:#{symlinks_line}")
+                    "Expected to read 3 fields (',' separated) but got #{row.length}.\nLine:#{symlinks_line}")
             end
             @symlinks_info[[row[0], row[1]]] = row[2]
             number_of_symlinks -= 1
           end
         end
       }
+    end
+
+    # Write content data to file.
+    # Write is using chunks (for both content chunks and instances chunks)
+    # Chunk is used to maximize GC affect. The temporary memory of each chunk is GCed.
+    # Without the chunks used in a dipper stack level, GC keeps the temporary objects as part of the stack context.
+    def to_file_not_compressed(filename)
+      content_data_dir = File.dirname(filename)
+      FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
+      File.open(filename, 'w') { |file|
+        # Calculate chunks size
+        contents_enum = @contents_info.each_key
+        content_chunks_size = @contents_info.length / CHUNK_SIZE + 1
+
+        # Write instances
+        file.write("#{@instances_info.length}\n")
+        contents_enum = @contents_info.each_key
+        while content_chunks_size > 0
+          to_file_instances_chunk_no_zip(file,contents_enum, CHUNK_SIZE)
+          GC.start
+          content_chunks_size -= 1
+        end
+
+        # Write symlinks
+        symlinks_info_enum = @symlinks_info.each_key
+        file.write("#{@symlinks_info.length}\n")
+        loop {
+          symlink_key = symlinks_info_enum.next rescue break
+          file.write("#{symlink_key[0]},#{symlink_key[1]},#{@symlinks_info[symlink_key]}\n")
+        }
+      }
+    end
+
+    def to_file_instances_chunk_no_zip(file, contents_enum, chunk_size)
+      while chunk_size > 0
+        checksum = contents_enum.next rescue return
+        content_info = @contents_info[checksum]
+        instances_db_enum = content_info[1].each_key
+        loop {
+          location = instances_db_enum.next rescue break
+          # provide the block with: checksum, size, content modification time,instance modification time,
+          #   server and path.
+          instance_modification_time,instance_index_time = content_info[1][location]
+          file.write("#{checksum},#{content_info[0]},#{location[0]},#{location[1]}," +
+                         "#{instance_modification_time},#{instance_index_time}\n")
+        }
+        chunk_size -= 1
+      end
     end
 
     ############## DEPRECATED: Old deprecated from/to file methods still needed for migration purposes
@@ -470,11 +545,113 @@ module ContentData
       end
     end
 
-    # TODO validation that file indeed contains ContentData missing
-    # TODO class level method?
-    # Loading db from file using chunks for better memory performance
+    # Loading db from file using chunks
+    # Chunk is used to maximize GC affect. The temporary memory of each chunk is GCed.
+    # Without the chunks used in a dipper stack level, GC keeps the temporary objects as part of the stack context.
     # @param filename [String] filename of the file containing ContentData in obsolete format
     # @param delimiter [Character] fields separator character, default is ','
+    def from_file_not_compressed(filename, delimiter=',')
+      # read first line (number of contents)
+      # calculate line number (number of instances)
+      # read number of instances.
+      # loop over instances lines (using chunks) and add instances
+
+      unless File.exists? filename
+        raise ArgumentError.new "No such a file #{filename}"
+      end
+
+      File.open(filename, 'r') { |file|
+        # get number of instances
+        number_of_instances = file.gets
+        begin
+          number_of_instances = number_of_instances.to_i
+        rescue
+          raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                    "Expecting line with number of instances with a number format. We got:#{number_of_instances}")
+        end
+        # read in instances chunks and GC
+        instances_chunks = number_of_instances / CHUNK_SIZE
+        instances_chunks += 1 if (instances_chunks * CHUNK_SIZE < number_of_instances)
+        chunk_index = 0
+        while chunk_index < instances_chunks
+          chunk_size = CHUNK_SIZE
+          if chunk_index + 1 == instances_chunks
+            # update last chunk size
+            chunk_size = number_of_instances - (chunk_index * CHUNK_SIZE)
+          end
+          return unless read_instances_chunk_no_zip(filename, file, chunk_size, delimiter)
+          GC.start
+          chunk_index += 1
+        end
+
+        # get number of symlinks
+        number_of_symlinks = file.gets
+        unless (number_of_symlinks and number_of_symlinks.match(/^[\d]+$/))  # check that line is of Number format
+          raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                    "number of symlinks should be a Number. We got:#{number_of_symlinks}")
+        end
+        number_of_symlinks.to_i.times {
+          symlinks_line = file.gets.strip
+          unless symlinks_line
+            raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                      "Expected to read symlink line but reached EOF")
+          end
+          parameters = symlinks_line.split(delimiter)
+          if (3 != parameters.length)
+            raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                      "Expected to read 3 fields but got #{parameters.length}.\nLine:#{symlinks_line}")
+          end
+
+          @symlinks_info[[parameters[0],parameters[1]]] = parameters[2]
+        }
+      }
+    end
+
+    def read_instances_chunk_no_zip(filename, file, chunk_size, delimiter)
+      chunk_index = 0
+      while chunk_index < chunk_size
+        instance_line = file.gets
+        unless instance_line
+          raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                    "Expected to read Instance line but reached EOF")
+        end
+
+        parameters = instance_line.split(delimiter)
+        if (parameters.length < 6)
+          raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                    "Expected to read at least 6 fields " +
+                    "but got #{parameters.length}.\nLine:#{instance_line}")
+        end
+
+        # bugfix: if file name consist a comma then parsing based on comma separating fails
+        if (parameters.size > 6)
+          (4..parameters.size-3).each do |i|
+            parameters[3] = [parameters[3], parameters[i]].join(",")
+          end
+          (4..parameters.size-3).each do |i|
+            parameters.delete_at(4)
+          end
+        end
+
+        add_instance(parameters[0],        #checksum
+                     parameters[1].to_i,   # size
+                     parameters[2],        # server
+                     parameters[3],        # path
+                     parameters[4].to_i,   # mod time
+                     parameters[5].to_i)   # index time
+        chunk_index += 1
+      end
+      true
+    end
+
+    # TODO validation that file indeed contains ContentData missing
+    # TODO class level method?
+    # Loading db from file using chunks (for both content chunks and instances chunks)
+    # Chunk is used to maximize GC affect. The temporary memory of each chunk is GCed.
+    # Without the chunks used in a dipper stack level, GC keeps the temporary objects as part of the stack context.
+    # @param filename [String] filename of the file containing ContentData in obsolete format
+    # @param delimiter [Character] fields separator character, default is ','
+    # @deprecated
     def from_file_old(filename, delimiter=',')
       # read first line (number of contents)
       # calculate line number (number of instances)
