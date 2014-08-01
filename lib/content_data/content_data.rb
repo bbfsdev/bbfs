@@ -189,7 +189,7 @@ module ContentData
           content_info[2] = modification_time
         end
       else
-        instances = GoogleHashSparseRubyToRuby.new 
+        instances = GoogleHashSparseRubyToRuby.new
         instances[location] = [modification_time, index_time]
         @contents_info[checksum] = [size, instances, modification_time]
       end
@@ -618,7 +618,7 @@ module ContentData
           stats[0] = min_time_per_checksum
         }
         content_info[2] = min_time_per_checksum
-      }  
+      }
     end
 
     # Validates index against file system that all instances hold a correct data regarding files
