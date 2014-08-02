@@ -11,6 +11,7 @@ require 'rspec'
 require 'yaml'
 
 require_relative '../../lib/params.rb'
+require_relative '../../lib/content_server/server.rb'
 
 module Params
   # make private methods or Params public for testing capability.
@@ -80,6 +81,10 @@ module Params
     end
 
     describe 'Params::read_yml_params' do
+      # define dummy parameters for some tests below
+      Params.complex('monitoring_paths', [{'path'=>'', 'scan_period'=>0, 'stable_state'=>0}], '')
+      Params.complex('backup_destination_folder', [{''=>'path', 'scan_period'=>0, 'stable_state'=>0}], '')
+
       it 'should raise error when yml parameter is not defined' do
         expect { Params::read_yml_params StringIO.new 'not_defined: 10' }.to raise_error \
               "Parameter:'not_defined' has not been defined and can not be overridden. " \
@@ -171,6 +176,76 @@ module Params
         Params['tmp5float'].should eq 12.12
         Params['tmp5true'].should eq false
         Params['tmp5false'].should eq true
+      end
+
+      # If input is not Array we raise exception
+      it 'should raise exception when monitoring_paths format is bad 1' do
+        yml_bad_format="monitoring_paths: '~/.bbfs/backup_files'"
+        expect {
+          Params.read_yml_params(StringIO.new(yml_bad_format))
+          check_monitoring_path_structure('monitoring_paths', 1)
+        }.to raise_error
+      end
+
+      # expecting 1 path for backup_destination_folder
+      # (in call to check_monitoring_path_structure) but user gives
+      # 2 paths.
+      it 'should raise exception when backup_destination_folder format is bad 2' do
+        yml_bad_format=<<EOF
+backup_destination_folder:
+  - path: 'some_path_1
+    scan_period: 200
+    stable_state: 2
+  - path: 'some_path_2
+    scan_period: 200
+    stable_state: 2
+EOF
+        expect {
+          Params.read_yml_params(StringIO.new(yml_bad_format))
+          check_monitoring_path_structure('backup_destination_folder', 1)
+        }.to raise_error
+      end
+
+      # missing 'stable_state' in hash
+      it 'should raise exception when monitoring_paths format is bad 3' do
+        yml_bad_format=<<EOF
+monitoring_paths:
+  - path: 'some_path
+    scan_period: 200
+EOF
+        expect {
+          Params.read_yml_params(StringIO.new(yml_bad_format))
+          check_monitoring_path_structure('monitoring_paths', 1)
+        }.to raise_error
+      end
+
+      it 'should not raise exception when monitoring_paths format is good - paths size is 1)' do
+        yml_good_format=<<EOF
+monitoring_paths:
+  - path: 'some_path
+    scan_period: 200
+    stable_state: 2
+EOF
+        expect {
+          Params.read_yml_params(StringIO.new(yml_good_format))
+          check_monitoring_path_structure('monitoring_paths', 1)
+        }.to_not raise_error
+      end
+
+      it 'should not raise exception when monitoring_paths format is good - any paths size' do
+        yml_good_format=<<EOF
+monitoring_paths:
+  - path: 'some_path_1
+    scan_period: 200
+    stable_state: 2
+  - path: 'some_path_2
+    scan_period: 200
+    stable_state: 2
+EOF
+        expect {
+          Params.read_yml_params(StringIO.new(yml_good_format))
+          check_monitoring_path_structure('monitoring_paths', 0)
+        }.to_not raise_error
       end
     end
 
