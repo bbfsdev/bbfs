@@ -43,10 +43,10 @@ module ContentServer
     end
 
     # check format of backup_destination_folder param to be array (of size=1) of hashes of 3 items
-    check_monitoring_path_structure('backup_destination_folder', 1)
+    ContentServer.check_monitoring_path_structure('backup_destination_folder', 1)
 
     # check format of monitoring_paths param to be array (of any size) of hashes of 3 items
-    check_monitoring_path_structure('monitoring_paths', 0)
+    ContentServer.check_monitoring_path_structure('monitoring_paths', 0)
 
     # # # # # # # # # # # #
     # Initialize/start monitoring and destination folder

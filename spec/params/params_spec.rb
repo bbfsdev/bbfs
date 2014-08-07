@@ -183,7 +183,7 @@ module Params
         yml_bad_format="monitoring_paths: '~/.bbfs/backup_files'"
         expect {
           Params.read_yml_params(StringIO.new(yml_bad_format))
-          check_monitoring_path_structure('monitoring_paths', 1)
+          ContentServer.check_monitoring_path_structure('monitoring_paths', 1)
         }.to raise_error
       end
 
@@ -202,7 +202,7 @@ backup_destination_folder:
 EOF
         expect {
           Params.read_yml_params(StringIO.new(yml_bad_format))
-          check_monitoring_path_structure('backup_destination_folder', 1)
+          ContentServer.check_monitoring_path_structure('backup_destination_folder', 1)
         }.to raise_error
       end
 
@@ -215,7 +215,7 @@ monitoring_paths:
 EOF
         expect {
           Params.read_yml_params(StringIO.new(yml_bad_format))
-          check_monitoring_path_structure('monitoring_paths', 1)
+          ContentServer.check_monitoring_path_structure('monitoring_paths', 1)
         }.to raise_error
       end
 
@@ -228,7 +228,7 @@ monitoring_paths:
 EOF
         expect {
           Params.read_yml_params(StringIO.new(yml_good_format))
-          check_monitoring_path_structure('monitoring_paths', 1)
+          ContentServer.check_monitoring_path_structure('monitoring_paths', 1)
         }.to_not raise_error
       end
 
@@ -244,7 +244,7 @@ monitoring_paths:
 EOF
         expect {
           Params.read_yml_params(StringIO.new(yml_good_format))
-          check_monitoring_path_structure('monitoring_paths', 0)
+          ContentServer.check_monitoring_path_structure('monitoring_paths', 0)
         }.to_not raise_error
       end
     end
