@@ -336,17 +336,22 @@ module ContentData
     def to_file(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
-      Zlib::GzipWriter.open(filename) do |gz|
-        gz.write [@instances_info.length].to_csv
-        each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path, inst_index_time|
-          gz.write [checksum, size, server, path, instance_mod_time, inst_index_time].to_csv
-        }
-        gz.write [@symlinks_info.length].to_csv
-        each_symlink { |file, path, target|
-          gz.write [file, path, target].to_csv
-        }
+      if filename.match(/\.gz$/)
+        writer = File.open(filename, 'w')
+      else
+        writer = Zlib::GzipWriter.open(filename)
       end
+      writer.write [@instances_info.length].to_csv
+      each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path, inst_index_time|
+        writer.write [checksum, size, server, path, instance_mod_time, inst_index_time].to_csv
+      }
+      writer.write [@symlinks_info.length].to_csv
+      each_symlink { |file, path, target|
+        writer.write [file, path, target].to_csv
+      }
+      writer.close
     end
+
 
     # Imports content data from file.
     # This method will throw an exception if the file is not in correct format.
@@ -357,47 +362,51 @@ module ContentData
 
       number_of_instances = nil
       number_of_symlinks = nil
-      Zlib::GzipReader.open(filename) { |gz|
-        gz.each_line do |line|
-          row = line.parse_csv
-          if number_of_instances == nil
-            begin
-              # get number of instances
-              number_of_instances = row[0].to_i
-            rescue ArgumentError
-              raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
-                    "number of instances should be a Number. We got:#{number_of_instances}")
-            end
-          elsif number_of_instances > 0
-            if (6 != row.length)
-              raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
-                        "Expected to read 6 fields ('<' separated) but got #{row.length}.")
-            end
-            add_instance(row[0],        #checksum
-                         row[1].to_i,   # size
-                         row[2],        # server
-                         row[3],        # path
-                         row[4].to_i,   # mod time
-                         row[5].to_i)   # index time
-            number_of_instances -= 1
-          elsif number_of_symlinks == nil
-            begin
-              # get number of symlinks
-              number_of_symlinks = row[0].to_i
-            rescue ArgumentError
-              raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
-                    "number of symlinks should be a Number. We got:#{number_of_symlinks}")
-            end
-          elsif number_of_symlinks > 0
-            if (3 != row.length)
-              raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
-                    "Expected to read 3 fields ('<' separated) but got #{row.length}.\nLine:#{symlinks_line}")
-            end
-            @symlinks_info[[row[0], row[1]]] = row[2]
-            number_of_symlinks -= 1
+      if filename.match(/\.gz$/)
+        reader = File.open(filename, 'r')
+      else
+        reader = Zlib::GzipReader.open(filename)
+      end
+      reader.each_line do |line|
+        row = line.parse_csv
+        if number_of_instances == nil
+          begin
+            # get number of instances
+            number_of_instances = row[0].to_i
+          rescue ArgumentError
+            raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                      "number of instances should be a Number. We got:#{number_of_instances}")
           end
+        elsif number_of_instances > 0
+          if (6 != row.length)
+            raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                      "Expected to read 6 fields ('<' separated) but got #{row.length}.")
+          end
+          add_instance(row[0],        #checksum
+                       row[1].to_i,   # size
+                       row[2],        # server
+                       row[3],        # path
+                       row[4].to_i,   # mod time
+                       row[5].to_i)   # index time
+          number_of_instances -= 1
+        elsif number_of_symlinks == nil
+          begin
+            # get number of symlinks
+            number_of_symlinks = row[0].to_i
+          rescue ArgumentError
+            raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                      "number of symlinks should be a Number. We got:#{number_of_symlinks}")
+          end
+        elsif number_of_symlinks > 0
+          if (3 != row.length)
+            raise("Parse error of content data file:#{filename}  line ##{$.}\n" +
+                      "Expected to read 3 fields ('<' separated) but got #{row.length}.\nLine:#{symlinks_line}")
+          end
+          @symlinks_info[[row[0], row[1]]] = row[2]
+          number_of_symlinks -= 1
         end
-      }
+      end
+      reader.close
     end
 
     ############## DEPRECATED: Old deprecated from/to file methods still needed for migration purposes
