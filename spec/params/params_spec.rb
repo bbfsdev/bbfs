@@ -200,8 +200,9 @@ backup_destination_folder:
     scan_period: 200
     stable_state: 2
 EOF
+        puts "yml_bad_format type=\n#{yml_bad_format.class}\n#{yml_bad_format}"
         expect {
-          Params.read_yml_params(StringIO.new(yml_bad_format))
+          Params.read_yml_params(StringIO.new(yml_bad_format.to_s))
           check_monitoring_path_structure('backup_destination_folder', 1)
         }.to raise_error
       end
@@ -213,8 +214,9 @@ monitoring_paths:
   - path: 'some_path
     scan_period: 200
 EOF
+        puts "yml_bad_format=\n#{yml_bad_format}\n"
         expect {
-          Params.read_yml_params(StringIO.new(yml_bad_format))
+          Params.read_yml_params(StringIO.new(yml_bad_format.to_s))
           check_monitoring_path_structure('monitoring_paths', 1)
         }.to raise_error
       end
@@ -226,8 +228,9 @@ monitoring_paths:
     scan_period: 200
     stable_state: 2
 EOF
+        puts "yml_good_format=\n#{yml_good_format}\n"
         expect {
-          Params.read_yml_params(StringIO.new(yml_good_format))
+          Params.read_yml_params(StringIO.new(yml_good_format.to_s))
           check_monitoring_path_structure('monitoring_paths', 1)
         }.to_not raise_error
       end
@@ -242,8 +245,9 @@ monitoring_paths:
     scan_period: 200
     stable_state: 2
 EOF
+        puts "yml_good_format=\n#{yml_good_format}\n"
         expect {
-          Params.read_yml_params(StringIO.new(yml_good_format))
+          Params.read_yml_params(StringIO.new(yml_good_format.to_s))
           check_monitoring_path_structure('monitoring_paths', 0)
         }.to_not raise_error
       end
