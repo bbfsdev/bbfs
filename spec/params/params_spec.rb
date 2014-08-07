@@ -193,16 +193,15 @@ module Params
       it 'should raise exception when backup_destination_folder format is bad 2' do
         yml_bad_format=<<EOF
 backup_destination_folder:
-  - path: 'some_path_1
+  - path: 'some_path_1'
     scan_period: 200
     stable_state: 2
-  - path: 'some_path_2
+  - path: 'some_path_2'
     scan_period: 200
     stable_state: 2
 EOF
-        puts "yml_bad_format type=\n#{yml_bad_format.class}\n#{yml_bad_format}"
         expect {
-          Params.read_yml_params(StringIO.new(yml_bad_format.to_s))
+          Params.read_yml_params(StringIO.new(yml_bad_format))
           check_monitoring_path_structure('backup_destination_folder', 1)
         }.to raise_error
       end
@@ -211,12 +210,11 @@ EOF
       it 'should raise exception when monitoring_paths format is bad 3' do
         yml_bad_format=<<EOF
 monitoring_paths:
-  - path: 'some_path
+  - path: 'some_path'
     scan_period: 200
 EOF
-        puts "yml_bad_format=\n#{yml_bad_format}\n"
         expect {
-          Params.read_yml_params(StringIO.new(yml_bad_format.to_s))
+          Params.read_yml_params(StringIO.new(yml_bad_format))
           check_monitoring_path_structure('monitoring_paths', 1)
         }.to raise_error
       end
@@ -224,13 +222,12 @@ EOF
       it 'should not raise exception when monitoring_paths format is good - paths size is 1)' do
         yml_good_format=<<EOF
 monitoring_paths:
-  - path: 'some_path
+  - path: 'some_path'
     scan_period: 200
     stable_state: 2
 EOF
-        puts "yml_good_format=\n#{yml_good_format}\n"
         expect {
-          Params.read_yml_params(StringIO.new(yml_good_format.to_s))
+          Params.read_yml_params(StringIO.new(yml_good_format))
           check_monitoring_path_structure('monitoring_paths', 1)
         }.to_not raise_error
       end
@@ -238,16 +235,15 @@ EOF
       it 'should not raise exception when monitoring_paths format is good - any paths size' do
         yml_good_format=<<EOF
 monitoring_paths:
-  - path: 'some_path_1
+  - path: 'some_path_1'
     scan_period: 200
     stable_state: 2
-  - path: 'some_path_2
+  - path: 'some_path_2'
     scan_period: 200
     stable_state: 2
 EOF
-        puts "yml_good_format=\n#{yml_good_format}\n"
         expect {
-          Params.read_yml_params(StringIO.new(yml_good_format.to_s))
+          Params.read_yml_params(StringIO.new(yml_good_format))
           check_monitoring_path_structure('monitoring_paths', 0)
         }.to_not raise_error
       end
