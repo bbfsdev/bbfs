@@ -186,6 +186,10 @@ module Params
     @params_data_base[name].value = set_value
   end
 
+  def Params.has_key?(name)
+    @params_data_base.has_key?(name)
+  end
+
   #override parameter should only be called by Params module methods.
   def Params.override_param(name, value)
     existing_param = @params_data_base[name]
