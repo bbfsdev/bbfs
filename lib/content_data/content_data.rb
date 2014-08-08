@@ -336,17 +336,20 @@ module ContentData
     def to_file(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
-
+      puts "Yaron to_file"
       if filename.is_a?(Tempfile)  # tests are using Tempfile type
+        puts "Yaron filename.is_a?(Tempfile)"
         file_name_str = filename.path
       else
+        puts "Yaron filename.is NOT (Tempfile)"
         file_name_str = filename
       end
       if file_name_str.match(/\.gz$/)
         writer = File.open(file_name_str, 'w')
-        puts "Yaron tooooo zipped"
+        puts "Yaron To zipped"
       else
         writer = Zlib::GzipWriter.open(file_name_str)
+        puts "Yaron To NOT zipped"
       end
       writer.write [@instances_info.length].to_csv
       each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path, inst_index_time|
