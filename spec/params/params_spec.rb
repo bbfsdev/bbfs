@@ -82,7 +82,8 @@ module Params
 
     describe 'Params::read_yml_params' do
       # define dummy parameters for some tests below
-      #Params.complex('monitoring_paths', [{'path'=>'', 'scan_period'=>0, 'stable_state'=>0}], '')
+      puts "Yaron monitoring_paths 2"
+      Params.complex('monitoring_paths', [{'path'=>'', 'scan_period'=>0, 'stable_state'=>0}], '')
       #Params.complex('backup_destination_folder', [{''=>'path', 'scan_period'=>0, 'stable_state'=>0}], '')
 
       it 'should raise error when yml parameter is not defined' do
@@ -179,7 +180,7 @@ module Params
       end
 
       # If input is not Array we raise exception
-      it 'should raise exception when monitoring_paths format is bad 1' do
+      it 'should raise exception when monitoring_paths type is not an Array!' do
         yml_bad_format="monitoring_paths: '~/.bbfs/backup_files'"
         expect {
           Params.read_yml_params(StringIO.new(yml_bad_format))
@@ -190,7 +191,7 @@ module Params
       # expecting 1 path for backup_destination_folder
       # (in call to check_monitoring_path_structure) but user gives
       # 2 paths.
-      it 'should raise exception when backup_destination_folder format is bad 2' do
+      it 'should raise exception when two backup_destination_folder defined, expect only one!' do
         yml_bad_format=<<EOF
 backup_destination_folder:
   - path: 'some_path_1'
@@ -207,7 +208,7 @@ EOF
       end
 
       # missing 'stable_state' in hash
-      it 'should raise exception when monitoring_paths format is bad 3' do
+      it 'should raise exception when monitoring_paths format is missing:\'stable_state\' in hash' do
         yml_bad_format=<<EOF
 monitoring_paths:
   - path: 'some_path'
@@ -229,15 +230,21 @@ EOF
         expect {
           Params.read_yml_params(StringIO.new(yml_good_format))
           ContentServer.check_monitoring_path_structure('monitoring_paths', 1)
+          expect(Params['monitoring_path'][0]['path']).to eq('some_path')
+          expect(Params['monitoring_path'][0]['scan_period']).to eq(200)
+          expect(Params['monitoring_path'][0]['stable_state']).to eq(2)
         }.to_not raise_error
+        begin
+
+        end
       end
 
       it 'should not raise exception when monitoring_paths format is good - any paths size' do
         yml_good_format=<<EOF
 monitoring_paths:
   - path: 'some_path_1'
-    scan_period: 200
-    stable_state: 2
+    scan_period: 100
+    stable_state: 1
   - path: 'some_path_2'
     scan_period: 200
     stable_state: 2
@@ -245,6 +252,12 @@ EOF
         expect {
           Params.read_yml_params(StringIO.new(yml_good_format))
           ContentServer.check_monitoring_path_structure('monitoring_paths', 0)
+          expect(Params['monitoring_path'][0]['path']).to eq('some_path_1')
+          expect(Params['monitoring_path'][0]['scan_period']).to eq(100)
+          expect(Params['monitoring_path'][0]['stable_state']).to eq(1)
+          expect(Params['monitoring_path'][1]['path']).to eq('some_path_2')
+          expect(Params['monitoring_path'][1]['scan_period']).to eq(200)
+          expect(Params['monitoring_path'][1]['stable_state']).to eq(2)
         }.to_not raise_error
       end
     end
