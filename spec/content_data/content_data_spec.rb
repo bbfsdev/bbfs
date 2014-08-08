@@ -168,8 +168,6 @@ describe 'Content Data Test' do
     file_moc_object = StringIO.new
     file_moc_object.write(content_data.to_s)
     test_file = Tempfile.new('content_data_spec.test')
-    test_file.path += ".gz"
-    puts "Yaron before to_file: #{test_file.path}"
     content_data.to_file(test_file)
     content_data_2 = ContentData::ContentData.new
     content_data_2.from_file(test_file)
