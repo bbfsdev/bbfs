@@ -341,6 +341,7 @@ module ContentData
       else
         file_name_str = filename
       end
+      puts "Yaron file_name_str:#{file_name_str}"
       if file_name_str.match(/\.gz/)  # Allowing .gz to be in middle of name for tests which uses postfix random name
         writer = File.open(file_name_str, 'w')
         puts "Yaron zip!"
