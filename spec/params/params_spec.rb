@@ -87,7 +87,7 @@ module Params
         puts "Yaron monitoring_paths 2"
 
         Params.complex('monitoring_paths', [{'path'=>'', 'scan_period'=>0, 'stable_state'=>0}], '')
-      #Params.complex('backup_destination_folder', [{''=>'path', 'scan_period'=>0, 'stable_state'=>0}], '')
+        Params.complex('backup_destination_folder', [{''=>'path', 'scan_period'=>0, 'stable_state'=>0}], '')
       }
       it 'should raise error when yml parameter is not defined' do
         expect { Params::read_yml_params StringIO.new 'not_defined: 10' }.to raise_error \
@@ -233,9 +233,9 @@ EOF
         expect {
           Params.read_yml_params(StringIO.new(yml_good_format))
           ContentServer.check_monitoring_path_structure('monitoring_paths', 1)
-          expect(Params['monitoring_path'][0]['path']).to eq('some_path')
-          expect(Params['monitoring_path'][0]['scan_period']).to eq(200)
-          expect(Params['monitoring_path'][0]['stable_state']).to eq(2)
+          expect(Params['monitoring_paths'][0]['path']).to eq('some_path')
+          expect(Params['monitoring_paths'][0]['scan_period']).to eq(200)
+          expect(Params['monitoring_paths'][0]['stable_state']).to eq(2)
         }.to_not raise_error
         begin
 
@@ -255,12 +255,12 @@ EOF
         expect {
           Params.read_yml_params(StringIO.new(yml_good_format))
           ContentServer.check_monitoring_path_structure('monitoring_paths', 0)
-          expect(Params['monitoring_path'][0]['path']).to eq('some_path_1')
-          expect(Params['monitoring_path'][0]['scan_period']).to eq(100)
-          expect(Params['monitoring_path'][0]['stable_state']).to eq(1)
-          expect(Params['monitoring_path'][1]['path']).to eq('some_path_2')
-          expect(Params['monitoring_path'][1]['scan_period']).to eq(200)
-          expect(Params['monitoring_path'][1]['stable_state']).to eq(2)
+          expect(Params['monitoring_paths'][0]['path']).to eq('some_path_1')
+          expect(Params['monitoring_paths'][0]['scan_period']).to eq(100)
+          expect(Params['monitoring_paths'][0]['stable_state']).to eq(1)
+          expect(Params['monitoring_paths'][1]['path']).to eq('some_path_2')
+          expect(Params['monitoring_paths'][1]['scan_period']).to eq(200)
+          expect(Params['monitoring_paths'][1]['stable_state']).to eq(2)
         }.to_not raise_error
       end
     end
