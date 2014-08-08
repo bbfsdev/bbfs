@@ -84,9 +84,9 @@ module Params
 
       # define dummy parameters for some tests below
       # TODO: [yarondbb] when running this file as a stand alone then the below
-      # TODO: condition is needed. If not (as we run it) it is redundant
+      # TODO: condition is not needed. If not (as we run it) it is needed
       before(:all) {
-        if !(Params'monitoring_paths') and !(Params'backup_destination_folder')
+        if !(Params['monitoring_paths']) and !(Params['backup_destination_folder'])
           Params.complex('monitoring_paths', [{'path'=>'', 'scan_period'=>0, 'stable_state'=>0}], '')
           Params.complex('backup_destination_folder', [{''=>'path', 'scan_period'=>0, 'stable_state'=>0}], '')
         end
