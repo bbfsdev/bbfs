@@ -336,7 +336,7 @@ module ContentData
     def to_file(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
-      puts "Yaron to_file filename:#{filename}"
+      puts "Yaron to_file filename:#{filename} path:#{filename.path}"
       if filename.is_a?(Tempfile)  # tests are using Tempfile type
         puts "Yaron filename.is_a?(Tempfile)"
         file_name_str = filename.path
