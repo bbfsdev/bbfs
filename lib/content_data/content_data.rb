@@ -337,9 +337,9 @@ module ContentData
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
       if filename.match(/\.gz$/)
-        writer = File.open(filename, 'w')
+        writer = File.open(filename.to_s, 'w')
       else
-        writer = Zlib::GzipWriter.open(filename)
+        writer = Zlib::GzipWriter.open(filename.to_s)
       end
       writer.write [@instances_info.length].to_csv
       each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path, inst_index_time|
@@ -363,9 +363,9 @@ module ContentData
       number_of_instances = nil
       number_of_symlinks = nil
       if filename.match(/\.gz$/)
-        reader = File.open(filename, 'r')
+        reader = File.open(filename.to_s, 'r')
       else
-        reader = Zlib::GzipReader.open(filename)
+        reader = Zlib::GzipReader.open(filename.to_s)
       end
       reader.each_line do |line|
         row = line.parse_csv
