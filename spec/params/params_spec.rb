@@ -81,13 +81,15 @@ module Params
     end
 
     describe 'Params::read_yml_params' do
+
       # define dummy parameters for some tests below
-
+      # TODO: [yarondbb] when running this file as a stand alone then the below
+      # TODO: condition is needed. If not (as we run it) it is redundant
       before(:all) {
-        puts "Yaron monitoring_paths 2"
-
-        Params.complex('monitoring_paths', [{'path'=>'', 'scan_period'=>0, 'stable_state'=>0}], '')
-        Params.complex('backup_destination_folder', [{''=>'path', 'scan_period'=>0, 'stable_state'=>0}], '')
+        if !(Params'monitoring_paths') and !(Params'backup_destination_folder')
+          Params.complex('monitoring_paths', [{'path'=>'', 'scan_period'=>0, 'stable_state'=>0}], '')
+          Params.complex('backup_destination_folder', [{''=>'path', 'scan_period'=>0, 'stable_state'=>0}], '')
+        end
       }
       it 'should raise error when yml parameter is not defined' do
         expect { Params::read_yml_params StringIO.new 'not_defined: 10' }.to raise_error \
