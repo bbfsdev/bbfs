@@ -341,8 +341,9 @@ module ContentData
       else
         file_name_str = filename
       end
-      if file_name_str.match(/\.gz/)
+      if file_name_str.match(/\.gz/)  # Allowing .gz to be in middle of name for tests which uses postfix random name
         writer = File.open(file_name_str, 'w')
+        puts "Yaron zip!"
       else
         writer = Zlib::GzipWriter.open(file_name_str)
       end
@@ -372,7 +373,7 @@ module ContentData
       else
         file_name_str = filename
       end
-      if file_name_str.match(/\.gz/)
+      if file_name_str.match(/\.gz/)  # Allowing .gz to be in middle of name for tests which uses postfix random name
         reader = File.open(file_name_str, 'r')
       else
         reader = Zlib::GzipReader.open(file_name_str)
