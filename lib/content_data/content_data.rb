@@ -344,7 +344,7 @@ module ContentData
       end
       if file_name_str.match(/\.gz$/)
         writer = File.open(file_name_str, 'w')
-        puts "Yaron to zipped"
+        puts "Yaron tooooo zipped"
       else
         writer = Zlib::GzipWriter.open(file_name_str)
       end
