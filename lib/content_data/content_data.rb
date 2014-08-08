@@ -343,9 +343,10 @@ module ContentData
         file_name_str = filename
       end
       if file_name_str.match(/\.gz$/)
-        writer = File.open(file_name_str.to_s, 'w')
+        writer = File.open(file_name_str, 'w')
+        puts "Yaron to zipped"
       else
-        writer = Zlib::GzipWriter.open(file_name_str.to_s)
+        writer = Zlib::GzipWriter.open(file_name_str)
       end
       writer.write [@instances_info.length].to_csv
       each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path, inst_index_time|
@@ -374,9 +375,10 @@ module ContentData
         file_name_str = filename
       end
       if file_name_str.match(/\.gz$/)
-        reader = File.open(file_name_str.to_s, 'r')
+        reader = File.open(file_name_str, 'r')
       else
-        reader = Zlib::GzipReader.open(file_name_str.to_s)
+        reader = Zlib::GzipReader.open(file_name_str)
+        puts "Yaron from zipped"
       end
       reader.each_line do |line|
         row = line.parse_csv
