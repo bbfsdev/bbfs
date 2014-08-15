@@ -108,6 +108,51 @@ module ContentServer
     }
   end
 
+  def raise_monitoring_paths_error(expected_paths_size, name, structure)
+    expected_paths_size.times { |index|
+      paths_string = <<EOF
+#{paths_string}
+  - path: 'some_path_#{index+1}' # Directory path to monitor.\n"
+    scan_period: 200 # Number of seconds before initiating another directory scan.\n"
+    stable_state: 2 # Number of scan times for a file to be unchanged before his state becomes stable.\n"
+EOF
+    }
+    msg = <<EOF
+parameter:#{name} bad format
+Parsed structure:#{name}:#{structure}
+Format example:
+#{name}:
+#{paths_string}
+EOF
+    raise(msg)
+  end
+
+  # check format of monitoring paths parameters to be array of hashes of 3 items
+  # input - name - name of the user input parameter
+  # input - expected_paths_size - the expected number of paths.
+  #               For backup_destination_dir number of paths is 1
+  #               number of paths=0 indicates any number of paths (used for monitoring_path)
+  def check_monitoring_path_structure(name, expected_paths_size)
+    structure = Params[name]
+    if structure.kind_of?(Array)
+      if (0 != expected_paths_size) and (expected_paths_size != structure.size)
+        ContentServer.raise_monitoring_paths_error(expected_paths_size, name, structure)
+      end
+      structure.each { |path_hash|
+        if path_hash.kind_of?(Hash)
+          if 3 != path_hash.size
+            ContentServer.raise_monitoring_paths_error(expected_paths_size, name, structure)
+          end
+        else
+          ContentServer.raise_monitoring_paths_error(expected_paths_size, name, structure)
+        end
+      }
+    else
+      ContentServer.raise_monitoring_paths_error(expected_paths_size, name, structure)
+    end
+  end
+
+
   # create general tmp dir
   def get_tmp_file_name(file_path, tmp_base_name)
     tmp_file_name = tmp_base_name
@@ -118,5 +163,5 @@ module ContentServer
   end
 
   module_function :init_globals, :handle_program_termination, :monitor_general_process_vars, :flush_content_data, \
-                  :get_tmp_file_name
-  end
+                  :check_monitoring_path_structure, :get_tmp_file_name
+end

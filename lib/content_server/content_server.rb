@@ -42,6 +42,9 @@ module ContentServer
       $process_vars.set('server_name', 'content_server')
     end
 
+    # check format of monitoring_paths param to be array (of any size) of hashes of 3 items
+    ContentServer.check_monitoring_path_structure('monitoring_paths', 0)
+
     # # # # # # # # # # # #
     # Initialize/Start monitoring
     Log.info('Start monitoring following directories:')
