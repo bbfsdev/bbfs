@@ -152,6 +152,16 @@ EOF
     end
   end
 
+
+  # create general tmp dir
+  def get_tmp_file_name(file_path, tmp_base_name)
+    tmp_file_name = tmp_base_name
+    if file_path.match(/\.gz$/)
+      tmp_file_name = tmp_base_name + '.gz'
+    end
+    tmp_file_name
+  end
+
   module_function :init_globals, :handle_program_termination, :monitor_general_process_vars, :flush_content_data, \
-                  :check_monitoring_path_structure
+                  :check_monitoring_path_structure, :get_tmp_file_name
 end
