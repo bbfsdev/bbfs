@@ -148,9 +148,29 @@ describe 'Content Data Test' do
     file_moc_object = StringIO.new
     file_moc_object.write(content_data.to_s)
     test_file = Tempfile.new('content_data_spec.test')
-    content_data.to_file(test_file)
+    content_data.to_file(test_file.path)
     content_data_2 = ContentData::ContentData.new
-    content_data_2.from_file(test_file)
+    content_data_2.from_file(test_file.path)
+    (content_data == content_data_2).should == true
+  end
+
+  it 'test to file from file (zip)' do
+    content_data = ContentData::ContentData.new
+    content_data.add_instance("A1", 50, "server_1",
+                              "/home/file_1", 22222222222)
+    content_data.add_instance("B1", 60, "server_1",
+                              "/home/file_2", 44444444444)
+    content_data.add_instance("B1", 60, "server_1",
+                              "/home/file_3", 55555555555)
+    content_data.add_symlink("A1", "/home/symlink_1", "home/file_1")
+    content_data.add_symlink("B1", "/home/symlink_2", "home/file_xxx")
+    content_data.add_symlink("B1", "/home/symlink_1", "home/file_3")
+    file_moc_object = StringIO.new
+    file_moc_object.write(content_data.to_s)
+    test_file = Tempfile.new('content_data_spec.test.gz')
+    content_data.to_file(test_file.path)
+    content_data_2 = ContentData::ContentData.new
+    content_data_2.from_file(test_file.path)
     (content_data == content_data_2).should == true
   end
 
@@ -168,9 +188,9 @@ describe 'Content Data Test' do
     file_moc_object = StringIO.new
     file_moc_object.write(content_data.to_s)
     test_file = Tempfile.new('content_data_spec.test')
-    content_data.to_file_old(test_file)
+    content_data.to_file_old(test_file.path)
     content_data_2 = ContentData::ContentData.new
-    content_data_2.from_file_old(test_file)
+    content_data_2.from_file_old(test_file.path)
     (content_data == content_data_2).should == true
   end
 

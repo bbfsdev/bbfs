@@ -27,8 +27,15 @@ module ContentServer
 
     # create general tmp dir
     FileUtils.mkdir_p(Params['tmp_path']) unless File.directory?(Params['tmp_path'])
-    # init tmp content data file
-    $tmp_content_data_file = File.join(Params['tmp_path'], 'content.data')
+    # init tmp content data file. This will be used to create the file before override existing file.
+    $tmp_content_data_file = File.join(Params['tmp_path'], \
+      ContentServer.get_tmp_file_name(Params['local_content_data_path'], 'content.data'))
+
+    tmp_file_name = 'content.data'
+    if Params['local_content_data_path'].match(/\.gz$/)
+      tmp_file_name = 'content.data.gz'
+    end
+    $tmp_content_data_file = File.join(Params['tmp_path'], tmp_file_name)
 
     if Params['enable_monitoring']
       Log.info("Initializing monitoring of process params on port:%s", Params['process_monitoring_web_port'])
