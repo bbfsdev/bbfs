@@ -336,15 +336,10 @@ module ContentData
     def to_file(filename)
       content_data_dir = File.dirname(filename)
       FileUtils.makedirs(content_data_dir) unless File.directory?(content_data_dir)
-      if filename.is_a?(Tempfile)  # tests are using Tempfile type
-        file_name_str = filename.path
+      if filename.match(/\.gz/)  # Allowing .gz to be in middle of name for tests which uses postfix random name
+        writer = File.open(filename, 'w')
       else
-        file_name_str = filename
-      end
-      if file_name_str.match(/\.gz/)  # Allowing .gz to be in middle of name for tests which uses postfix random name
-        writer = File.open(file_name_str, 'w')
-      else
-        writer = Zlib::GzipWriter.open(file_name_str)
+        writer = Zlib::GzipWriter.open(filename)
       end
       writer.write [@instances_info.length].to_csv
       each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path, inst_index_time|
@@ -364,18 +359,12 @@ module ContentData
       unless File.exists? filename
         raise ArgumentError.new "No such a file #{filename}"
       end
-
       number_of_instances = nil
       number_of_symlinks = nil
-      if filename.is_a?(Tempfile)  # tests are using Tempfile type
-        file_name_str = filename.path
+      if filename.match(/\.gz/)  # Allowing .gz to be in middle of name for tests which uses postfix random name
+        reader = File.open(filename, 'r')
       else
-        file_name_str = filename
-      end
-      if file_name_str.match(/\.gz/)  # Allowing .gz to be in middle of name for tests which uses postfix random name
-        reader = File.open(file_name_str, 'r')
-      else
-        reader = Zlib::GzipReader.open(file_name_str)
+        reader = Zlib::GzipReader.open(filename)
       end
       reader.each_line do |line|
         row = line.parse_csv

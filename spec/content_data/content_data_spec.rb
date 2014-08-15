@@ -148,9 +148,9 @@ describe 'Content Data Test' do
     file_moc_object = StringIO.new
     file_moc_object.write(content_data.to_s)
     test_file = Tempfile.new('content_data_spec.test')
-    content_data.to_file(test_file)
+    content_data.to_file(test_file.path)
     content_data_2 = ContentData::ContentData.new
-    content_data_2.from_file(test_file)
+    content_data_2.from_file(test_file.path)
     (content_data == content_data_2).should == true
   end
 
@@ -168,9 +168,9 @@ describe 'Content Data Test' do
     file_moc_object = StringIO.new
     file_moc_object.write(content_data.to_s)
     test_file = Tempfile.new('content_data_spec.test.gz')
-    content_data.to_file(test_file)
+    content_data.to_file(test_file.path)
     content_data_2 = ContentData::ContentData.new
-    content_data_2.from_file(test_file)
+    content_data_2.from_file(test_file.path)
     (content_data == content_data_2).should == true
   end
 
@@ -188,9 +188,9 @@ describe 'Content Data Test' do
     file_moc_object = StringIO.new
     file_moc_object.write(content_data.to_s)
     test_file = Tempfile.new('content_data_spec.test')
-    content_data.to_file_old(test_file)
+    content_data.to_file_old(test_file.path)
     content_data_2 = ContentData::ContentData.new
-    content_data_2.from_file_old(test_file)
+    content_data_2.from_file_old(test_file.path)
     (content_data == content_data_2).should == true
   end
 
