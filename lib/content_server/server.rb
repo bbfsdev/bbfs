@@ -100,7 +100,7 @@ module ContentServer
         $last_content_data_id = local_content_data_unique_id
         #$local_content_data.to_file($tmp_content_data_file)
         #File.rename($tmp_content_data_file, Params['local_content_data_path'])
-        ContentDataKeeper.save(is_full_flush)
+        ContentDataKeeper.save($local_content_data, is_full_flush)
         Log.debug1('End flush local content data to file.')
         $testing_memory_log.info('End flush content data to file') if $testing_memory_active
       else
