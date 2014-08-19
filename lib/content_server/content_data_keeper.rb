@@ -1,28 +1,50 @@
 require 'date'
 require 'singleton'
+require 'fileutils'
 require 'params'
 require 'content_data'
 
 module ContentServer
 
+  # TODOs
+  # * separate base files and diff files phisically,
+  #   in a different folders
+
   # NOTEs
   # * "full" and "base" notations used in method/variable names
   #    have the same meaning but "full" is from user perspective,
-  #    and "base" from keeper perspective.
+  #    and "base" the from keeper perspective.
   # * When there was a choice between time performance and
-  #   memory consuming, then memory economy was preferred.
+  #   memory consuming, then memory economy was preferred,
+  #   cause memory is more critical for us and operations on
+  #   content data files are run once a period of time.
 
   # A singleton used to keep and reign content data diffs and snapshots.
   class ContentDataKeeper
     include Singleton
 
     # Params
-    Params.path('local_content_data_path', '', 'ContentData file path.')
+    Params.path('local_content_data_path', '~/.bbfs/db', 'ContentData file path')
 
     # Attributes
     attr_reader :latest_timestamp
 
+    def init_db_directory
+      if File.exists?(Params['local_content_data_path'])
+        if File.directory?(Params['local_content_data_path'])
+          err_msg = "local_content_data_path parameter \
+                      #{Params['local_content_data_path']} is not a directory"
+          fail ArgumentError, err_msg
+        end
+       else
+         FileUtils::mkdir_p Params['local_content_data_path']
+       end
+      TODO
+    end
+
     def initialize
+      init_db_directory
+
       exist_diff_files = diff_files
       if exist_diff_files.nil? || exist_diff_files.empty?
         # No diff files were still saved
@@ -36,28 +58,24 @@ module ContentServer
             latest = f.till if f.later_than?(latest)
             latest
           end
-        @latest_base_file =
-          exist_diff_files.inject(nil) do |latest,f|
-            if (f.type == ContentDataDiffFile::FULL_TYPE &&
-                (latest.nil? || latest.earlier_than?(f.till)))
-              latest = f
-            end
-            latest
-          end
       end
     end
 
     # Store content data as a part of content data keeping service.
     # If type is full flush then content data is saved as it.
     # Otherwise incremental diff of comparison with the latest saved file
-    # is calculated. Content data objects containing data regarding added files and
-    # removed files is stored in a separate files. If there is no added or/and
-    # removed files, then appropreate diff files are not created.
+    # is calculated and saved. Content data objects containing data regarding
+    # added files and removed files is stored in a separate files.
+    # If there is no added or/and removed files, then appropreate diff files
+    # are not created.
     def add(content_data, is_full_flush)
-      if (is_full_flush)
-        filename = save(content_data, ContentDataDiffFile::FULL_TYPE)
-        @latest_base_file = ContentDataDiffFile.new filename
-        @latest_timestamp = @latest_base_file.till
+      if is_full_flush
+        filename = save(content_data,
+                        ContentDataDiffFile::FULL_TYPE,
+                        nil,  # from param is not relevant for full flush
+                        ContentDataDiffFile.current_timestamp)
+        latest_base_file = ContentDataDiffFile.new filename
+        @latest_timestamp = latest_base_file.till
       else
         diff_from_latest = diff(@latest_timestamp)
         added_content_data = diff_from_latest[ContentDataDiffFile::ADDED_TYPE]
@@ -88,15 +106,16 @@ module ContentServer
     end
 
     def get(till = ContentDataDiffFile.current_timestamp)
-      # looking for the latest full file that is earlier than till argument
-      base = diff_files.inject(latest_base_file) do |cur_base, f|
-        if (f.type == ContentDataDiffFile::FULL_TYPE &&
-            f.earlier_than?(till) && f.later_than?(cur_base))
+      # looking for the latest base file that is earlier than till argument
+      base = diff_files.inject(nil) do |cur_base, f|
+        if f.type == ContentDataDiffFile::FULL_TYPE &&
+            (cur_base.nil? ||
+            (f.earlier_than?(till) && f.later_than?(cur_base.till)))
           cur_base = f
         end
         cur_base
       end
-      base_cd = ContentData.new.from_file(base.filename)
+      base_cd = ContentData::ContentData.new.from_file(base.filename)
 
       # applying diff files between base timestamp and till argument
       diff_from_base = diff(base.till, till)
