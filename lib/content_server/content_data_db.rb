@@ -7,8 +7,7 @@ require 'content_data'
 module ContentServer
 
   # TODOs
-  # * separate base files and diff files phisically,
-  #   in a different folders
+  #
 
   # NOTEs
   # * "full", "base", "snapshot" notations used in method/variable names
@@ -60,14 +59,19 @@ module ContentServer
     def initialize
       init_db_directory
 
-      exist_diff_files = diff_files
-      if exist_diff_files.nil? || exist_diff_files.empty?
-        # No diff files were still saved
+      # TODO exist snapshots files?
+      exist_snapshot_files = snapshot_files
+      if exist_snapshot_files.nil? || exist_snapshot_files.empty?
         # For the consistancy of diff search
-        # we add an empty starting point - an empty full diff file,
-        # so we always have a latest diff/full content data file,
+        # we add an empty starting point - an empty full file,
+        # so we always have a latest full content data file,
+        # So if any snapshot found, then the system is empty.
         add(ContentData::ContentData.new, true)
       else
+        # Looking for the latest timestamp among diff files,
+        # cause diff files always contain file that was saved latest.
+        # See add method.
+        exist_diff_files = diff_files
         @latest_timestamp =
           exist_diff_files.inject(exist_diff_files.first.till) do |latest, f|
             latest = f.till if f.later_than?(latest)
@@ -84,34 +88,49 @@ module ContentServer
     # If there is no added or/and removed files, then appropreate diff files
     # are not created.
     def add(content_data, is_full_flush)
+      new_latest_timestamp = nil
+      # NOTE we save diff file even in the case of full flush
+      # cause of data consistency. It is crucial for the diff operation.
       if is_full_flush
         filename = save(content_data,
                         ContentDataDiffFile::SNAPSHOT_TYPE,
                         nil,  # 'from' param is not relevant for full flush
                         ContentDataDiffFile.current_timestamp)
         latest_base_file = ContentDataDiffFile.new filename
-        @latest_timestamp = latest_base_file.till
-      else
-        diff_from_latest = diff(@latest_timestamp)
-        added_content_data = diff_from_latest[ContentDataDiffFile::ADDED_TYPE]
-        removed_content_data = diff_from_latest[ContentDataDiffFile::REMOVED_TYPE]
-
-        from = @latest_timestamp
-        till = ContentDataDiffFile.current_timestamp
-
-        # TODO
-        unless added_content_data.empty?
-          filename = save(added_content_data,
-                          ContentDataDiffFile::ADDED_TYPE,
-                          from,
-                          till)
-          diff_file = ContentDataDiffFile.new filename
-          @latest_timestamp = diff_file.till
-        end
-        unless removed_content_data.empty?
-          save(removed_content_data, ContentDataDiffFile::REMOVED_TYPE)
-        end
+        new_latest_timestamp = latest_base_file.till
       end
+
+      diff_from_latest = diff(@latest_timestamp)
+      added_content_data = diff_from_latest[ContentDataDiffFile::ADDED_TYPE]
+      removed_content_data = diff_from_latest[ContentDataDiffFile::REMOVED_TYPE]
+
+      till = if new_latest_timestamp.nil?
+               ContentDataDiffFile.current_timestamp
+             else
+               new_latest_timestamp
+             end
+      from = if @latest_timestamp.nil?
+               # initial add
+               till
+             else
+               @latest_timestamp
+             end
+      unless added_content_data.empty?
+        filename = save(added_content_data,
+                        ContentDataDiffFile::ADDED_TYPE,
+                        from,
+                        till)
+        diff_file = ContentDataDiffFile.new filename
+        @latest_timestamp = diff_file.till
+      end
+      unless removed_content_data.empty?
+        save(removed_content_data,
+             ContentDataDiffFile::REMOVED_TYPE,
+             from,
+             till)
+      end
+
+      @latest_timestamp = till
     end
 
     def save(content_data, type, from, till)
