@@ -3,12 +3,15 @@ if ENV['BBFS_COVERAGE']
   require_relative '../spec_helper.rb'
   SimpleCov.command_name 'content_server'
 end
+
 require 'rspec'
-require_relative '../../lib/content_server/content_data_keeper.rb'
+require 'tmpdir'
+
+require_relative '../../lib/content_server/content_data_db.rb'
 
 module ContentServer
   module Spec
-    describe 'ContentServerKeeper' do
+    describe 'ContentServerDb' do
 
       before :all do
         INSTANCE_SIZE = 1000
@@ -36,10 +39,40 @@ module ContentServer
 
         removed_cd_diff_2 = ContentData.new
         removed_cd_diff_2.add_instance(BASE_CHECKSUM, BASE_INSTANCE_SIZE, SERVER, "removed", MTIME+200)
+
+        @db_dir = Dir.mktmpdir
       end
 
-      it 'save a base file' do
+      after :all do
+        FileUtils.remove_entry_secure @db_dir
+      end
 
+      context "Init db" do
+        it 'with no storage directories created' do
+        end
+
+        it 'with empty storage directories' do
+        end
+
+        it 'from the system that was already in use' do
+        end
+      end
+
+      context 'Db operations' do
+        it 'save a base file' do
+        end
+
+        it 'save a diff file' do
+        end
+
+        it 'diff between two timestamps' do
+        end
+
+        it 'diff with absent from timestamp failed' do
+        end
+
+        it 'get a snapshot' do
+        end
       end
   end
 end
