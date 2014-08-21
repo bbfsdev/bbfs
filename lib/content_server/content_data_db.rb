@@ -41,7 +41,7 @@ module ContentServer
       if File.exist?(Params['local_content_data_path'])
         if File.directory?(Params['local_content_data_path'])
           err_msg = "local_content_data_path parameter \
-          #{Params['local_content_data_path']} is not a directory"
+                      #{Params['local_content_data_path']} is not a directory"
           fail ArgumentError, err_msg
         end
       else
@@ -52,8 +52,8 @@ module ContentServer
         FileUtils.mkdir_p DIFFS_PATH
       end
 
-      unless Dir.exist? snapshots_path
-        FileUtils.mkdir_p snapshots_path
+      unless Dir.exist? SNAPSHOTS_PATH
+        FileUtils.mkdir_p SNAPSHOTS_PATH
       end
     end
 
