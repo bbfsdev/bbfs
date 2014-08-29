@@ -227,8 +227,8 @@ module ContentData
     def remove_instance(server, path)
       location = [server, path]
       checksum = @instances_info[location]
-      return nil unless @contents_info.key?(checksum)
       content_info = @contents_info[checksum]
+      return nil if content_info.nil?
       instances = content_info[1]
       instances.delete(location)
       @contents_info.delete(checksum) if instances.empty?
@@ -867,6 +867,16 @@ module ContentData
       end
     end
     c
+  end
+
+  # same as 'remove' but overrides b
+  # returns new b
+  def self.remove_instances!(a, b)
+    return nil if b.nil?
+    return b if a.nil?
+    a.each_instance { |_, _, _, _, server, path, _|
+      b.remove_instance(server, path)
+    }
   end
 
   # B - A : Remove instances of A content from B content data B and return the new content data.
