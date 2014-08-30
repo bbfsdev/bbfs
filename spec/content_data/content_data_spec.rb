@@ -362,6 +362,45 @@ describe 'Content Data Test' do
     content_data_removed.should == nil
   end
 
+  it 'test remove instances!' do
+    content_data_a = ContentData::ContentData.new
+    content_data_a.add_instance("A1", 50, "server_1",
+                                "/home/file_1", 22222222222)
+
+    content_data_b = ContentData::ContentData.new
+    content_data_b.add_instance("A1", 50, "server_1",
+                                "/home/file_1", 22222222222)
+    content_data_b.add_instance("A1", 50, "server_1",
+                                "extra_inst", 66666666666)
+    content_data_b.add_instance("B1", 60, "server_1",
+                                "/home/file_2", 44444444444)
+    content_data_b.add_instance("B1", 60, "server_1",
+                                "/home/file_3", 55555555555)
+    content_data_removed = ContentData.remove_instances(content_data_a, content_data_b)
+    expected = "2\n" +
+        "A1,50,22222222222\n" +
+        "B1,60,44444444444\n" +
+        "3\n" +
+        "A1,50,server_1,extra_inst,66666666666\n" +
+        "B1,60,server_1,/home/file_2,44444444444\n" +
+        "B1,60,server_1,/home/file_3,55555555555\n" +
+        "0\n"
+    content_data_removed.to_s.should == expected
+    ContentData.remove_instances!(content_data_a, content_data_b)
+    content_data_removed.to_s.should == content_data_b.to_s
+
+
+    #check nil
+    content_data_b_cloned = ContentData::ContentData.new(content_data_b)
+    ContentData.remove_instances!(nil, content_data_b)
+    content_data_b_cloned.to_s.should == content_data_b.to_s
+    ContentData.remove_instances!(content_data_b, nil).should == nil
+
+    #check remove all instances
+    ContentData.remove_instances!(content_data_b, content_data_b)
+    content_data_b.to_s.should == "0\n0\n0\n"
+  end
+
   it 'test remove directory' do
     content_data_b = ContentData::ContentData.new
     content_data_b.add_instance("A1", 50, "server_1",
