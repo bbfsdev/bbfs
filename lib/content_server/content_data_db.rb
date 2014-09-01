@@ -321,31 +321,5 @@ module ContentServer
         (@till <=> date_time) == 0
       end
     end
-
-    class Timestamp
-      #def self.current_timestamp
-        #DateTime.now.strftime(ContentDataDiffFile::TIME_FORMAT)
-      #end
-
-      #def self.to_timestamp(epoch_time)
-        ## If local time used, then use a Time
-        ## Time.at(epoch_time).to_datetime.strftime(TIME_FORMAT)
-        ## If UTC used then use a DateTime
-        #DateTime.from_epoch.strftime(ContentDataDiffFile::TIME_FORMAT)
-      #end
-
-      def self.to_datetime(timestamp)
-        DateTime.strptime(timestamp, ContentDataDiffFile::TIME_FORMAT)
-      end
-
-      def self.from_datetime(datetime)
-        datetime.strftime(ContentDataDiffFile::TIME_FORMAT)
-      end
-
-      #def self.to_epoch(timestamp)
-        ## NOTE: an UTC time
-        #DateTime.strptime(timestamp, ContentDataDiffFile::TIME_FORMAT).strftime("%s")
-      #end
-    end
   end
 end
