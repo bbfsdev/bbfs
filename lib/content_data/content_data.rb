@@ -746,7 +746,6 @@ module ContentData
       end
     end
 
-
     # TODO simplify conditions
     # This mehod is experimental and shouldn\'t be used
     # nil is used to define +/- infinity for to/from method arguments
@@ -812,8 +811,8 @@ module ContentData
     return ContentData.new(b) if a.nil?
     c = ContentData.new(b)
     # Add A instances to content data c
-    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
-      c.add_instance(checksum, size, server, path, instance_mod_time)
+    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path, instance_index_time|
+      c.add_instance(checksum, size, server, path, instance_mod_time, instance_index_time)
     }
     c
   end
@@ -822,8 +821,8 @@ module ContentData
     return ContentData.new(a) if b.nil?
     return ContentData.new(b) if a.nil?
     # Add A instances to content data B
-    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
-      b.add_instance(checksum, size, server, path, instance_mod_time)
+    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path, instance_index_time|
+      b.add_instance(checksum, size, server, path, instance_mod_time, instance_index_time)
     }
     b
   end
