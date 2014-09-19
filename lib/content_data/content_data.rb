@@ -746,62 +746,6 @@ module ContentData
       end
     end
 
-    # TODO simplify conditions
-    # This mehod is experimental and shouldn\'t be used
-    # nil is used to define +/- infinity for to/from method arguments
-    # from/to values are exlusive in condition'a calculations
-    # Need to take care about '==' operation that is used for object's comparison.
-    # In need of case user should define it's own '==' implemementation.
-    def get_query(variable, params)
-      raise RuntimeError.new 'This method is experimental and shouldn\'t be used'
-
-      exact = params['exact'].nil? ? Array.new : params['exact']
-      from = params['from']
-      to = params ['to']
-      is_inside = params['is_inside']
-
-      unless ContentInstance.new.instance_variable_defined?("@#{attribute}")
-        raise ArgumentError "#{variable} isn't a ContentInstance variable"
-      end
-
-      if (exact.nil? && from.nil? && to.nil?)
-        raise ArgumentError 'At least one of the argiments {exact, from, to} must be defined'
-      end
-
-      if (!(from.nil? || to.nil?) && from.kind_of?(to.class))
-        raise ArgumentError 'to and from arguments should be comparable one with another'
-      end
-
-      # FIXME add support for from/to for Strings
-      if ((!from.nil? && !from.kind_of?(Numeric.new.class))\
-            || (!to.nil? && to.kind_of?(Numeric.new.class)))
-        raise ArgumentError 'from and to options supported only for numeric values'
-      end
-
-      if (!exact.empty? && (!from.nil? || !to.nil?))
-        raise ArgumentError 'exact and from/to options are mutually exclusive'
-      end
-
-      result_index = ContentData.new
-      instances.each_value do |instance|
-        is_match = false
-        var_value = instance.instance_variable_get("@#{variable}")
-
-        if exact.include? var_value
-          is_match = true
-        elsif (from.nil? || var_value > from) && (to.nil? || var_value < to)
-          is_match = true
-        end
-
-        if (is_match && is_inside) || (!is_match && !is_inside)
-          checksum = instance.checksum
-          result_index.add_content(contents[checksum]) unless result_index.content_exists(checksum)
-          result_index.add_instance instance
-        end
-      end
-      result_index
-    end
-
     private :shallow_check, :deep_check, :check_instance
   end
 
