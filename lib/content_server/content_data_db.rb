@@ -216,14 +216,8 @@ module ContentServer
              content_data_timestamp)
       else
         latest_snapshot ||= get(@latest_timestamp)
-        #puts "LATEST: #{@latest_snapshot} : #{latest_snapshot}"
 
-        #TODO this is incorrect
-        #added_cd = ContentData.remove_instances(latest_snapshot, content_data)
         added_cd ||= content_data.remove_instances(latest_snapshot)
-        #puts "Latest: " + latest_snapshot.to_s
-        #puts "CD: " + content_data.to_s
-        #puts "ADDED: " + added_cd.to_s
         unless added_cd.empty?
           save(added_cd,
                DiffFile::ADDED_TYPE,
@@ -231,21 +225,13 @@ module ContentServer
                content_data_timestamp)
         end
 
-        #removed_cd = ContentData.remove_instances(content_data, latest_snapshot)
         removed_cd = latest_snapshot.remove_instances(content_data)
-        #puts "REMOVED: " + removed_cd.to_s
         unless removed_cd.empty?
           save(removed_cd,
                DiffFile::REMOVED_TYPE,
                @latest_timestamp,
                content_data_timestamp)
         end
-        #diff_from_latest = diff(@latest_timestamp, content_data_timestamp)
-        #diff_from_latest.each do |type, diff_cd|
-          #unless diff_cd.empty?
-            #save(diff_cd, type, @latest_timestamp, content_data_timestamp)
-          #end
-        #end
       end
 
       @latest_timestamp = content_data_timestamp
@@ -291,20 +277,16 @@ module ContentServer
     # @return [ContentData] content data that contains data regarding files
     #   that where indexed no later (including) the provided timestamp.
     def get(till = DateTime.now)
-#puts "TILL: " + till.to_s
       # looking for the latest base file that is earlier than till argument
       base = snapshot_files.inject(nil) do |cur_base, f|
         if (cur_base.nil? || f.same_time_as?(till) ||
             (f.earlier_than?(till) && f.later_than?(cur_base.till)))
           cur_base = f
         end
-#puts cur_base.filename
         cur_base
       end
       base_cd = ContentData::ContentData.new
       base_cd.from_file(base.filename)
-#puts "BASE: " + base.filename
-#puts base_cd.to_s
       # applying diff files between base timestamp and till argument
       diff_from_base = diff(base.till, till)
       added_content_data = diff_from_base[DiffFile::ADDED_TYPE]
@@ -313,8 +295,6 @@ module ContentServer
       result = base_cd.merge(added_content_data)
       result.remove_instances!(removed_content_data)
       result
-      #result = ContentData.merge(added_content_data, base_cd)
-      #ContentData.remove_instances(removed_content_data, result)
     end
 
     # Diff between two timestamps.
@@ -346,9 +326,6 @@ module ContentServer
         cd = ContentData::ContentData.new
         cd.from_file(df.filename)
         if df.type == DiffFile::ADDED_TYPE
-          #puts "FROM #{from.to_s}  TILL #{till.to_s}"
-          #puts "Diff IN Range: #{df.filename}"
-          #puts "CD: #{cd.to_s}"
           added_content_data.merge!(cd)
         elsif df.type == DiffFile::REMOVED_TYPE
           removed_content_data.merge!(cd)

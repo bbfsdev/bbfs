@@ -98,23 +98,6 @@ module ContentServer
         [1, 2, 3, 365, 366, 367].each do |supplement|
           add_diff.call(BASE_DATETIME + supplement)
         end
-
-        #puts "ADDED SIZE = #{@added_diffs.size}"
-
-        #@init_content_datas.each do |date, cd|
-          #puts date.to_s
-          #puts cd.to_s
-        #end
-        #puts "ADDED:"
-        #@added_diffs.each do |date, cd|
-          #puts date.to_s
-          #puts cd.to_s
-        #end
-        #puts "REMOVED:"
-        #@removed_diffs.each do |date, cd|
-          #puts date.to_s
-          #puts cd.to_s
-        #end
       end
 
       before :each do
@@ -126,8 +109,6 @@ module ContentServer
           $local_content_data = @init_content_datas[mtime]
           @db_instance.add(is_snapshot?(mtime))
         end
-
-        #puts `tree #{@db_dir}`
       end
 
       after :each do
@@ -175,7 +156,6 @@ module ContentServer
           prev_mtime = @init_content_datas.keys.sort.last
           prev_cd = @init_content_datas[prev_mtime]
           @removed_cd_diff = @added_diffs[prev_mtime]
-          #puts @removed_cd_diff
 
           @cd_new = prev_cd.remove_instances(@removed_cd_diff)
           @cd_new.merge!(@added_cd_diff)
@@ -299,9 +279,6 @@ module ContentServer
             it "later than 'from' and not earlier than 'till'" do
               # When
               diff = @db_instance.diff(from, till)
-              #puts "BASE_DATETIME: #{BASE_DATETIME}"
-              #puts "FROM: #{from.to_s} : #{from.strftime("%s")}"
-              #puts "TILL: #{till.to_s} : #{till.strftime("%s")}"
 
               # Then
               expected_removed_size = 0
@@ -318,15 +295,11 @@ module ContentServer
               diff[ContentDataDb::DiffFile::REMOVED_TYPE].
                 instances_size.should == expected_removed_size
 
-              #puts "DIFF: #{diff[ContentDataDb::DiffFile::ADDED_TYPE].to_s}"
               expected_added_size = 0
               @added_diffs.each do |timestamp, diff_cd|
-                #puts timestamp.to_s
                 if (timestamp <=> from) == 1 && (timestamp <=> till) != 1
-                  #puts "FOUND"
                   expected_added_size += diff_cd.instances_size
                   diff_cd.each_instance do |checksum,_,_,_,server,path,_|
-                    #puts "#{checksum} : #{path}"
                     diff[ContentDataDb::DiffFile::ADDED_TYPE].
                       content_has_instance?(checksum, server, path).
                       should be_true
