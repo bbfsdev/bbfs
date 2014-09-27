@@ -10,27 +10,94 @@ class DateTime
   end
 
   def self.from_content_data_timestamp(timestamp)
-    DateTime.strptime(timestamp, ContentDataDiffFile::TIME_FORMAT)
+    DateTime.strptime(timestamp,
+                      ContentServer::ContentDataDb::DiffFile::TIME_FORMAT)
   end
 
   def to_content_data_timestamp()
-    strftime(ContentDataDiffFile::TIME_FORMAT)
+    strftime(ContentServer::ContentDataDb::DiffFile::TIME_FORMAT)
   end
 end
 
 module ContentServer
-
-  # TODOs
-  # - dirs by year
-  # - use a DateTime instead String as a timestamp
+  # NOTES:
+  # * Singleton used cause:
+  #   * We'd like only one gate to add and control a DB
+  #     * Better maintainability and consistency
+  #   * Another option was to use a class methods only,
+  #     but we have a state for the DB and then it is better to use a singleton.
 
   # A singleton used to keep and reign content data diffs and snapshots.
-  # NOTEs
-  # * "full", "base", "snapshot" notations used in method/variable names
-  #    have the same meaning but
-  #      - "full" is from user perspective, when adding an entry to the db
-  #      - "snapshot" is from user perspective when requesting an entry from db
-  #      - "base" is from db perspective when calculating snapshot.
+  #
+  # === File structure:
+  #
+  # db_root
+  #   diffs
+  #       year1
+  #           date0-date1.added
+  #           date1-date2.added
+  #           date1-date2.removed
+  #           date2-date3.added
+  #           date2-date3.removed
+  #           date3-date4.added
+  #           date3-date4.removed
+  #   snaphots
+  #       year1
+  #           date2.snaphot
+  #           date4.snaphot
+  #
+  # === Filenames:
+  #
+  # *date1-date2.added* for instances that were added from date1 till date2
+  #
+  # *date1-date2.removed* for instances that were removed from date1 till date2
+  #
+  # *date1.snapshot* for the snaphot of indexed files that was exist at date1
+  #
+  #
+  # === Specifications:
+  #  Init
+  #    create storage directories lazily
+  #    pick a latest timestamp from exist entries in DB
+  #  Add
+  #    save entries by year
+  #    Snapshot
+  #      adds a snapshot entry
+  #      adds a diff entries
+  #    Diff
+  #      adds removed and added entires (files)
+  #    No added instances
+  #      do not add DB entry (file) for this type
+  #    No removed instances
+  #      do not add DB entry (file) for this type
+  #  Diff
+  #    diffs between two timestamps from same year
+  #      returns instances with index times
+  #        later than 'from' and not earlier than 'till'
+  #        latest if there were few for the location
+  #    diffs between two timestamps from different years
+  #      returns instances with index times
+  #        later than 'from' and not earlier than 'till'
+  #        latest if there were few for the location
+  #  Get
+  #    returns instances indexed before (including) provided timestamp
+  #    No till timestamp provided
+  #      returns a latest snapshot
+  #  ContentServer::ContentDataDb#diff_files
+  #    returns all recorded added and removed diff files
+  #  ContentServer::ContentDataDb#snapshot_files
+  #    returns all recorded snapshot files
+  #  Filename
+  #    till part equals latest_timestamp
+  #    Timestamps
+  #      in a UTC Z timezone
+  #
+  # === NOTEs:
+  # * "full", "base", "snapshot" notations used in method/variable names have
+  #   the same meaning but:
+  #     * "full" is from user perspective, when adding an entry to the db
+  #     * "snapshot" is from user perspective when requesting an entry from db
+  #     * "base" is from db perspective when calculating snapshot.
   # * When there was a choice between time performance and
   #   memory consuming, then memory economy was preferred,
   #   cause memory is more critical for us and operations on
@@ -52,21 +119,22 @@ module ContentServer
     # Attributes
     # DateTime contains timestamp of the last content data added to the DB
     attr_reader :latest_timestamp
+    # paths to the folders where diffs and snapshots are stored
+    attr_reader :diffs_path, :snapshots_path
 
     def initialize
       @diffs_path = File.join(Params['content_data_db_path'], DIFFS_DIRNAME)
       @snapshots_path = File.join(Params['content_data_db_path'], SNAPSHOTS_DIRNAME)
 
-      exist_snapshot_files = snapshot_files
-      if exist_snapshot_files.nil? || exist_snapshot_files.empty?
-      end
-        exist_diff_files = diff_files
-        @latest_timestamp =
-          exist_diff_files.inject(exist_diff_files.first.till) do |latest, f|
-          latest = f.till if f.later_than?(latest)
+      # We always save a diff file, so it is enough to look for latest timestamp
+      # among diff files.
+      # See add method for more information.
+      # If there is no diff files then latest timestamp will be set to nil.
+      @latest_timestamp =
+        diff_files.inject(nil) do |latest, f|
+          latest = f.till if latest.nil? || f.later_than?(latest)
           latest
-          end
-      #end
+        end
     end
 
     # Store a global content data object as a part of content data keeping service.
@@ -83,23 +151,48 @@ module ContentServer
     # as a diff
     def add(is_full_flush)
       content_data = $local_content_data
+      return if content_data.empty?
+
+      # for the latest content data added to the DB
+      latest_snapshot = nil
+      # for instances that were added regarding latest_snapshot
+      added_cd = nil
+      # for insrances that were removed regarding latest_snapshot
+      removed_cd = nil
 
       latest_index_time = nil
       content_data.each_instance do |_,_,_,_,_,_,index_time|
-        if latest_index_time.nil? || latest_index_time < index_time
-          latest_index_time = index_time
+        if latest_index_time.nil? || latest_index_time < index_time.to_i
+          latest_index_time = index_time.to_i
         end
       end
 
+      # Checking time consistency
       content_data_timestamp = DateTime.from_epoch(latest_index_time)
-      if !@latest_timestamp.nil? && (content_data_timestamp <=> @latest_timestamp) < 0
-        fail "latest index time of the content data: #{latest_index_time}" +
+      if !@latest_timestamp.nil? && (content_data_timestamp <=> @latest_timestamp) != 1
+        # It is possible when instances added at @latest_timestamp
+        # were removed and any new instances addded,
+        # then latest indexed time in the new content data
+        # is earlier then @latest_timestamp
+        latest_snapshot = get(@latest_timestamp)
+        added_cd = content_data.remove_instances(latest_snapshot)
+        msg = "latest index time of the content data: #{content_data_timestamp}" +
           "must be later then latest timestamp: #{latest_timestamp}"
+        if added_cd.empty?
+          # In this case we do not know exactly when the indexation was
+          # then the timestamp is fake
+          # TODO better solution?
+          latest_timestamp_epoch = @latest_timestamp.strftime('%s')
+          content_data_timestamp = DateTime.from_epoch(latest_timestamp_epoch.to_i + 1)
+          Log.warning msg
+        else
+          fail msg
+        end
       end
 
       if is_full_flush
         save(content_data,
-             ContentDataDiffFile::SNAPSHOT_TYPE,
+             DiffFile::SNAPSHOT_TYPE,
              nil,  # 'from' param is not relevant for full flush
              content_data_timestamp)
       end
@@ -109,13 +202,50 @@ module ContentServer
       # then a diff files are relevant.
       # NOTE we save diff (added/removed) files even in the case of full flush
       # cause of data consistency. It is crucial for the diff operation.
-      if @latest_timestamp
-        diff_from_latest = diff(@latest_timestamp, content_data_timestamp)
-        diff_from_latest.each do |type, diff_cd|
-          unless diff_cd.empty?
-            save(diff_cd, type, @latest_timestamp, content_data_timestamp)
+      if @latest_timestamp.nil?
+        earliest_index_time = nil
+        content_data.each_instance do |_,_,_,_,_,_,index_time|
+          if earliest_index_time.nil? || earliest_index_time > index_time
+            earliest_index_time = index_time
           end
         end
+        content_data_from = DateTime.from_epoch(earliest_index_time)
+        save(content_data,
+             DiffFile::ADDED_TYPE,
+             content_data_from,
+             content_data_timestamp)
+      else
+        latest_snapshot ||= get(@latest_timestamp)
+        #puts "LATEST: #{@latest_snapshot} : #{latest_snapshot}"
+
+        #TODO this is incorrect
+        #added_cd = ContentData.remove_instances(latest_snapshot, content_data)
+        added_cd ||= content_data.remove_instances(latest_snapshot)
+        #puts "Latest: " + latest_snapshot.to_s
+        #puts "CD: " + content_data.to_s
+        #puts "ADDED: " + added_cd.to_s
+        unless added_cd.empty?
+          save(added_cd,
+               DiffFile::ADDED_TYPE,
+               @latest_timestamp,
+               content_data_timestamp)
+        end
+
+        #removed_cd = ContentData.remove_instances(content_data, latest_snapshot)
+        removed_cd = latest_snapshot.remove_instances(content_data)
+        #puts "REMOVED: " + removed_cd.to_s
+        unless removed_cd.empty?
+          save(removed_cd,
+               DiffFile::REMOVED_TYPE,
+               @latest_timestamp,
+               content_data_timestamp)
+        end
+        #diff_from_latest = diff(@latest_timestamp, content_data_timestamp)
+        #diff_from_latest.each do |type, diff_cd|
+          #unless diff_cd.empty?
+            #save(diff_cd, type, @latest_timestamp, content_data_timestamp)
+          #end
+        #end
       end
 
       @latest_timestamp = content_data_timestamp
@@ -133,12 +263,12 @@ module ContentServer
     #
     # @return [String] filename of the file where provided ContentData was saved
     def save(content_data, type, from, till)
-      filename = ContentDataDiffFile.compose_filename(type, from, till)
+      filename = DiffFile.compose_filename(type, from, till)
       path = case type
-             when ContentDataDiffFile::SNAPSHOT_TYPE
-               File.join(@snapshots_path, till.year, filename)
-             when ContentDataDiffFile::ADDED_TYPE, ContentDataDiffFile::REMOVED_TYPE
-               File.join(@diffs_path, till.year, filename)
+             when DiffFile::SNAPSHOT_TYPE
+               File.join(@snapshots_path, till.year.to_s, filename)
+             when DiffFile::ADDED_TYPE, DiffFile::REMOVED_TYPE
+               File.join(@diffs_path, till.year.to_s, filename)
              else
                fail ArgumentError, "Unrecognized type: #{type}"
              end
@@ -155,39 +285,47 @@ module ContentServer
     # Returns a snapshot of instances indexed before (including)
     # provided timestamp.
     #
-    # @param till [DateTime] index time upper limit
+    # @param till [DateTime] index time upper (including) limit
     #                        Default is a current time.
     #
     # @return [ContentData] content data that contains data regarding files
     #   that where indexed no later (including) the provided timestamp.
     def get(till = DateTime.now)
+#puts "TILL: " + till.to_s
       # looking for the latest base file that is earlier than till argument
-      base = snapshot_files.reject(nil) do |cur_base, f|
+      base = snapshot_files.inject(nil) do |cur_base, f|
         if (cur_base.nil? || f.same_time_as?(till) ||
             (f.earlier_than?(till) && f.later_than?(cur_base.till)))
           cur_base = f
         end
+#puts cur_base.filename
         cur_base
       end
-      base_cd = ContentData::ContentData.new.from_file(base.filename)
-
+      base_cd = ContentData::ContentData.new
+      base_cd.from_file(base.filename)
+#puts "BASE: " + base.filename
+#puts base_cd.to_s
       # applying diff files between base timestamp and till argument
       diff_from_base = diff(base.till, till)
-      added_content_data = diff_from_base[ContentDataDiffFile::ADDED_TYPE]
-      removed_content_data = diff_from_base[ContentDataDiffFile::REMOVED_TYPE]
+      added_content_data = diff_from_base[DiffFile::ADDED_TYPE]
+      removed_content_data = diff_from_base[DiffFile::REMOVED_TYPE]
 
-      result = ContentData.merge(added_content_data, base_cd)
-      ContentData.remove_instances(removed_content_data, result)
+      result = base_cd.merge(added_content_data)
+      result.remove_instances!(removed_content_data)
+      result
+      #result = ContentData.merge(added_content_data, base_cd)
+      #ContentData.remove_instances(removed_content_data, result)
     end
 
     # Diff between two timestamps.
+    # @note changed files reported twice, one time as removed, with previous
+    # revision meta-data, second as an added with new revision meta-data.
     # @param from [DateTime] diff index time lower limit
     # @param till [DateTime] diff index time upper (including) limit.
-    #                        Default is a current time.
     #
     # @return [Hash] map with 2 key-value pairs:
-    #   ContentDataDiffFile::REMOVED_TYPE => content data contains data of removed files
-    #   ContentDataDiffFile::ADDED_TYPE => content data contains data of added files
+    #   1. DiffFile::REMOVED_TYPE => content data contains data of removed files
+    #   2. DiffFile::ADDED_TYPE => content data contains data of added files
     def diff(from, till = DateTime.now)
       if from.nil?
         err_msg =  'from parameter should be defined. Did you mean a get method?'
@@ -200,51 +338,61 @@ module ContentServer
 
       added_content_data = ContentData::ContentData.new
       removed_content_data = ContentData::ContentData.new
-      diff_files_in_range.each do |df|
-        cd = ContentData::ContentData.new.from_file(df)
-        if df.type == ContentDataDiffFile::ADDED_TYPE
-          ContentData.merge_override_b(cd, added_content_data)
-        elsif df.type == ContentDataDiffFile::REMOVED_TYPE
-          ContentData.merge_override_b(cd, removed_content_data)
+
+      # diff files sorted by date to enable correct processing of files
+      # that were changed few times between the timestamps,
+      # thus resulted revision is indeed latest revision.
+      diff_files_in_range.sort!.each do |df|
+        cd = ContentData::ContentData.new
+        cd.from_file(df.filename)
+        if df.type == DiffFile::ADDED_TYPE
+          #puts "FROM #{from.to_s}  TILL #{till.to_s}"
+          #puts "Diff IN Range: #{df.filename}"
+          #puts "CD: #{cd.to_s}"
+          added_content_data.merge!(cd)
+        elsif df.type == DiffFile::REMOVED_TYPE
+          removed_content_data.merge!(cd)
         end
       end
 
-      {ContentDataDiffFile::REMOVED_TYPE => removed_content_data,
-        ContentDataDiffFile::ADDED_TYPE => added_content_data}
+      { DiffFile::REMOVED_TYPE => removed_content_data,
+        DiffFile::ADDED_TYPE => added_content_data }
     end
 
     def diff_files
       # Example: "/path/to/diff_files/**/*.{added,removed}"
       pattern = @diffs_path + File::SEPARATOR + '**' + File::SEPARATOR + '*.{' +
-                 ContentDataDiffFile::ADDED_TYPE + ',' +
-                 ContentDataDiffFile::REMOVED_TYPE + '}'
-      Dir.glob(pattern).each do |f|
-        ContentDataDiffFile.new(f)
+                 DiffFile::ADDED_TYPE + ',' +
+                 DiffFile::REMOVED_TYPE + '}'
+      Dir.glob(pattern).map do |f|
+        DiffFile.new(f)
       end
     end
 
     def snapshot_files
       # Example: "/path/to/snapshot_files/*.snapshot
       pattern = @snapshots_path + File::SEPARATOR + '**' +
-                File::SEPARATOR + '*.' + ContentDataDiffFile::SNAPSHOT_TYPE
-      Dir.glob(pattern).each do |f|
-        ContentDataDiffFile.new(f)
+                File::SEPARATOR + '*.' + DiffFile::SNAPSHOT_TYPE
+      Dir.glob(pattern).map do |f|
+        DiffFile.new(f)
       end
     end
 
 
-    class ContentDataDiffFile
+    class DiffFile
       # Constants
       # %Y%m%dT%H%M => 20071119T0837
       # Corresponds with ISO 8601 => can be parsed by Ryby date/time libraries
-      TIME_FORMAT = '%Y%m%dT%H%M'
+      TIME_FORMAT = '%Y%m%dT%H%M%S'
       # Time searching pattern
       # year is 4 digits
       # month is 2 digits
       # day is 2 digits
       # hour is 2 digits
+      # minutes are 2 digits
       # seconds are 2 digits
-      TIME_PATTERN = '\d{8}T\d{4}'
+      TIME_PATTERN = '\d{8}T\d{6}'
+      # Separator between 'from' and 'till' timestamps in a diff filename
       TIMESTAMPS_SEPARATOR = '-'
       SNAPSHOT_TYPE = 'snapshot'
       ADDED_TYPE = 'added'
@@ -253,12 +401,18 @@ module ContentServer
       attr_reader :from, :till, :type, :filename
 
       def initialize(filename)
+        @filename = filename
         parse(filename)
       end
 
       def self.compose_filename(type, from, till)
-        from = from.to_content_data_timestamp
+        if from.nil? && type != SNAPSHOT_TYPE
+          fail ArgumentError, "from parameter must be defined for #{type}"
+        elsif type != SNAPSHOT_TYPE
+          from = from.to_content_data_timestamp
+        end
         till = till.to_content_data_timestamp
+
         case type
         when SNAPSHOT_TYPE
           till + '.' + SNAPSHOT_TYPE
@@ -310,15 +464,26 @@ module ContentServer
       end
 
       def earlier_than?(date_time)
-        (@till <=> date_time) < 1
+        (@till <=> date_time) == -1
       end
 
       def later_than?(date_time)
-        (@till <=> date_time) > 1
+        (@till <=> date_time) == 1
       end
 
       def same_time_as?(date_time)
         (@till <=> date_time) == 0
+      end
+
+      def <=>(other)
+        @till <=> other.till
+      end
+
+      def ==(other)
+        @till == other.till &&
+          @from == other.from &&
+          @filename == other.filename &&
+          @type == other.type
       end
     end
   end

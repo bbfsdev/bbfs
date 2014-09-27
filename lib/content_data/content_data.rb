@@ -216,6 +216,13 @@ module ContentData
       @instances_info.has_key?([server, path])
     end
 
+    # Checks whether location (server + path) recorded with the checksum.
+    def content_has_instance?(checksum, server, path)
+      location = [server, path]
+      # NOTE @instances_info and @contents_info must be synchronized
+      @instances_info.key?(location) && @instances_info[location] == checksum
+    end
+
     def symlink_exists(path, server)
       @symlinks_info.has_key?([server, path])
     end
@@ -746,10 +753,114 @@ module ContentData
       end
     end
 
+    def _merge(others, is_override)
+      if is_override
+        res = self
+      else
+        res = ContentData.new(self)
+      end
+
+      return res if (others.nil? || others.empty?)
+
+      others.each do |cd|
+        cd.each_instance do |checksum, size, content_mod_time, instance_mod_time,\
+                             server, path, instance_index_time|
+          res.add_instance(checksum,
+                           size,
+                           server,
+                           path,
+                           instance_mod_time,
+                           instance_index_time)
+        end
+      end
+      res
+    end
+    private :_merge
+
+    # Merges with provided ContentData objects.
+    # @see #merge! parameters description and notes
+    # @return [ContentData] resulting object of the merge
+    def merge(*others)
+      others.flatten!
+      _merge(others, false)
+    end
+
+    # Merges with provided ContentData objects.
+    # +self+ will be changed appropriately.
+    # @note location (server + path) can be recorded only once in the
+    #   ContentData, so if a location was recorded with different checksums in a
+    #   ContentData objects, then resulting record for the location is
+    #   non-determenistc and depends on the order of the provided parameters.
+    #   It is defined to be the last merged record for the location.
+    # @param [Array<ContentData>] args ContentData objects to merge with.
+    #   Can be a single object, list of objects, or array of objects.
+    #   See examples.
+    # @example
+    #   merge(content_data)
+    # @example
+    #   merge(content_data1, content_data2, content_data3)
+    # @example
+    #   merge([content_data1, content_data2])
+    def merge!(*others)
+      others.flatten!
+      _merge(others, true)
+    end
+
+    def _remove_instances(others, is_override)
+      if is_override
+        res = self
+      else
+        res = ContentData.new(self)
+      end
+
+      return res if (others.nil? || others.empty?)
+      others.each do |cd|
+        cd.each_instance do |checksum,_,_,_,server,path,_|
+          if content_has_instance?(checksum, server, path)
+            res.remove_instance(server, path)
+          end
+        end
+      end
+      res
+    end
+    private :_remove_instances
+
+    # B - A : Remove instances of A content from B content data B
+    # and return the new content data.
+    # If all instances are removed then the content record itself will be removed
+    # @example
+    #   A db:
+    #     Content_1 ->
+    #         Instance_1
+    #         Instance_2
+    #     Content_2 ->
+    #         Instance_3
+    #   B db:
+    #     Content_1 ->
+    #         Instance_1
+    #         Instance_2
+    #     Content_2 ->
+    #         Instance_3
+    #         Instance_4
+    #   B-A db:
+    #     Content_2 ->
+    #         Instance_4
+    # @note the difference from {.remove_instances}
+    def remove_instances(*others)
+      others.flatten!
+      _remove_instances(others, false)
+    end
+
+    def remove_instances!(*others)
+      others.flatten!
+      _remove_instances(others, true)
+    end
+
     private :shallow_check, :deep_check, :check_instance
   end
 
   # merges content data a and content data b to a new content data and returns it.
+  # @deprecated Use {ContentData#merge} instance method instead
   def self.merge(a, b)
     return ContentData.new(a) if b.nil?
     return ContentData.new(b) if a.nil?
@@ -761,6 +872,7 @@ module ContentData
     c
   end
 
+  # @deprecated Use {ContentData#merge!} instance method instead
   def self.merge_override_b(a, b)
     return ContentData.new(a) if b.nil?
     return ContentData.new(b) if a.nil?
@@ -829,8 +941,10 @@ module ContentData
   #    Content_1 ->
   #                   Instance_1
   #                   Instance_2
-  #
   #    Content_2 ->
+  #                   Instance_5
+  #
+  #    Content_3 ->
   #                   Instance_3
   #
   # B db:
