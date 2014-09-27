@@ -832,8 +832,8 @@ module ContentData
     #   A db:
     #     Content_1 ->
     #         Instance_1
-    #         Instance_2
     #     Content_2 ->
+    #         Instance_2
     #         Instance_3
     #   B db:
     #     Content_1 ->
@@ -843,6 +843,8 @@ module ContentData
     #         Instance_3
     #         Instance_4
     #   B-A db:
+    #     Content_1 ->
+    #         Instance_2
     #     Content_2 ->
     #         Instance_4
     # @note the difference from {.remove_instances}
