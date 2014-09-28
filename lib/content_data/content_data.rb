@@ -778,15 +778,6 @@ module ContentData
     private :_merge
 
     # Merges with provided ContentData objects.
-    # @see #merge! parameters description and notes
-    # @return [ContentData] resulting object of the merge
-    def merge(*others)
-      others.flatten!
-      _merge(others, false)
-    end
-
-    # Merges with provided ContentData objects.
-    # +self+ will be changed appropriately.
     # @note location (server + path) can be recorded only once in the
     #   ContentData, so if a location was recorded with different checksums in a
     #   ContentData objects, then resulting record for the location is
@@ -801,6 +792,16 @@ module ContentData
     #   merge(content_data1, content_data2, content_data3)
     # @example
     #   merge([content_data1, content_data2])
+    # @return [ContentData] result that contains all locations recorded in at
+    # least one ContentData
+    def merge(*others)
+      others.flatten!
+      _merge(others, false)
+    end
+
+    # Merges with provided ContentData objects.
+    # +self+ will be changed appropriately.
+    # @see #merge parameters description and notes
     def merge!(*others)
       others.flatten!
       _merge(others, true)
@@ -825,9 +826,10 @@ module ContentData
     end
     private :_remove_instances
 
-    # B - A : Remove instances of A content from B content data B
-    # and return the new content data.
-    # If all instances are removed then the content record itself will be removed
+    # Remove instances that presented at least in one other ContentData.
+    # If all instances recorded for the content are removed
+    # then the content record itself will be removed
+    #
     # @example
     #   A db:
     #     Content_1 ->
@@ -847,12 +849,21 @@ module ContentData
     #         Instance_2
     #     Content_2 ->
     #         Instance_4
-    # @note the difference from {.remove_instances}
+    #
+    # @note Instance defined to be an instance of the content.
+    # Two instances defined similar if they are have same location (server + path)
+    # and belong to the same content,i.e. have same checksum.
+    # It differs from {.remove_instances} where similarity defined only by
+    # location.
+    #
+    # @return [ContentData] have instances that appear only in +self+
     def remove_instances(*others)
       others.flatten!
       _remove_instances(others, false)
     end
 
+    # @see #remove_instances
+    # +self+ will be changed appropriately.
     def remove_instances!(*others)
       others.flatten!
       _remove_instances(others, true)
