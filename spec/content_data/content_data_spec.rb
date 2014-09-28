@@ -517,19 +517,21 @@ describe 'Content Data Test' do
       BASE_TIMESTAMP = '2010-11-29T04:01+03:00'
       BASE_DATETIME = DateTime.iso8601(BASE_TIMESTAMP)
       BASE_MTIME = BASE_DATETIME.strftime('%s').to_i
+      CHANGED_PATH = "changed_1"
 
       @other_1 = ContentData::ContentData.new
-      @other_1.add_instance(CHECKSUM, SIZE, SERVER, "unchanged_1", BASE_MTIME, BASE_MTIME)
       @other_1.add_instance(CHECKSUM+"b", SIZE+5, SERVER, "new_1", BASE_MTIME, BASE_MTIME)
+      @other_1.add_instance(CHECKSUM+"b", SIZE+5, SERVER, CHANGED_PATH, BASE_MTIME+5, BASE_MTIME+5)
+      @other_1.add_instance(CHECKSUM, SIZE, SERVER, "unchanged_1", BASE_MTIME, BASE_MTIME)
 
       @other_2 = ContentData::ContentData.new
-      @other_2.add_instance(CHECKSUM+"b", SIZE+5, SERVER, "changed_1", BASE_MTIME+5, BASE_MTIME+5)
+      @other_2.add_instance(CHECKSUM+"c", SIZE+6, SERVER, "new_2", BASE_MTIME, BASE_MTIME)
     end
 
     before :each do
       @base = ContentData::ContentData.new
       @base.add_instance(CHECKSUM, SIZE, SERVER, "unchanged_1", BASE_MTIME, BASE_MTIME)
-      @base.add_instance(CHECKSUM, SIZE, SERVER, "changed_1", BASE_MTIME, BASE_MTIME)
+      @base.add_instance(CHECKSUM, SIZE, SERVER, CHANGED_PATH, BASE_MTIME, BASE_MTIME)
       @base.add_instance(CHECKSUM+"1", SIZE+1, SERVER, "unchanged_2", BASE_MTIME, BASE_MTIME)
       @base.add_instance(CHECKSUM+"1", SIZE+1, SERVER, "changed_2", BASE_MTIME, BASE_MTIME)
       @base.add_instance(CHECKSUM+"a", SIZE+5, SERVER, "unique_1", BASE_MTIME, BASE_MTIME)
@@ -538,32 +540,38 @@ describe 'Content Data Test' do
     describe 'Merge' do
       shared_examples 'merge spec' do
         it 'contains instances exist at least in one ContentData' do
-          expect(res).not_to be_nil
-          expect(merged_objects).not_to be_nil
-
           merged_objects.each do |cd|
             cd.each_instance do |_,_,_,_,server,path,_|
               expect(res.instance_exists(path, server)).to be_true
             end
           end
         end
+
+        it 'has only one record for the location' do
+          locations = []
+          res.each_instance do |_,_,_,_,server,path,_|
+            location = [server, path]
+            expect(locations.include?(location)).to be_false
+            locations << location
+          end
+        end
       end
 
       describe 'ContentData::ContentData#merge' do
         context 'parameter is a single ContentData object' do
-          let(:res) { @base.merge(@other_1) }
+          let!(:res) { @base.merge(@other_1) }
           let(:merged_objects) { [@base, @other_1] }
           include_examples 'merge spec'
         end
 
         context 'parameter is a list of ContentData objects' do
-          let(:res) { @base.merge(@other_1, @other_2) }
+          let!(:res) { @base.merge(@other_1, @other_2) }
           let(:merged_objects) { [@base, @other_1, @other_2] }
           include_examples 'merge spec'
         end
 
         context 'parameter is an array of ContentData objects' do
-          let(:res) { @base.merge([@other_1, @other_2]) }
+          let!(:res) { @base.merge([@other_1, @other_2]) }
           let(:merged_objects) { [@base, @other_1, @other_2] }
           include_examples 'merge spec'
         end
@@ -571,7 +579,7 @@ describe 'Content Data Test' do
 
       describe 'ContentData::ContentData#merge!' do
         context 'parameter is a single ContentData object' do
-          let(:res) { new_cd = ContentData::ContentData.new(@base)
+          let!(:res) { new_cd = ContentData::ContentData.new(@base)
                       new_cd.merge!(@other_1)
                       new_cd }
           let(:merged_objects) { [@base, @other_1] }
@@ -579,7 +587,7 @@ describe 'Content Data Test' do
         end
 
         context 'parameter is a list of ContentData objects' do
-          let(:res) { new_cd = ContentData::ContentData.new(@base)
+          let!(:res) { new_cd = ContentData::ContentData.new(@base)
                       new_cd.merge!(@other_1, @other_2)
                       new_cd }
           let(:merged_objects) { [@base, @other_1, @other_2] }
@@ -587,7 +595,7 @@ describe 'Content Data Test' do
         end
 
         context 'parameter is an array of ContentData objects' do
-          let(:res) { new_cd = ContentData::ContentData.new(@base)
+          let!(:res) { new_cd = ContentData::ContentData.new(@base)
                       new_cd.merge!([@other_1, @other_2])
                       new_cd }
           let(:merged_objects) { [@base, @other_1, @other_2] }
@@ -599,10 +607,6 @@ describe 'Content Data Test' do
     describe 'Remove instances' do
       shared_examples 'remove spec' do
         it 'contains (checksum + location) presented only in base' do
-          expect(base).not_to be_nil
-          expect(res).not_to be_nil
-          expect(others).not_to be_nil
-
           base.each_instance do |checksum,_,_,_,server,path,_|
             other_cd_has_instance = others.find do |cd|
                                       cd.content_has_instance?(checksum, server, path)
@@ -612,6 +616,23 @@ describe 'Content Data Test' do
             else
               expect(res.content_has_instance?(checksum, server, path)).to be_false
             end
+          end
+        end
+
+        context 'Instances with same location and different checksums' do
+          it 'defined to be different and thus remain' do
+            expect(base.content_has_instance?(CHECKSUM, SERVER, CHANGED_PATH)).
+              to be_true
+
+            other_instance_found = false
+            others.each do |cd|
+              if cd.instance_exists(CHANGED_PATH, SERVER)
+                expect(cd.content_has_instance?(CHECKSUM, SERVER, CHANGED_PATH)).
+                  to be_false
+                other_instance_found = true
+              end
+            end
+            expect(other_instance_found).to be_true
           end
         end
       end
