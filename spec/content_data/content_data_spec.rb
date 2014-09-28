@@ -632,6 +632,9 @@ describe 'Content Data Test' do
                 other_instance_found = true
               end
             end
+            # check that test data was correct,
+            # i.e. other ContentData indeed contains same location
+            # with different content
             expect(other_instance_found).to be_true
           end
         end
