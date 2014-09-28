@@ -780,8 +780,8 @@ module ContentData
     # Merges with provided ContentData objects.
     # @note location (server + path) can be recorded only once in the
     #   ContentData, so if a location was recorded with different checksums in a
-    #   ContentData objects, then resulting record for the location is
-    #   non-determenistc and depends on the order of the provided parameters.
+    #   ContentData objects, then the result record for the location is
+    #   non-deterministic and depends on the order of the provided parameters.
     #   It is defined to be the last merged record for the location.
     # @param [Array<ContentData>] args ContentData objects to merge with.
     #   Can be a single object, list of objects, or array of objects.
@@ -851,8 +851,8 @@ module ContentData
     #         Instance_4
     #
     # @note Instance defined to be an instance of the content.
-    # Two instances defined similar if they are have same location (server + path)
-    # and belong to the same content,i.e. have same checksum.
+    # Two instances defined similar if they have same location (server + path)
+    # and belong to the same content, i.e. have same checksum.
     # It differs from {.remove_instances} where similarity defined only by
     # location.
     #
