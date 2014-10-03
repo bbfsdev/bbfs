@@ -103,7 +103,11 @@ module ContentServer
   #   memory consuming, then memory economy was preferred,
   #   cause memory is more critical for us and operations on
   #   content data files are run once a period of time.
-  # * Added/removed files do not intersect
+  # * Diff files do not intersect,
+  #   it means that following situation is illegal:
+  #     date5-date7.added
+  #     date6-date8.added
+  #     where date5 < date6 < date7 < date8
   #   this suggestion is used in timestamps comparioson.
   # * UTC time used in content_data objects and in timestamps
   # * time objects in DateTime format
