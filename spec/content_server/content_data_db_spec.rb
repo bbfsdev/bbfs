@@ -17,6 +17,11 @@ module ContentServer
 
       # Workaround to test singleton
       # Creates classes that behaves like a DB class.
+      # There is a problem to test a singleton, cause it saves it's state
+      # between the test method and usually we want a fresh object,
+      # that do not influenced by another test.
+      # Therefore every method we build a new class descendant,
+      # that behaves exactly like a parent class.
       def get_db_instance
         base = 'DbWrapper'
 
