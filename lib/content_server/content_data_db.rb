@@ -131,8 +131,8 @@ module ContentServer
       @diffs_path = File.join(Params['content_data_db_path'], DIFFS_DIRNAME)
       @snapshots_path = File.join(Params['content_data_db_path'], SNAPSHOTS_DIRNAME)
 
-      # We always save a diff file, so it is enough to look for latest timestamp
-      # among diff files.
+      # We save a diff file, even when adding a snapshot,
+      # so it is enough to look for latest timestamp among diff files.
       # See add method for more information.
       # If there is no diff files then latest timestamp will be set to nil.
       @latest_timestamp =
