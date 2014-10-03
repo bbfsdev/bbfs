@@ -275,8 +275,8 @@ module ContentServer
 
       describe 'Diff' do
         shared_examples 'diff spec' do
-          describe 'returns instances with index times' do
-            it "later than 'from' and not earlier than 'till'" do
+          describe 'returns all instances' do
+            it "added or removed no later than 'from' and not later than 'till'" do
               # When
               diff = @db_instance.diff(from, till)
 
@@ -310,7 +310,7 @@ module ContentServer
                 instances_size.should == expected_added_size
             end
 
-            it 'latest if there were few for the location' do
+            it 'with index times latest if there were few for the location' do
               # Given
               # prepare input where:
               # file was few times changed (old revision removed, new added)

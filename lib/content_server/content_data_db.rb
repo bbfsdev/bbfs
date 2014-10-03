@@ -35,6 +35,7 @@ module ContentServer
   #   diffs
   #       year1
   #           date0-date1.added
+  #           date0-date1.removed
   #           date1-date2.added
   #           date1-date2.removed
   #           date2-date3.added
@@ -72,13 +73,13 @@ module ContentServer
   #      do not add DB entry (file) for this type
   #  Diff
   #    diffs between two timestamps from same year
-  #      returns instances with index times
-  #        later than 'from' and not earlier than 'till'
-  #        latest if there were few for the location
+  #      returns all instances
+  #        added or removed later than 'from' and not later than 'till'
+  #        with index times latest if there were few for the location
   #    diffs between two timestamps from different years
-  #      returns instances with index times
-  #        later than 'from' and not earlier than 'till'
-  #        latest if there were few for the location
+  #      returns all instances
+  #        added or removed later than 'from' and not later than 'till'
+  #        with index times latest if there were few for the location
   #  Get
   #    returns instances indexed before (including) provided timestamp
   #    No till timestamp provided
