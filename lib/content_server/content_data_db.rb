@@ -174,7 +174,7 @@ module ContentServer
 
       # Checking time consistency
       content_data_timestamp = DateTime.from_epoch(latest_index_time)
-      if !@latest_timestamp.nil? && (content_data_timestamp <=> @latest_timestamp) != 1
+      if !@latest_timestamp.nil? && (content_data_timestamp <= @latest_timestamp)
         # It is possible when instances added at @latest_timestamp
         # were removed and any new instances addded,
         # then latest indexed time in the new content data
