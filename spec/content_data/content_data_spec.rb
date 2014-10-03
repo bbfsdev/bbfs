@@ -621,6 +621,8 @@ describe 'Content Data Test' do
 
         context 'Instances with same location and different checksums' do
           it 'defined to be different and thus remain' do
+            expect(res.content_has_instance?(CHECKSUM, SERVER, CHANGED_PATH)).
+              to be_true
             expect(base.content_has_instance?(CHECKSUM, SERVER, CHANGED_PATH)).
               to be_true
 
