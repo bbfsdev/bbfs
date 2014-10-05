@@ -179,6 +179,18 @@ module ContentServer
         # were removed and any new instances addded,
         # then latest indexed time in the new content data
         # is earlier then @latest_timestamp
+        # Example:
+        #  ContentData for Date1 (noted as latest_snapshot):
+        #      Content1
+        #          location1
+        #          location2
+        #  Between Date1 and Date2 location2 was removed
+        #  and no other file operations were done.
+        #  ContentData for Date2 (noted as content_data):
+        #      Content1
+        #          location1
+        #  Then:
+        #      content_data.remove_instances(latest_snapshot) is empty.
         latest_snapshot = get(@latest_timestamp)
         added_cd = content_data.remove_instances(latest_snapshot)
         msg = "latest index time of the content data: #{content_data_timestamp}" +
@@ -207,6 +219,14 @@ module ContentServer
       # then a diff files are relevant.
       # NOTE we save diff (added/removed) files even in the case of full flush
       # cause of data consistency. It is crucial for the diff operation.
+      # Example (simple, without removed):
+      #     When:
+      #         date1-date2.added
+      #         date2-date3.added (added along with a snapshot)
+      #         date3.snapshot
+      #         date3-date4.added
+      # Then:
+      #     ContentDataDb.diff(date2, date4) = date2-date3.added + date3-date4.added
       if @latest_timestamp.nil?
         earliest_index_time = nil
         content_data.each_instance do |_,_,_,_,_,_,index_time|
