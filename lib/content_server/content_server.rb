@@ -83,10 +83,19 @@ module ContentServer
     # thread: Start dump local content data to file
     Log.debug1('Init thread: flush local content data to file')
     all_threads << Thread.new do
+      # TODO move next line to another place - do not connected logically to
+      # this block
       FileUtils.mkdir_p(Params['tmp_path']) unless File.directory?(Params['tmp_path'])
+      till_diff_data_flush = Params['diff_data_flush_delay']
+      till_full_data_flush = Params['data_flush_delay']
       loop{
-        sleep(Params['data_flush_delay'])
-        ContentServer.flush_content_data
+        delay = [till_diff_data_flush, till_full_data_flush].min
+        till_diff_data_flush -= delay
+        till_full_data_flush -= delay
+        sleep(delay)
+        ContentServer.flush_content_data till_full_data_flush == 0
+        till_diff_data_flush = Params['diff_data_flush_delay'] unless till_diff_data_flush > 0
+        till_full_data_flush = Params['data_flush_delay'] unless till_full_data_flush > 0
       }
     end
 

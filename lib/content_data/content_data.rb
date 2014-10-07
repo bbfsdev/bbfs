@@ -189,7 +189,7 @@ module ContentData
           content_info[2] = modification_time
         end
       else
-        instances = GoogleHashSparseRubyToRuby.new 
+        instances = GoogleHashSparseRubyToRuby.new
         instances[location] = [modification_time, index_time]
         @contents_info[checksum] = [size, instances, modification_time]
       end
@@ -216,6 +216,13 @@ module ContentData
       @instances_info.has_key?([server, path])
     end
 
+    # Checks whether location (server + path) recorded with the checksum.
+    def content_has_instance?(checksum, server, path)
+      location = [server, path]
+      # NOTE @instances_info and @contents_info must be synchronized
+      @instances_info.key?(location) && @instances_info[location] == checksum
+    end
+
     def symlink_exists(path, server)
       @symlinks_info.has_key?([server, path])
     end
@@ -227,8 +234,8 @@ module ContentData
     def remove_instance(server, path)
       location = [server, path]
       checksum = @instances_info[location]
-      return nil unless @contents_info.key?(checksum)
       content_info = @contents_info[checksum]
+      return nil if content_info.nil?
       instances = content_info[1]
       instances.delete(location)
       @contents_info.delete(checksum) if instances.empty?
@@ -626,7 +633,7 @@ module ContentData
           stats[0] = min_time_per_checksum
         }
         content_info[2] = min_time_per_checksum
-      }  
+      }
     end
 
     # Validates index against file system that all instances hold a correct data regarding files
@@ -754,84 +761,145 @@ module ContentData
       end
     end
 
-
-    # TODO simplify conditions
-    # This mehod is experimental and shouldn\'t be used
-    # nil is used to define +/- infinity for to/from method arguments
-    # from/to values are exlusive in condition'a calculations
-    # Need to take care about '==' operation that is used for object's comparison.
-    # In need of case user should define it's own '==' implemementation.
-    def get_query(variable, params)
-      raise RuntimeError.new 'This method is experimental and shouldn\'t be used'
-
-      exact = params['exact'].nil? ? Array.new : params['exact']
-      from = params['from']
-      to = params ['to']
-      is_inside = params['is_inside']
-
-      unless ContentInstance.new.instance_variable_defined?("@#{attribute}")
-        raise ArgumentError "#{variable} isn't a ContentInstance variable"
+    def _merge(others, is_override)
+      if is_override
+        res = self
+      else
+        res = ContentData.new(self)
       end
 
-      if (exact.nil? && from.nil? && to.nil?)
-        raise ArgumentError 'At least one of the argiments {exact, from, to} must be defined'
-      end
+      return res if (others.nil? || others.empty?)
 
-      if (!(from.nil? || to.nil?) && from.kind_of?(to.class))
-        raise ArgumentError 'to and from arguments should be comparable one with another'
-      end
-
-      # FIXME add support for from/to for Strings
-      if ((!from.nil? && !from.kind_of?(Numeric.new.class))\
-            || (!to.nil? && to.kind_of?(Numeric.new.class)))
-        raise ArgumentError 'from and to options supported only for numeric values'
-      end
-
-      if (!exact.empty? && (!from.nil? || !to.nil?))
-        raise ArgumentError 'exact and from/to options are mutually exclusive'
-      end
-
-      result_index = ContentData.new
-      instances.each_value do |instance|
-        is_match = false
-        var_value = instance.instance_variable_get("@#{variable}")
-
-        if exact.include? var_value
-          is_match = true
-        elsif (from.nil? || var_value > from) && (to.nil? || var_value < to)
-          is_match = true
-        end
-
-        if (is_match && is_inside) || (!is_match && !is_inside)
-          checksum = instance.checksum
-          result_index.add_content(contents[checksum]) unless result_index.content_exists(checksum)
-          result_index.add_instance instance
+      others.each do |cd|
+        cd.each_instance do |checksum, size, content_mod_time, instance_mod_time,\
+                             server, path, instance_index_time|
+          res.add_instance(checksum,
+                           size,
+                           server,
+                           path,
+                           instance_mod_time,
+                           instance_index_time)
         end
       end
-      result_index
+      res
+    end
+    private :_merge
+
+    # Merges with provided ContentData objects.
+    # @note location (server + path) can be recorded only once in the
+    #   ContentData, so if a location was recorded with different checksums in a
+    #   ContentData objects, then the result record for the location is
+    #   non-deterministic and depends on the order of the provided parameters.
+    #   It is defined to be the last merged record for the location.
+    # @param [Array<ContentData>] args ContentData objects to merge with.
+    #   Can be a single object, list of objects, or array of objects.
+    #   See examples.
+    # @example
+    #   merge(content_data)
+    # @example
+    #   merge(content_data1, content_data2, content_data3)
+    # @example
+    #   merge([content_data1, content_data2])
+    # @return [ContentData] result that contains all locations recorded in at
+    # least one ContentData
+    def merge(*others)
+      others.flatten!
+      _merge(others, false)
+    end
+
+    # Merges with provided ContentData objects.
+    # +self+ will be changed appropriately.
+    # @see #merge parameters description and notes
+    def merge!(*others)
+      others.flatten!
+      _merge(others, true)
+    end
+
+    def _remove_instances(others, is_override)
+      if is_override
+        res = self
+      else
+        res = ContentData.new(self)
+      end
+
+      return res if (others.nil? || others.empty?)
+      others.each do |cd|
+        cd.each_instance do |checksum,_,_,_,server,path,_|
+          if content_has_instance?(checksum, server, path)
+            res.remove_instance(server, path)
+          end
+        end
+      end
+      res
+    end
+    private :_remove_instances
+
+    # Remove instances that presented at least in one other ContentData.
+    # If all instances recorded for the content are removed
+    # then the content record itself will be removed
+    #
+    # @example
+    #   A db:
+    #     Content_1 ->
+    #         Instance_1
+    #     Content_2 ->
+    #         Instance_2
+    #         Instance_3
+    #   B db:
+    #     Content_1 ->
+    #         Instance_1
+    #         Instance_2
+    #     Content_2 ->
+    #         Instance_3
+    #         Instance_4
+    #   B-A db:
+    #     Content_1 ->
+    #         Instance_2
+    #     Content_2 ->
+    #         Instance_4
+    #
+    # @note Instance defined to be an instance of the content.
+    # Two instances defined similar if they have same location (server + path)
+    # and belong to the same content, i.e. have same checksum.
+    # It differs from {.remove_instances} where similarity defined only by
+    # location.
+    #
+    # @return [ContentData] have instances that appear only in +self+
+    def remove_instances(*others)
+      others.flatten!
+      _remove_instances(others, false)
+    end
+
+    # @see #remove_instances
+    # +self+ will be changed appropriately.
+    def remove_instances!(*others)
+      others.flatten!
+      _remove_instances(others, true)
     end
 
     private :shallow_check, :deep_check, :check_instance
   end
 
   # merges content data a and content data b to a new content data and returns it.
+  # @deprecated Use {ContentData#merge} instance method instead
   def self.merge(a, b)
     return ContentData.new(a) if b.nil?
     return ContentData.new(b) if a.nil?
     c = ContentData.new(b)
     # Add A instances to content data c
-    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
-      c.add_instance(checksum, size, server, path, instance_mod_time)
+    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path, instance_index_time|
+      c.add_instance(checksum, size, server, path, instance_mod_time, instance_index_time)
     }
     c
   end
 
+  # @deprecated Use {ContentData#merge!} instance method instead
   def self.merge_override_b(a, b)
     return ContentData.new(a) if b.nil?
     return ContentData.new(b) if a.nil?
     # Add A instances to content data B
-    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path|
-      b.add_instance(checksum, size, server, path, instance_mod_time)
+    a.each_instance { |checksum, size, content_mod_time, instance_mod_time, server, path, instance_index_time|
+      b.add_instance(checksum, size, server, path, instance_mod_time, instance_index_time)
     }
     b
   end
@@ -877,6 +945,16 @@ module ContentData
     c
   end
 
+  # same as 'remove' but overrides b
+  # returns new b
+  def self.remove_instances!(a, b)
+    return nil if b.nil?
+    return b if a.nil?
+    a.each_instance { |_, _, _, _, server, path, _|
+      b.remove_instance(server, path)
+    }
+  end
+
   # B - A : Remove instances of A content from B content data B and return the new content data.
   # If all instances are removed then the content record itself will be removed
   # e.g
@@ -884,8 +962,10 @@ module ContentData
   #    Content_1 ->
   #                   Instance_1
   #                   Instance_2
-  #
   #    Content_2 ->
+  #                   Instance_5
+  #
+  #    Content_3 ->
   #                   Instance_3
   #
   # B db:

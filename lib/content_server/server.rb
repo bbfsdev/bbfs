@@ -9,7 +9,9 @@ module ContentServer
   Params.string('local_server_name', `hostname`.strip, 'local server name')
   Params.path('tmp_path', '~/.bbfs/tmp', 'tmp path for temporary files')
 
-  Params.path('local_content_data_path', '', 'ContentData file path.')
+  # ContentData flush parameters
+  Params.integer('data_flush_delay', 3000, 'Number of seconds to delay content data file flush to disk.')
+  Params.integer('diff_data_flush_delay', 300, 'Number of seconds to delay content data file flush to disk.')
 
   # Monitoring
   Params.boolean('enable_monitoring', false, 'Whether to enable process monitoring or not.')
@@ -18,7 +20,6 @@ module ContentServer
   # Handling thread exceptions.
   Params.boolean('abort_on_exception', true, 'Any exception in any thread will abort the run.')
 
-  Params.integer('data_flush_delay', 300, 'Number of seconds to delay content data file flush to disk.')
 
   #using module method fot globals initialization due to the use of 'Params'.
   def init_globals
@@ -89,16 +90,17 @@ module ContentServer
     end
   end
 
-  def flush_content_data
+  def flush_content_data(is_full_flush = false)
     Log.debug1('Start flush local content data to file.')
     $testing_memory_log.info('Start flush content data to file') if $testing_memory_active
 
-    $local_content_data_lock.synchronize{
+    $local_content_data_lock.synchronize {
       local_content_data_unique_id = $local_content_data.unique_id
       if (local_content_data_unique_id != $last_content_data_id)
         $last_content_data_id = local_content_data_unique_id
-        $local_content_data.to_file($tmp_content_data_file)
-        File.rename($tmp_content_data_file, Params['local_content_data_path'])
+        #$local_content_data.to_file($tmp_content_data_file)
+        #File.rename($tmp_content_data_file, Params['local_content_data_path'])
+        ContentDataDb.save($local_content_data, is_full_flush)
         Log.debug1('End flush local content data to file.')
         $testing_memory_log.info('End flush content data to file') if $testing_memory_active
       else
