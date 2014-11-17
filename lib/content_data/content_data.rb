@@ -66,6 +66,12 @@ module ContentData
       [@contents_info.hash, @symlinks_info.hash]
     end
 
+    def clear
+      @contents_info.clear
+      @instances_info.clear
+      @symlinks_info.clear
+    end
+
     def clone_instances_info
       new_instances_info = GoogleHashSparseRubyToRuby.new
       @instances_info.each { |key, value|
@@ -221,7 +227,7 @@ module ContentData
     end
 
 
-    # removes an instance record both in @instances_info and @instances_info.
+    # removes an instance record both from @contents_info and @instances_info.
     # input params: server & path - are the instance unique key (called location)
     # removes also the content, if content becomes empty after removing the instance
     def remove_instance(server, path)
@@ -233,6 +239,19 @@ module ContentData
       instances.delete(location)
       @contents_info.delete(checksum) if instances.empty?
       @instances_info.delete(location)
+    end
+
+    # removes a content record both from @contents_info and @instances_info.
+    # input params: checksum of content
+    def remove_content(checksum)
+      # remove instances from @instances_info map
+      content_info = @contents_info[checksum]
+      return if content_info.nil?
+      instances = content_info[1]
+      instances.each_key { |location|
+        @instances_info.delete(location)
+      }
+      @contents_info.delete(checksum)
     end
 
     # removes all instances records which are located under input param: dir_to_remove.
